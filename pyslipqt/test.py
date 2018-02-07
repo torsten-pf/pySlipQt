@@ -20,8 +20,8 @@ TestPySlipQtName = 'PySlipQt Test'
 TestPySlipQtVersion = '0.1'
 
 # width and height of top-level widget
-WidgetWidth = 500
-WidgetHeight = 300
+TestWidth = 500
+TestHeight = 300
 
 
 class PySlipQt(QLabel):
@@ -42,6 +42,7 @@ class PySlipQt(QLabel):
 
         self.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.setMinimumSize(256, 256)
 
         self.setAutoFillBackground(True)
         p = self.palette()
@@ -122,7 +123,7 @@ class TestPySlipQt(QWidget):
 
         self.limit_xy_spin()
 
-        self.setGeometry(300, 300, WidgetWidth, WidgetHeight)
+        self.setGeometry(300, 300, TestWidth, TestHeight)
         self.setWindowTitle('%s %s' % (TestPySlipQtName, TestPySlipQtVersion))
         self.show()
 
