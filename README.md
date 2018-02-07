@@ -1,4 +1,4 @@
-.. image:: ./pyslipqt_logo.png
+.. image:: pyslipqt/examples/graphics/pyslipqt_logo.png
 
 pySlipQt
 ========
