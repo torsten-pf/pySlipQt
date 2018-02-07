@@ -29,11 +29,11 @@ Screenshots
 
 A few screenshots of pyslip_demo.py, the first showing OpenStreetMap tiles:
 
-.. image:: pyslip/examples/graphics/pyslip_demo_osm.png
+.. image:: pyslipqt/examples/graphics/pyslip_demo_osm.png
 
 Next, the pre-generated GMT tiles:
 
-.. image:: pyslip/examples/graphics/pyslip_demo_gmt.png
+.. image:: pyslipqt/examples/graphics/pyslip_demo_gmt.png
 
 Getting pySlipQt
 ================
