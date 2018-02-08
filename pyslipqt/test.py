@@ -12,7 +12,8 @@ from PyQt5.QtWidgets import QSizePolicy
 from PyQt5.QtGui import QPainter
 from PyQt5.QtCore import Qt
 
-import gmt_local_tiles as tiles
+#import gmt_local_tiles as tiles
+import osm_tiles as tiles
 
 
 # name and version number of the template
@@ -105,7 +106,8 @@ class TestPySlipQt(QWidget):
         self.spin_x.valueChanged.connect(self.change_x)
         self.spin_y.valueChanged.connect(self.change_y)
 
-        self.tile_src = tiles.Tiles(tiles_dir='/Users/r-w/tiles')
+        #self.tile_src = tiles.Tiles(tiles_dir='/Users/r-w/tiles')
+        self.tile_src = tiles.Tiles(tiles_dir='osm_tiles')
 
         self.canvas = PySlipQt(self, self.tile_src)
         self.min_level = min(self.tile_src.levels)
