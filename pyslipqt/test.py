@@ -26,23 +26,25 @@ TestHeight = 300
 
 class PySlipQt(QLabel):
 
-    def __init__(self, parent, tile_src, start_level=None, **kwargs):
-        super().__init__(parent)
-        self.tile_src = tile_src
-        self.level = 0
-        if start_level:
-            self.level = start_level
+    TileWidth = 256
+    TileHeight = 256
 
-        self.drawlist = []
-        self.image = None
+    def __init__(self, parent, tile_src, start_level=0, **kwargs):
+        super().__init__(parent)
+
+        self.tile_src = tile_src
+
+        # the tile coordinates
+        self.level = start_level
+        self.x = None
+        self.y = None
 
         # set tile levels stuff - allowed levels, etc
         self.max_level = max(tile_src.levels)
         self.min_level = min(tile_src.levels)
 
-        self.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.setMinimumSize(256, 256)
+        self.setMinimumSize(self.TileWidth, self.TileHeight)
 
         self.setAutoFillBackground(True)
         p = self.palette()
@@ -52,31 +54,38 @@ class PySlipQt(QLabel):
     def use_level(self, level):
         self.level = level
         self.tile_src.UseLevel(level)
+        (self.num_tiles_x, self.num_tiles_y, _, _) = self.tile_src.GetInfo(self.level)
+        print(f'.num_tiles_x={self.num_tiles_x}, .num_tiles_y={self.num_tiles_y}')
 
     def set_xy(self, x, y):
         self.x = x
         self.y = y
-        self.image = self.tile_src.GetTile(x, y)
-
-    def update_drawlist(self, image):
-        self.image = image
 
     def paintEvent(self, e):
-        if self.image:
-            # put image into canvas
-            painter = QPainter()
-            painter.begin(self)
-            pixmap = self.pixmap()
-            QPainter.drawPixmap(painter, 0, 0, self.image)
-            painter.end()
+        """Draw the base map and drawlist on top."""
+
+        # get canvas width and height
+        w = self.width()
+        h = self.height()
+
+        # figure out the maximum w+h tile extents
+        num_x = min(self.num_tiles_x, int((w + self.TileWidth - 1) / self.TileWidth))
+        num_y = min(self.num_tiles_y, int((h + self.TileHeight - 1) / self.TileHeight))
+
+        # put image(s) into canvas
+        painter = QPainter()
+        painter.begin(self)
+        pixmap = self.pixmap()
+        for y in range(num_y):
+            for x in range(num_x):
+                QPainter.drawPixmap(painter, x*self.TileWidth, y*self.TileHeight, self.tile_src.GetTile(x, y))
+        painter.end()
 
 
 class TestPySlipQt(QWidget):
 
     def __init__(self):
         super().__init__()
-
-        self.image = None
 
         self.l_coord = 0
         self.x_coord = 0
@@ -122,6 +131,9 @@ class TestPySlipQt(QWidget):
         self.spin_l.setMaximum(self.max_level)
 
         self.limit_xy_spin()
+
+        self.canvas.use_level(0)
+        self.canvas.set_xy(0, 0)
 
         self.setGeometry(300, 300, TestWidth, TestHeight)
         self.setWindowTitle('%s %s' % (TestPySlipQtName, TestPySlipQtVersion))
