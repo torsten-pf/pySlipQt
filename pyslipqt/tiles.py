@@ -22,6 +22,7 @@ from urllib import request
 import queue
 import functools
 from PyQt5.QtGui import QPixmap
+from PyQt5.QtCore import QTimer
 
 import pycacheback
 import sys_tile_data as std
@@ -62,7 +63,6 @@ class TileWorker(threading.Thread):
 
     def __init__(self, id, server, tilepath, requests, callback,
                  error_tile, content_type, rerequest_age):
-#                 error_tile, content_type, filetype, rerequest_age):
         """Prepare the tile worker.
 
         id            a unique numer identifying the worker instance
@@ -71,7 +71,6 @@ class TileWorker(threading.Thread):
         requests      the request queue
         callback      function to call after tile available
         content_type  expected Content-Type string
-#        filetype      PyQt integer filetype
 
         Results are returned in the callback() params.
         """
@@ -85,7 +84,6 @@ class TileWorker(threading.Thread):
         self.callback = callback
         self.error_tile_image = error_tile
         self.content_type = content_type
-#        self.filetype = filetype
         self.daemon = True
 
     def run(self):
@@ -97,12 +95,11 @@ class TileWorker(threading.Thread):
             error = False       # True if we get an error
             try:
                 tile_url = self.server + self.tilepath.format(Z=level, X=x, Y=y)
-                request = urllib.request.Request(tile_url)
-                f = urllib.request.urlopen(request)
-#                f = urllib2.urlopen(urllib2.Request(tile_url))
-                content_type = f.info().getheader('Content-Type')
+                response = request.urlopen(tile_url)
+                headers = response.info()
+                content_type = headers.get_content_type()
                 if content_type == self.content_type:
-                    #wx image = wx.ImageFromStream(f, self.filetype)
+                    data = response.read()
                     pixmap = QPixmap()
                     pixmap.loadFromData(data)
                 else:
@@ -114,8 +111,8 @@ class TileWorker(threading.Thread):
 
             # call the callback function passing level, x, y and pixmap data
             # error is False if we want to cache this tile on-disk
-            #wx wx.CallAfter(self.callback, level, x, y, pixmap, error)
-            QTimer.singleShot(0, functools.partial(self.callback, level, x, y, pixmap, error))
+            log(f'TileWorker.run(): .callback={self.callback}')
+            QTimer.singleShot(1, functools.partial(self.callback, level, x, y, pixmap, error))
 
             # finally, removes request from queue
             self.requests.task_done()
@@ -161,7 +158,6 @@ class Cache(pycacheback.pyCacheBack):
         Raises KeyError if tile not found.
         """
 
-
         # look for item in disk cache
         file_path = self.tile_path(key)
         if not os.path.exists(file_path):
@@ -192,8 +188,7 @@ class Cache(pycacheback.pyCacheBack):
             # we assume it's a "directory exists' error, which we ignore
             pass
 
-        #wx image.SaveFile(tile_path, self.TileDiskFormat)
-        image.save(tile_path, 'PNG')
+        image.save(tile_path, 'png')
 
 ###############################################################################
 # Base class for a tile source - handles access to a source of tiles.
@@ -510,6 +505,8 @@ class BaseTiles(object):
         image   tile image data
         error   True if image is 'error' image
         """
+
+        log(f'_tile_available: level={level}, x={x}, y={y}, error={error}')
 
         # convert image to bitmap, save in cache
         bitmap = image.ConvertToBitmap()
