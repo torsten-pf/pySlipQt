@@ -22,7 +22,7 @@ from urllib import request
 import queue
 import functools
 from PyQt5.QtGui import QPixmap
-from PyQt5.QtCore import QTimer
+from PyQt5.QtCore import QThread, QTimer
 
 import pycacheback
 import sys_tile_data as std
@@ -58,7 +58,7 @@ RefreshTilesAfterDays = 60
 # Worker class for internet tile retrieval
 ################################################################################
 
-class TileWorker(threading.Thread):
+class TileWorker(QThread):
     """Thread class that gets request from queue, loads tile, calls callback."""
 
     def __init__(self, id, server, tilepath, requests, callback,
@@ -75,7 +75,10 @@ class TileWorker(threading.Thread):
         Results are returned in the callback() params.
         """
 
-        threading.Thread.__init__(self)
+#        threading.Thread.__init__(self)
+#        super(TileWorker, self).__init__(self)
+#        super().__init__(self)
+        QThread.__init__(self)
 
         self.id = id
         self.server = server
@@ -102,6 +105,7 @@ class TileWorker(threading.Thread):
                     data = response.read()
                     pixmap = QPixmap()
                     pixmap.loadFromData(data)
+                    log(f'Loaded tile {level},{x},{y}')
                 else:
                     error = True
             except Exception as e:
@@ -112,7 +116,11 @@ class TileWorker(threading.Thread):
             # call the callback function passing level, x, y and pixmap data
             # error is False if we want to cache this tile on-disk
             log(f'TileWorker.run(): .callback={self.callback}')
-            QTimer.singleShot(1, functools.partial(self.callback, level, x, y, pixmap, error))
+            xyzzy = functools.partial(self.callback, level, x, y, pixmap, error)
+            log(f'xyzzy={xyzzy}')
+            log(f'dir(xyzzy)={dir(xyzzy)}')
+            QTimer.singleShot(0, functools.partial(self.callback, level, x, y, pixmap, error))
+    #                                                             level, x, y, image, error):
 
             # finally, removes request from queue
             self.requests.task_done()
@@ -523,7 +531,6 @@ class BaseTiles(object):
             pass
 
         # tell the world a new tile is available
-        #wx wx.CallAfter(self.available_callback, level, x, y, image, bitmap)
         QTimer.singleShot(0, functools.partial(self.available_callback, level, x, y, image, bitmap))
 
     def _cache_tile(self, image, bitmap, level, x, y):
