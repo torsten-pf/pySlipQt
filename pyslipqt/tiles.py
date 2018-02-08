@@ -18,6 +18,7 @@ import math
 import threading
 import traceback
 import urllib
+from urllib import request
 import queue
 import functools
 from PyQt5.QtGui import QPixmap
@@ -28,7 +29,8 @@ import sys_tile_data as std
 
 # if we don't have log.py, don't crash
 try:
-    from . import log
+#    from . import log
+    import log
     log = log.Log('pyslipqt.log')
 except AttributeError:
     # means log already set up
@@ -211,8 +213,8 @@ class BaseTiles(object):
 
     # allowed file types and associated values
     AllowedFileTypes = {
-                        'jpg': 'JPG',
                         'png': 'PNG',
+                        'jpg': 'JPG',
                        }
 
     # the number of seconds in a day
@@ -314,45 +316,62 @@ class BaseTiles(object):
         self.queued_requests = {}
 
         # prepare the "pending" and "error" images
-        self.pending_tile_image = std.getPendingImage()
-        self.pending_tile = self.pending_tile_image.ConvertToBitmap()
+        self.pending_tile = QPixmap()
+        self.pending_tile.loadFromData(std.getPendingImage())
 
-        self.error_tile_image = std.getErrorImage()
-        self.error_tile = self.error_tile_image.ConvertToBitmap()
+        self.error_tile = QPixmap()
+        self.error_tile.loadFromData(std.getErrorImage())
 
         # test for firewall - use proxy (if supplied)
         test_url = self.servers[0] + self.url_path.format(Z=0, X=0, Y=0)
         try:
-            urllib2.urlopen(test_url)
-        except Exception as e:
+            request.urlopen(test_url)
+        #except request.HTTPError as e:
+        except urllib.error.HTTPError as e:
+            status_code = e.code
+            log('status_code=%s' % str(status_code))
+            if status_code == 404:
+                msg = ['',
+                       'You got a 404 error from: %s' % test_url,
+                       'You might need to check the tile addressing for this server.'
+                      ]
+                msg = '\n'.join(msg)
+                log(msg)
+                raise RuntimeError(msg) from None
             log('%s exception doing simple connection to: %s'
                 % (type(e).__name__, test_url))
             log(''.join(traceback.format_exc()))
 
-            if http_proxy:
-                proxy = urllib2.ProxyHandler({'http': http_proxy})
-                opener = urllib2.build_opener(proxy)
-                urllib2.install_opener(opener)
-                try:
-                    urllib2.urlopen(test_url)
-                except:
-                    msg = ("Using HTTP proxy %s, "
-                           "but still can't get through a firewall!")
-                    raise Exception(msg)
-            else:
-                msg = ("There is a firewall but you didn't "
-                       "give me an HTTP proxy to get through it?")
-                raise Exception(msg)
+#            if http_proxy:
+#                #proxy = urllib2.ProxyHandler({'http': http_proxy})
+#                proxy = urllib.ProxyHandler({'http': http_proxy})
+#                #opener = urllib2.build_opener(proxy)
+#                opener = urllib.build_opener(proxy)
+#                #urllib2.install_opener(opener)
+#                urllib.install_opener(opener)
+#                try:
+#                    #urllib2.urlopen(test_url)
+#                    urllib.urlopen(test_url)
+#                except:
+#                    msg = ("Using HTTP proxy %s, "
+#                           "but still can't get through a firewall!")
+#                    raise Exception(msg)
+#            else:
+#                msg = ("There is a firewall but you didn't "
+#                       "give me an HTTP proxy to get through it?")
+#                raise Exception(msg)
 
         # set up the request queue and worker threads
-        self.request_queue = queue.queue()  # entries are (level, x, y)
+        self.request_queue = queue.Queue()  # entries are (level, x, y)
         self.workers = []
         for server in self.servers:
             for num_threads in range(self.max_requests):
                 worker = TileWorker(num_threads, server, self.url_path,
                                     self.request_queue, self._tile_available,
-                                    self.error_tile_image, self.content_type,
-                                    self.filetype, self.rerequest_age)
+                                    #self.error_tile_image, self.content_type,
+                                    self.error_tile, self.content_type,
+                                    #self.filetype, self.rerequest_age)
+                                    self.rerequest_age)
                 self.workers.append(worker)
                 worker.start()
 
@@ -461,7 +480,9 @@ class BaseTiles(object):
 
         # if we are serving internet tiles ...
         if self.servers:
-            self.request_queue.queue.clear()
+            with self.request_queue.mutex:
+                self.request_queue.queue.clear()
+#            self.request_queue.clear()
             self.queued_requests.clear()
 
     def _get_internet_tile(self, level, x, y):
