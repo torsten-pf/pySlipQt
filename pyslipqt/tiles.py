@@ -226,7 +226,7 @@ class BaseTiles(object):
 
     def __init__(self, levels, tile_width, tile_height, servers=None,
                  url_path=None, max_server_requests=MaxServerRequests,
-                 callback=None, max_lru=MaxLRU, tiles_dir=None,
+                 max_lru=MaxLRU, tiles_dir=None,
                  http_proxy=None, refetch_days=None):
         """Initialise a Tiles instance.
 
@@ -236,7 +236,6 @@ class BaseTiles(object):
         servers              list of internet tile servers (None if local tiles)
         url_path             path on server to each tile (ignored if local tiles)
         max_server_requests  maximum number of requests per server (ignored if local tiles)
-        callback             method to call when internet tile received (ignored if local tiles)
         max_lru              maximum number of cached in-memory tiles
         tiles_dir            path to on-disk tile cache directory
         http_proxy           proxy to use if required
@@ -250,7 +249,7 @@ class BaseTiles(object):
         self.url_path = url_path
         self.max_lru = max_lru
         self.tiles_dir = tiles_dir
-        self.available_callback = callback
+        self.available_callback = None
         self.max_requests = max_server_requests
 
         log(f'BaseTiles: id(self.available_callback)={id(self.available_callback)}')
@@ -493,6 +492,15 @@ class BaseTiles(object):
             # add tile request to the server request queue
             self.request_queue.put(tile_key)
             self.queued_requests[tile_key] = True
+
+    def setCallback(self, callback):
+        """Set the "tile available" callback.
+
+        callback  reference to object to call when tile is found.
+        """
+
+        log(f'setCallback: new callback={callback}={str(callback)}')
+        self.callback = callback
 
     def _tile_available(self, level, x, y, image, error):
         """A tile is available.

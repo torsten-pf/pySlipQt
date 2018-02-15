@@ -72,7 +72,7 @@ class Tiles(tiles.BaseTiles):
 
     TileInfoFilename = "tile.info"
 
-    def __init__(self, tiles_dir=TilesDir, http_proxy=None):
+    def __init__(self, callback, tiles_dir=TilesDir, http_proxy=None):
         """Override the base class for GMT tiles.
 
         Basically, just fill in the BaseTiles class with GMT values from above
@@ -82,6 +82,7 @@ class Tiles(tiles.BaseTiles):
         super(Tiles, self).__init__(TileLevels, TileWidth, TileHeight,
                                     servers=TileServers, url_path=TileURLPath,
                                     max_server_requests=MaxServerRequests,
+                                    callback=callback,
                                     max_lru=MaxLRU, tiles_dir=tiles_dir,
                                     http_proxy=http_proxy)
 

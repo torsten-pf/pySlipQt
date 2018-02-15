@@ -17,6 +17,14 @@ class PySlipQt(QLabel):
     TileHeight = 256
 
     def __init__(self, parent, tile_src, start_level=0, **kwargs):
+        """Initialize the pySlipQt widget.
+
+        parent       the GUI parent widget
+        tile_src     a Tiles object, source of tiles
+        start_level  level to initially display
+        kwargs       keyword args passed through to the underlying QLabel
+        """
+
         super().__init__(parent)
 
         self.tile_src = tile_src
@@ -38,6 +46,8 @@ class PySlipQt(QLabel):
         p.setColor(self.backgroundRole(), Qt.lightGray)
         self.setPalette(p)
 
+        tile_src.setCallback(self.available_callback)
+
     def use_level(self, level):
         self.level = level
         self.tile_src.UseLevel(level)
@@ -47,6 +57,9 @@ class PySlipQt(QLabel):
     def set_xy(self, x, y):
         self.x = x
         self.y = y
+
+    def available_callback(self, level, x, y, image, error):
+        self.update()
 
     def paintEvent(self, e):
         """Draw the base map and drawlist on top."""
