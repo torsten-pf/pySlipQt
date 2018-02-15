@@ -61,7 +61,7 @@ TileHeight = 256
 
 # where earlier-cached tiles will be
 # this can be overridden in the __init__ method
-TilesDir = 'gmt_tiles'
+TilesDir = os.path.abspath(os.path.expanduser('~/gmt_tiles'))
 
 ################################################################################
 # Class for GMT local tiles.   Builds on tiles.BaseTiles.

@@ -61,32 +61,35 @@ RefreshTilesAfterDays = 60
 class TileWorker(QThread):
     """Thread class that gets request from queue, loads tile, calls callback."""
 
-    def __init__(self, id, server, tilepath, requests, callback,
+    def __init__(self, id_num, server, tilepath, requests, callback,
                  error_tile, content_type, rerequest_age):
         """Prepare the tile worker.
 
-        id            a unique numer identifying the worker instance
-        server        server URL
-        tilepath      path to tile on server
-        requests      the request queue
-        callback      function to call after tile available
-        content_type  expected Content-Type string
+        id_num         a unique numer identifying the worker instance
+        server         server URL
+        tilepath       path to tile on server
+        requests       the request queue
+        callback       function to call after tile available
+        error_tile     image of error tile
+        content_type   expected Content-Type string
+        rerequest_age  number of days in tile age before re-requesting
 
         Results are returned in the callback() params.
         """
 
-#        threading.Thread.__init__(self)
-#        super(TileWorker, self).__init__(self)
 #        super().__init__(self)
         QThread.__init__(self)
 
-        self.id = id
+        log(f'TileWorker.__init__: id(callback)={id(callback)}')
+
+        self.id_num = id_num
         self.server = server
         self.tilepath = tilepath
         self.requests = requests
         self.callback = callback
         self.error_tile_image = error_tile
         self.content_type = content_type
+        self.rerequest_age = rerequest_age
         self.daemon = True
 
     def run(self):
@@ -105,7 +108,6 @@ class TileWorker(QThread):
                     data = response.read()
                     pixmap = QPixmap()
                     pixmap.loadFromData(data)
-                    log(f'Loaded tile {level},{x},{y}')
                 else:
                     error = True
             except Exception as e:
@@ -115,14 +117,13 @@ class TileWorker(QThread):
 
             # call the callback function passing level, x, y and pixmap data
             # error is False if we want to cache this tile on-disk
-            log(f'TileWorker.run(): .callback={self.callback}')
-            xyzzy = functools.partial(self.callback, level, x, y, pixmap, error)
-            log(f'xyzzy={xyzzy}')
-            log(f'dir(xyzzy)={dir(xyzzy)}')
-            QTimer.singleShot(0, functools.partial(self.callback, level, x, y, pixmap, error))
-    #                                                             level, x, y, image, error):
+            log(f'run: id(.callback)={id(self.callback)}')
+            self.callback(level, x, y, pixmap, error)
+#            partial = functools.partial(self.callback, level, x, y, pixmap, error)
+#            QTimer.singleShot(0, partial)
 
             # finally, removes request from queue
+            log(f'run: tile request finished')
             self.requests.task_done()
 
 ################################################################################
@@ -235,7 +236,7 @@ class BaseTiles(object):
         servers              list of internet tile servers (None if local tiles)
         url_path             path on server to each tile (ignored if local tiles)
         max_server_requests  maximum number of requests per server (ignored if local tiles)
-        callback             method to call when internet tile recieved (ignored if local tiles)
+        callback             method to call when internet tile received (ignored if local tiles)
         max_lru              maximum number of cached in-memory tiles
         tiles_dir            path to on-disk tile cache directory
         http_proxy           proxy to use if required
@@ -251,6 +252,8 @@ class BaseTiles(object):
         self.tiles_dir = tiles_dir
         self.available_callback = callback
         self.max_requests = max_server_requests
+
+        log(f'BaseTiles: id(self.available_callback)={id(self.available_callback)}')
 
         # calculate a re-request age, if specified
         self.rerequest_age = 0
@@ -368,26 +371,14 @@ class BaseTiles(object):
         self.request_queue = queue.Queue()  # entries are (level, x, y)
         self.workers = []
         for server in self.servers:
-            for num_threads in range(self.max_requests):
-                worker = TileWorker(num_threads, server, self.url_path,
+            for num_thread in range(self.max_requests):
+                log(f'Creating TileWorker: id(callback)={id(self._tile_available)}')
+                worker = TileWorker(num_thread, server, self.url_path,
                                     self.request_queue, self._tile_available,
-                                    #self.error_tile_image, self.content_type,
                                     self.error_tile, self.content_type,
-                                    #self.filetype, self.rerequest_age)
                                     self.rerequest_age)
                 self.workers.append(worker)
                 worker.start()
-
-    def SetAvailableCallback(self, callback):
-        """Set the "tile now available" callback routine.
-
-        callback  function with signature callback(level, x, y)
-
-        where 'level' is the level of the tile and 'x' and 'y' are
-        the coordinates of the tile that is now available.
-        """
-
-        self.available_callback = callback
 
     def UseLevel(self, level):
         """Prepare to serve tiles from the required level.
@@ -485,7 +476,6 @@ class BaseTiles(object):
         if self.servers:
             with self.request_queue.mutex:
                 self.request_queue.queue.clear()
-#            self.request_queue.clear()
             self.queued_requests.clear()
 
     def _get_internet_tile(self, level, x, y):
@@ -515,13 +505,12 @@ class BaseTiles(object):
         """
 
         log(f'_tile_available: level={level}, x={x}, y={y}, error={error}')
+        log(f'_tile_available: image={image}, id(self.available_callback)={id(self.available_callback)}')
+        log(f'_tile_available: self.available_callback={str(self.available_callback)}')
 
-        # convert image to bitmap, save in cache
-        bitmap = image.ConvertToBitmap()
-
-        # don't cache error images, maybe we can get it again later
+        # cache image, but don't cache error images, maybe try again later
         if not error:
-            self._cache_tile(image, bitmap, level, x, y)
+            self._cache_tile(image, level, x, y)
 
         # remove the request from the queued requests
         # note that it may not be there - a level change can flush the dict
@@ -531,13 +520,12 @@ class BaseTiles(object):
             pass
 
         # tell the world a new tile is available
-        QTimer.singleShot(0, functools.partial(self.available_callback, level, x, y, image, bitmap))
+        self.available_callback(level, x, y, image)
 
-    def _cache_tile(self, image, bitmap, level, x, y):
+    def _cache_tile(self, image, level, x, y):
         """Save a tile update from the internet.
 
-        image   wxPython image
-        bitmap  bitmap of the image
+        image   QPixmap image
         level   zoom level
         x       tile X coordinate
         y       tile Y coordinate
@@ -546,7 +534,7 @@ class BaseTiles(object):
         and on-disk cache with this new one.
         """
 
-        self.cache[(level, x, y)] = bitmap
+        self.cache[(level, x, y)] = image
         self.cache._put_to_back((level, x, y), image)
 
     def SetAgeThresholdDays(self, num_days):

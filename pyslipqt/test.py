@@ -45,7 +45,7 @@ class TestPySlipQt(QWidget):
         self.spin_x.valueChanged.connect(self.change_x)
         self.spin_y.valueChanged.connect(self.change_y)
 
-        #self.tile_src = tiles.Tiles(tiles_dir='/Users/r-w/tiles')
+        #self.tile_src = tiles.Tiles(tiles_dir='/Users/r-w/gmt_tiles')
         self.tile_src = tiles.Tiles(tiles_dir='osm_tiles')
 
         self.canvas = pyslipqt.PySlipQt(self, self.tile_src)
