@@ -6,6 +6,26 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QLabel, QSizePolicy
 from PyQt5.QtGui import QPainter
 
+# if we don't have log.py, don't crash
+try:
+#    from . import log
+    import log
+    log = log.Log('pyslipqt.log')
+except AttributeError:
+    # means log already set up
+    pass
+except ImportError as e:
+    # if we don't have log.py, don't crash
+    # fake all log(), log.debug(), ... calls
+    def logit(*args, **kwargs):
+        pass
+    log = logit
+    log.debug = logit
+    log.info = logit
+    log.warn = logit
+    log.error = logit
+    log.critical = logit
+
 
 # version number of the widget
 __version__ = '0.1.0'
@@ -41,24 +61,23 @@ class PySlipQt(QLabel):
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.setMinimumSize(self.TileWidth, self.TileHeight)
 
+        tile_src.setCallback(self.available_callback)
+
         self.setAutoFillBackground(True)
         p = self.palette()
         p.setColor(self.backgroundRole(), Qt.lightGray)
         self.setPalette(p)
 
-        tile_src.setCallback(self.available_callback)
-
     def use_level(self, level):
         self.level = level
         self.tile_src.UseLevel(level)
         (self.num_tiles_x, self.num_tiles_y, _, _) = self.tile_src.GetInfo(self.level)
-        print(f'.num_tiles_x={self.num_tiles_x}, .num_tiles_y={self.num_tiles_y}')
 
     def set_xy(self, x, y):
         self.x = x
         self.y = y
 
-    def available_callback(self, level, x, y, image, error):
+    def available_callback(self):
         self.update()
 
     def paintEvent(self, e):

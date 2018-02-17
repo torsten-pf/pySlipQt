@@ -77,7 +77,6 @@ class TileWorker(QThread):
         Results are returned in the callback() params.
         """
 
-#        super().__init__(self)
         QThread.__init__(self)
 
         log(f'TileWorker.__init__: id(callback)={id(callback)}')
@@ -96,6 +95,7 @@ class TileWorker(QThread):
         while True:
             # get zoom level and tile coordinates to retrieve
             (level, x, y) = self.requests.get()
+            log(f'run: getting tile ({level},{x},{y})')
 
             image = self.error_tile_image
             error = False       # True if we get an error
@@ -117,13 +117,9 @@ class TileWorker(QThread):
 
             # call the callback function passing level, x, y and pixmap data
             # error is False if we want to cache this tile on-disk
-            log(f'run: id(.callback)={id(self.callback)}')
             self.callback(level, x, y, pixmap, error)
-#            partial = functools.partial(self.callback, level, x, y, pixmap, error)
-#            QTimer.singleShot(0, partial)
 
             # finally, removes request from queue
-            log(f'run: tile request finished')
             self.requests.task_done()
 
 ################################################################################
@@ -251,8 +247,6 @@ class BaseTiles(object):
         self.tiles_dir = tiles_dir
         self.available_callback = None
         self.max_requests = max_server_requests
-
-        log(f'BaseTiles: id(self.available_callback)={id(self.available_callback)}')
 
         # calculate a re-request age, if specified
         self.rerequest_age = 0
@@ -499,8 +493,8 @@ class BaseTiles(object):
         callback  reference to object to call when tile is found.
         """
 
-        log(f'setCallback: new callback={callback}={str(callback)}')
-        self.callback = callback
+        log(f'setCallback: callback={str(callback)}')
+        self.available_callback = callback
 
     def _tile_available(self, level, x, y, image, error):
         """A tile is available.
@@ -513,7 +507,6 @@ class BaseTiles(object):
         """
 
         log(f'_tile_available: level={level}, x={x}, y={y}, error={error}')
-        log(f'_tile_available: image={image}, id(self.available_callback)={id(self.available_callback)}')
         log(f'_tile_available: self.available_callback={str(self.available_callback)}')
 
         # cache image, but don't cache error images, maybe try again later
@@ -528,7 +521,9 @@ class BaseTiles(object):
             pass
 
         # tell the world a new tile is available
-        self.available_callback(level, x, y, image)
+        log(f'_tile_available: calling self.available_callback={str(self.available_callback)}')
+        #self.available_callback(level, x, y, image)
+        self.available_callback()
 
     def _cache_tile(self, image, level, x, y):
         """Save a tile update from the internet.
