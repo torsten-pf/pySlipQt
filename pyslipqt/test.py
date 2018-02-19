@@ -1,16 +1,34 @@
 """
-A test program to display one tile from the GMT tileset.
+A test program to display tiles from the GMT tileset.
+
+Usage: test.py [osm|gmt]
 """
 
 import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QSpinBox
 from PyQt5.QtWidgets import QGridLayout
 from PyQt5.QtCore import Qt
-
 import pyslipqt
 
-#import gmt_local_tiles as tiles
-import osm_tiles as tiles
+# if we don't have log.py, don't crash
+try:
+#    from . import log
+    import log
+    log = log.Log('pyslipqt.log')
+except AttributeError:
+    # means log already set up
+    pass
+except ImportError as e:
+    # if we don't have log.py, don't crash
+    # fake all log(), log.debug(), ... calls
+    def logit(*args, **kwargs):
+        pass
+    log = logit
+    log.debug = logit
+    log.info = logit
+    log.warn = logit
+    log.error = logit
+    log.critical = logit
 
 
 # name and version number of the template
@@ -24,8 +42,10 @@ TestHeight = 300
 
 class TestPySlipQt(QWidget):
 
-    def __init__(self):
+    def __init__(self, tiles_dir):
         super().__init__()
+
+        self.tiles_dir = tiles_dir
 
         self.l_coord = 0
         self.x_coord = 0
@@ -45,8 +65,7 @@ class TestPySlipQt(QWidget):
         self.spin_x.valueChanged.connect(self.change_x)
         self.spin_y.valueChanged.connect(self.change_y)
 
-        #self.tile_src = tiles.Tiles(tiles_dir='/Users/r-w/gmt_tiles')
-        self.tile_src = tiles.Tiles(tiles_dir='osm_tiles')
+        self.tile_src = tiles.Tiles(tiles_dir=tiles_dir)
 
         self.canvas = pyslipqt.PySlipQt(self, self.tile_src)
         self.min_level = min(self.tile_src.levels)
@@ -106,13 +125,38 @@ class TestPySlipQt(QWidget):
 
     def change_x(self):
         self.x_coord = self.spin_x.value()
+        self.canvas.set_xy(self.x_coord, self.y_coord)
         self.display_tile()
 
     def change_y(self):
         self.y_coord = self.spin_y.value()
+        self.canvas.set_xy(self.x_coord, self.y_coord)
         self.display_tile()
 
 
-app = QApplication(sys.argv[1:])
-ex = TestPySlipQt()
+def usage(msg=None):
+    """Give help to the befuddled user."""
+
+    if msg:
+        print(f"{'*'*60}\n{msg}\n{'*'*60}")
+    print(__doc__)
+    sys.exit(1)
+
+# look at sys.argv, decide on tileset and source directory
+if len(sys.argv) == 2:
+    tile_set = sys.argv[1].lower()
+    if tile_set == 'gmt':
+        import gmt_local_tiles as tiles
+        tiles_dir = '/Users/r-w/gmt_tiles'
+    elif tile_set == 'osm':
+        import osm_tiles as tiles
+        tiles_dir = './osm_tiles'
+    else:
+        usage(f"Bad tileset, expected 'gmt' or 'osm' but got '{tile_set}'")
+else:
+    usage()
+
+# start the app, passing tile directory
+app = QApplication([])
+ex = TestPySlipQt(tiles_dir)
 sys.exit(app.exec_())

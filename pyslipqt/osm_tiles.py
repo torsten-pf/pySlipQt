@@ -1,12 +1,11 @@
 """
-A tile source that serves OpenStreetMap tiles from the internet.
+A tile source that serves OpenStreetMap tiles from server(s).
 
 Uses pyCacheBack to provide in-memory and on-disk caching.
 """
 
 import math
-
-import tiles
+import tiles_net as tiles
 
 
 # if we don't have log.py, don't crash
@@ -65,15 +64,15 @@ TileHeight = 256
 
 # where earlier-cached tiles will be
 # this can be overridden in the __init__ method
-TilesDir = 'osm_tiles'
+TilesDir = './osm_tiles'
 
 
 ################################################################################
 # Class for these tiles.   Builds on tiles.BaseTiles.
 ################################################################################
 
-class Tiles(tiles.BaseTiles):
-    """An object to source internet tiles for pySlip."""
+class Tiles(tiles.Tiles):
+    """An object to source server tiles for pySlipQt."""
 
     def __init__(self, tiles_dir=TilesDir, http_proxy=None):
         """Override the base class for these tiles.
@@ -83,10 +82,11 @@ class Tiles(tiles.BaseTiles):
         """
 
         super(Tiles, self).__init__(TileLevels, TileWidth, TileHeight,
-                                    servers=TileServers, url_path=TileURLPath,
+                                    tiles_dir=tiles_dir,
+                                    servers=TileServers,
+                                    url_path=TileURLPath,
                                     max_server_requests=MaxServerRequests,
-                                    max_lru=MaxLRU, tiles_dir=tiles_dir,
-                                    http_proxy=http_proxy)
+                                    max_lru=MaxLRU, http_proxy=http_proxy)
 
     def Geo2Tile(self, geo):
         """Convert geo to tile fractional coordinates for level in use.

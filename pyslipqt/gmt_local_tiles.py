@@ -11,7 +11,8 @@ import tiles
 
 # if we don't have log.py, don't crash
 try:
-    from . import log
+#    from . import log
+    import log
     log = log.Log('pyslipqt.log')
 except AttributeError:
     # means log already set up
@@ -72,7 +73,7 @@ class Tiles(tiles.BaseTiles):
 
     TileInfoFilename = "tile.info"
 
-    def __init__(self, callback, tiles_dir=TilesDir, http_proxy=None):
+    def __init__(self, tiles_dir=TilesDir):
         """Override the base class for GMT tiles.
 
         Basically, just fill in the BaseTiles class with GMT values from above
@@ -80,11 +81,7 @@ class Tiles(tiles.BaseTiles):
         """
 
         super(Tiles, self).__init__(TileLevels, TileWidth, TileHeight,
-                                    servers=TileServers, url_path=TileURLPath,
-                                    max_server_requests=MaxServerRequests,
-                                    callback=callback,
-                                    max_lru=MaxLRU, tiles_dir=tiles_dir,
-                                    http_proxy=http_proxy)
+                                    max_lru=MaxLRU, tiles_dir=tiles_dir)
 
         # override the tiles.py extent here, the GMT tileset is different
         self.extent=(-65.0, 295.0, -66.66, 66.66)
@@ -115,6 +112,7 @@ class Tiles(tiles.BaseTiles):
             with open(info_file, 'rb') as fd:
                 info = pickle.load(fd)
         except IOError:
+            log(f'GetInfo: problem reading info file {info_file}')
             info = None
 
         return info

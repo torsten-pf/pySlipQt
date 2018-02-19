@@ -1,31 +1,14 @@
 """
-A _base_ Tiles object for pySlipQt tiles.
+A base Tiles object for pySlipQt local tiles.
 
 All tile sources should inherit from this base class.
 For example, see gmt_local_tiles.py and osm_tiles.py.
-
-A local tileset is instantiated by specifying 'tiles_dir', nothing else
-is required.
-
-An internet tileset requires 'servers' and 'callback', nothing else
-is required.
 """
 
 import os
-import os.path
-import time
 import math
-import threading
-import traceback
-import urllib
-from urllib import request
-import queue
-import functools
 from PyQt5.QtGui import QPixmap
-from PyQt5.QtCore import QThread, QTimer
-
 import pycacheback
-import sys_tile_data as std
 
 
 # if we don't have log.py, don't crash
@@ -48,82 +31,9 @@ except ImportError as e:
     log.error = logit
     log.critical = logit
 
-# set how old disk-cache tiles can be before we re-request them from the
-# internet.  this is the number of days old a tile is before we re-request.
-# if 'None', never re-request tiles after first satisfied request.
-RefreshTilesAfterDays = 60
-
 
 ################################################################################
-# Worker class for internet tile retrieval
-################################################################################
-
-class TileWorker(QThread):
-    """Thread class that gets request from queue, loads tile, calls callback."""
-
-    def __init__(self, id_num, server, tilepath, requests, callback,
-                 error_tile, content_type, rerequest_age):
-        """Prepare the tile worker.
-
-        id_num         a unique numer identifying the worker instance
-        server         server URL
-        tilepath       path to tile on server
-        requests       the request queue
-        callback       function to call after tile available
-        error_tile     image of error tile
-        content_type   expected Content-Type string
-        rerequest_age  number of days in tile age before re-requesting
-
-        Results are returned in the callback() params.
-        """
-
-        QThread.__init__(self)
-
-        log(f'TileWorker.__init__: id(callback)={id(callback)}')
-
-        self.id_num = id_num
-        self.server = server
-        self.tilepath = tilepath
-        self.requests = requests
-        self.callback = callback
-        self.error_tile_image = error_tile
-        self.content_type = content_type
-        self.rerequest_age = rerequest_age
-        self.daemon = True
-
-    def run(self):
-        while True:
-            # get zoom level and tile coordinates to retrieve
-            (level, x, y) = self.requests.get()
-            log(f'run: getting tile ({level},{x},{y})')
-
-            image = self.error_tile_image
-            error = False       # True if we get an error
-            try:
-                tile_url = self.server + self.tilepath.format(Z=level, X=x, Y=y)
-                response = request.urlopen(tile_url)
-                headers = response.info()
-                content_type = headers.get_content_type()
-                if content_type == self.content_type:
-                    data = response.read()
-                    pixmap = QPixmap()
-                    pixmap.loadFromData(data)
-                else:
-                    error = True
-            except Exception as e:
-                error = True
-                log('%s exception getting tile %d,%d,%d from %s\n%s'
-                    % (type(e).__name__, level, x, y, tile_url, e.message))
-
-            # call the callback function passing level, x, y and pixmap data
-            # error is False if we want to cache this tile on-disk
-            self.callback(level, x, y, pixmap, error)
-
-            # finally, removes request from queue
-            self.requests.task_done()
-
-################################################################################
-# Define a cache for tiles
+# Define a cache for tiles.  This is an in-memory cache backed to disk.
 ################################################################################
 
 class Cache(pycacheback.pyCacheBack):
@@ -133,10 +43,6 @@ class Cache(pycacheback.pyCacheBack):
         self._tiles_dir  path to the on-disk cache directory
     """
 
-    # always save tiles to disk with this format
-    #wx TileDiskFormat = wx.BITMAP_TYPE_PNG
-
-    # tiles stored on disk at <self.tiles_dir>/<TilePath>
     TilePath = '{Z}/{X}/{Y}.png'
 
     def tile_date(self, key):
@@ -200,61 +106,27 @@ class Cache(pycacheback.pyCacheBack):
 ###############################################################################
 
 class BaseTiles(object):
-    """A base tile object to source tiles for pySlip.
-
-    Source either local tiles or internet tiles.
-    """
-
-    # maximum number of outstanding requests per server
-    MaxServerRequests = 2
+    """A base tile object to source local tiles for pySlip."""
 
     # maximum number of in-memory cached tiles
     MaxLRU = 1000
 
-    # allowed file types and associated values
-    AllowedFileTypes = {
-                        'png': 'PNG',
-                        'jpg': 'JPG',
-                       }
-
-    # the number of seconds in a day
-    SecondsInADay = 60 * 60 * 24
-
-    def __init__(self, levels, tile_width, tile_height, servers=None,
-                 url_path=None, max_server_requests=MaxServerRequests,
-                 max_lru=MaxLRU, tiles_dir=None,
-                 http_proxy=None, refetch_days=None):
+    def __init__(self, levels, tile_width, tile_height, tiles_dir, max_lru=MaxLRU):
         """Initialise a Tiles instance.
 
-        levels               a list of level numbers that are to be served
-        tile_width           width of each tile in pixels
-        tile_height          height of each tile in pixels
-        servers              list of internet tile servers (None if local tiles)
-        url_path             path on server to each tile (ignored if local tiles)
-        max_server_requests  maximum number of requests per server (ignored if local tiles)
-        max_lru              maximum number of cached in-memory tiles
-        tiles_dir            path to on-disk tile cache directory
-        http_proxy           proxy to use if required
+        levels       a list of level numbers that are to be served
+        tile_width   width of each tile in pixels
+        tile_height  height of each tile in pixels
+        tiles_dir    path to on-disk tile cache directory
+        max_lru      maximum number of cached in-memory tiles
         """
 
         # save params
         self.levels = levels
         self.tile_size_x = tile_width
         self.tile_size_y = tile_height
-        self.servers = servers
-        self.url_path = url_path
-        self.max_lru = max_lru
         self.tiles_dir = tiles_dir
-        self.available_callback = None
-        self.max_requests = max_server_requests
-
-        # calculate a re-request age, if specified
-        self.rerequest_age = 0
-        if RefreshTilesAfterDays is not None:
-            self.rerequest_age = (time.time() -
-                                      RefreshTilesAfterDays * self.SecondsInADay)
-        if refetch_days is not None:
-            self.rerequest_age = (time.time() - refetch_days * self.SecondsInADay)
+        self.max_lru = max_lru
 
         # set min and max tile levels and current level
         self.min_level = min(self.levels)
@@ -278,100 +150,6 @@ class BaseTiles(object):
                        % tiles_dir)
                 raise Exception(msg)
             os.makedirs(tiles_dir)
-        for level in self.levels:
-            level_dir = os.path.join(tiles_dir, '%d' % level)
-            if not os.path.isdir(level_dir):
-                os.makedirs(level_dir)
-
-        # if we are serving local tiles, just return
-        if self.servers is None:
-            return
-
-        #####
-        # otherwise prepare for internet work
-        #####
-
-        # figure out tile filename extension from 'url_path'
-        tile_extension = os.path.splitext(url_path)[1][1:]
-        tile_extension_lower = tile_extension.lower()      # ensure lower case
-
-        # determine the file bitmap type
-        try:
-            self.filetype = self.AllowedFileTypes[tile_extension_lower]
-        except KeyError as e:
-            raise TypeError("Bad tile_extension value, got '%s', "
-                            "expected one of %s"
-                            % (str(tile_extension),
-                               str(self.AllowedFileTypes.keys())))
-
-        # compose the expected 'Content-Type' string on request result
-        # if we get here we know the extension is in self.AllowedFileTypes
-        if tile_extension_lower == 'jpg':
-            self.content_type = 'image/jpeg'
-        elif tile_extension_lower == 'png':
-            self.content_type = 'image/png'
-
-        # set the list of queued unsatisfied requests to 'empty'
-        self.queued_requests = {}
-
-        # prepare the "pending" and "error" images
-        self.pending_tile = QPixmap()
-        self.pending_tile.loadFromData(std.getPendingImage())
-
-        self.error_tile = QPixmap()
-        self.error_tile.loadFromData(std.getErrorImage())
-
-        # test for firewall - use proxy (if supplied)
-        test_url = self.servers[0] + self.url_path.format(Z=0, X=0, Y=0)
-        try:
-            request.urlopen(test_url)
-        #except request.HTTPError as e:
-        except urllib.error.HTTPError as e:
-            status_code = e.code
-            log('status_code=%s' % str(status_code))
-            if status_code == 404:
-                msg = ['',
-                       'You got a 404 error from: %s' % test_url,
-                       'You might need to check the tile addressing for this server.'
-                      ]
-                msg = '\n'.join(msg)
-                log(msg)
-                raise RuntimeError(msg) from None
-            log('%s exception doing simple connection to: %s'
-                % (type(e).__name__, test_url))
-            log(''.join(traceback.format_exc()))
-
-#            if http_proxy:
-#                #proxy = urllib2.ProxyHandler({'http': http_proxy})
-#                proxy = urllib.ProxyHandler({'http': http_proxy})
-#                #opener = urllib2.build_opener(proxy)
-#                opener = urllib.build_opener(proxy)
-#                #urllib2.install_opener(opener)
-#                urllib.install_opener(opener)
-#                try:
-#                    #urllib2.urlopen(test_url)
-#                    urllib.urlopen(test_url)
-#                except:
-#                    msg = ("Using HTTP proxy %s, "
-#                           "but still can't get through a firewall!")
-#                    raise Exception(msg)
-#            else:
-#                msg = ("There is a firewall but you didn't "
-#                       "give me an HTTP proxy to get through it?")
-#                raise Exception(msg)
-
-        # set up the request queue and worker threads
-        self.request_queue = queue.Queue()  # entries are (level, x, y)
-        self.workers = []
-        for server in self.servers:
-            for num_thread in range(self.max_requests):
-                log(f'Creating TileWorker: id(callback)={id(self._tile_available)}')
-                worker = TileWorker(num_thread, server, self.url_path,
-                                    self.request_queue, self._tile_available,
-                                    self.error_tile, self.content_type,
-                                    self.rerequest_age)
-                self.workers.append(worker)
-                worker.start()
 
     def UseLevel(self, level):
         """Prepare to serve tiles from the required level.
@@ -394,11 +172,6 @@ class BaseTiles(object):
         self.level = level
         (self.num_tiles_x, self.num_tiles_y, self.ppd_x, self.ppd_y) = info
 
-        # flush any outstanding requests.
-        # we do this to speed up multiple-level zooms so the user doesn't
-        # sit waiting for tiles to arrive that won't be shown.
-        self.FlushRequests()
-
         return True
 
     def GetTile(self, x, y):
@@ -409,34 +182,14 @@ class BaseTiles(object):
 
         Returns bitmap object for the tile image.
         Tile coordinates are measured from map top-left.
-
-        We override the existing GetTile() method to add code to retrieve
-        tiles from the internet if not in on-disk cache.
-
-        We also check the date on the tile from disk-cache.  If "too old",
-        return it after starting the process to get new tile from internet.
         """
 
         try:
             # get tile from cache
-            tile = self.cache[(self.level, x, y)]
+            return self.cache[(self.level, x, y)]
         except KeyError as e:
-            # if we are serving local tiles, this is an error
-            if self.servers is None:
-                raise KeyError("Can't find tile for key '%s'"
-                               % str((self.level, x, y)))
-
-            # otherwise, start process of getting tile from 'net, return 'pending' image
-            self._get_internet_tile(self.level, x, y)
-            tile = self.pending_tile
-        else:
-            # get tile from cache, if using internet check date
-            if self.servers is not None:
-                tile_date = self.cache.tile_date((self.level, x, y))
-                if tile_date < self.rerequest_age:
-                    self._get_internet_tile(self.level, x, y)
-
-        return tile
+            raise KeyError("Can't find tile for key '%s'"
+                           % str((self.level, x, y)))
 
     def GetInfo(self, level):
         """Get tile info for a particular level.
@@ -448,8 +201,6 @@ class BaseTiles(object):
 
         Note that ppd_? may be meaningless for some tiles, so its
         value will be None.
-
-        This method is for internet tiles.  It will be overridden for GMT tiles.
         """
 
         # is required level available?
@@ -462,100 +213,13 @@ class BaseTiles(object):
 
         return (self.num_tiles_x, self.num_tiles_y, None, None)
 
-    def FlushRequests(self):
-        """Delete any outstanding tile requests."""
-
-        # if we are serving internet tiles ...
-        if self.servers:
-            with self.request_queue.mutex:
-                self.request_queue.queue.clear()
-            self.queued_requests.clear()
-
-    def _get_internet_tile(self, level, x, y):
-        """Start the process to get internet tile.
-
-        level, x, y  identify the required tile
-
-        If we don't already have this tile (or getting it), queue a request and
-        also put the request into a 'queued request' dictionary.  We
-        do this since we can't peek into a queue to see what's there.
-        """
-
-        tile_key = (level, x, y)
-        if tile_key not in self.queued_requests:
-            # add tile request to the server request queue
-            self.request_queue.put(tile_key)
-            self.queued_requests[tile_key] = True
-
     def setCallback(self, callback):
-        """Set the "tile available" callback.
+        """Set the "tile available" callback function.
 
-        callback  reference to object to call when tile is found.
+        Only used with internet tiles.  See "tiles_net.py".
         """
 
-        log(f'setCallback: callback={str(callback)}')
-        self.available_callback = callback
-
-    def _tile_available(self, level, x, y, image, error):
-        """A tile is available.
-
-        level   level for the tile
-        x       x coordinate of tile
-        y       y coordinate of tile
-        image   tile image data
-        error   True if image is 'error' image
-        """
-
-        log(f'_tile_available: level={level}, x={x}, y={y}, error={error}')
-        log(f'_tile_available: self.available_callback={str(self.available_callback)}')
-
-        # cache image, but don't cache error images, maybe try again later
-        if not error:
-            self._cache_tile(image, level, x, y)
-
-        # remove the request from the queued requests
-        # note that it may not be there - a level change can flush the dict
-        try:
-            del self.queued_requests[(level, x, y)]
-        except KeyError:
-            pass
-
-        # tell the world a new tile is available
-        log(f'_tile_available: calling self.available_callback={str(self.available_callback)}')
-        #self.available_callback(level, x, y, image)
-        self.available_callback()
-
-    def _cache_tile(self, image, level, x, y):
-        """Save a tile update from the internet.
-
-        image   QPixmap image
-        level   zoom level
-        x       tile X coordinate
-        y       tile Y coordinate
-
-        We may already have a tile at (level, x, y).  Update in-memory cache
-        and on-disk cache with this new one.
-        """
-
-        self.cache[(level, x, y)] = image
-        self.cache._put_to_back((level, x, y), image)
-
-    def SetAgeThresholdDays(self, num_days):
-        """Set the tile refetch threshold time.
-
-        num_days  number of days before refetching tiles
-
-        If 'num_days' is 0 refetching is inhibited.
-        """
-
-        global RefreshTilesAfterDays
-
-        # update the global in case we instantiate again
-        RefreshTilesAfterDays = num_days
-
-        # recalculate this instance's age threshold in UNIX time
-        self.rerequest_age = (time.time() -
-                                  RefreshTilesAfterDays * self.SecondsInADay)
+        pass
 
     def Geo2Tile(self, xgeo, ygeo):
         """Convert geo to tile fractional coordinates for level in use.
