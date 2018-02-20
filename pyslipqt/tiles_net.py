@@ -6,7 +6,6 @@ For example, see osm_tiles.py.
 """
 
 import os
-import os.path
 import time
 import math
 import threading
@@ -20,6 +19,7 @@ from PyQt5.QtCore import QThread, QTimer
 import tiles
 import pycacheback
 import sys_tile_data as std
+import utils
 
 
 # if we don't have log.py, don't crash
@@ -310,9 +310,10 @@ class Tiles(tiles.BaseTiles):
         try:
             # get tile from cache
             tile = self.cache[(self.level, x, y)]
-            tile_date = self.cache.tile_date((self.level, x, y))
-            if self.rerequest_age and (tile_date < self.rerequest_age):
-                self.get_server_tile(self.level, x, y)
+            if self.tile_on_disk(self.level, x, y):
+                tile_date = self.cache.tile_date((self.level, x, y))
+                if self.rerequest_age and (tile_date < self.rerequest_age):
+                    self.get_server_tile(self.level, x, y)
         except KeyError as e:
             # not cached, start process of getting tile from 'net, return 'pending' image
             self.get_server_tile(self.level, x, y)
@@ -369,28 +370,34 @@ class Tiles(tiles.BaseTiles):
             self.request_queue.put(tile_key)
             self.queued_requests[tile_key] = True
 
+    def tile_on_disk(self, level, x, y):
+        """Return True if tile at (level, x, y) is on-disk."""
+
+        tile_path = self.cache.tile_path((level, x, y))
+        return os.path.exists(tile_path)
+
     def setCallback(self, callback):
         """Set the "tile available" callback.
 
         callback  reference to object to call when tile is found.
         """
 
-#        log(f'setCallback: callback={str(callback)}')
         self.callback = callback
 
     def tile_is_available(self, level, x, y, image, error):
-        """A tile is available.
+        """Callback routine - a 'net tile is available.
 
         level   level for the tile
         x       x coordinate of tile
         y       y coordinate of tile
         image   tile image data
-        error   True if image is 'error' image
+        error   True if image is 'error' image, don't cache in that case
         """
 
-        # cache image, but don't cache error images, maybe try again later
+        # put image into in-memory cache, but error images don't go to disk
+        self.cache[(level, x, y)] = image
         if not error:
-            self.cache_tile(image, level, x, y)
+            self.cache._put_to_back((level, x, y), image)
 
         # remove the request from the queued requests
         # note that it may not be there - a level change can flush the dict
@@ -407,21 +414,6 @@ class Tiles(tiles.BaseTiles):
             log.error(msg)
             raise RuntimeError(msg)
 
-    def cache_tile(self, image, level, x, y):
-        """Save a tile update from a server.
-
-        image   QPixmap image
-        level   zoom level
-        x       tile X coordinate
-        y       tile Y coordinate
-
-        We may already have a tile at (level, x, y).  Update in-memory cache
-        and on-disk cache with this new one.
-        """
-
-        self.cache[(level, x, y)] = image
-        self.cache._put_to_back((level, x, y), image)
-
     def SetAgeThresholdDays(self, num_days):
         """Set the tile refetch threshold time.
 
@@ -430,9 +422,8 @@ class Tiles(tiles.BaseTiles):
         If 'num_days' is 0 refetching is inhibited.
         """
 
-        global RefreshTilesAfterDays
-
         # update the global in case we instantiate again
+        global RefreshTilesAfterDays
         RefreshTilesAfterDays = num_days
 
         # recalculate this instance's age threshold in UNIX time

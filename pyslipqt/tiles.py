@@ -213,13 +213,18 @@ class BaseTiles(object):
 
         return (self.num_tiles_x, self.num_tiles_y, None, None)
 
+    def tile_on_disk(self, level, x, y):
+        """Return True if tile at (level, x, y) is on-disk."""
+
+        raise Exception('You must override BaseTiles.tile_on_disk(level, x, y))')
+
     def setCallback(self, callback):
         """Set the "tile available" callback function.
 
         Only used with internet tiles.  See "tiles_net.py".
         """
 
-        pass
+        raise Exception('You must override BaseTiles.setCallback(callback))')
 
     def Geo2Tile(self, xgeo, ygeo):
         """Convert geo to tile fractional coordinates for level in use.
@@ -230,7 +235,7 @@ class BaseTiles(object):
         Note that we assume the point *is* on the map!
         """
 
-        raise Exception('You must override Tiles.Geo2Tile()')
+        raise Exception('You must override BaseTiles.Geo2Tile(xgeo, ygeo)')
 
     def Tile2Geo(self, xtile, ytile):
         """Convert tile fractional coordinates to geo for level in use.
@@ -241,4 +246,4 @@ class BaseTiles(object):
         Note that we assume the point *is* on the map!
         """
 
-        raise Exception('You must override Tiles.Tile2Geo()')
+        raise Exception('You must override BaseTiles.Tile2Geo(xtile, ytile)')
