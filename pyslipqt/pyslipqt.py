@@ -6,6 +6,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QLabel, QSizePolicy
 from PyQt5.QtGui import QPainter
 
+
 # if we don't have log.py, don't crash
 try:
 #    from . import log
@@ -61,6 +62,13 @@ class PySlipQt(QLabel):
         self.tile_size_x = tile_src.tile_size_x
         self.tile_size_y = tile_src.tile_size_y
 
+        self.left_mbutton_down = False
+        self.mid_mbutton_down = False
+        self.right_mbutton_down = False
+
+        self.start_drag_x = None
+        self.start_drag_y = None
+
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.setMinimumSize(self.TileWidth, self.TileHeight)
 
@@ -70,6 +78,80 @@ class PySlipQt(QLabel):
         p = self.palette()
         p.setColor(self.backgroundRole(), Qt.lightGray)
         self.setPalette(p)
+
+#        self.setMouseTracking(True)
+
+    def mousePressEvent(self, event):
+        b = event.button()
+        if b == Qt.NoButton:
+            print('mousePressEvent: button=Qt.NoButton')
+        elif b == Qt.LeftButton:
+            print('mousePressEvent: button=Qt.LeftButton')
+            self.left_mbutton_down = True
+        elif b == Qt.MidButton:
+            print('mousePressEvent: button=Qt.MidButton')
+            self.mid_mbutton_down = True
+        elif b == Qt.RightButton:
+            print('mousePressEvent: button=Qt.RightButton')
+            self.right_mbutton_down = True
+        else:
+            print('mousePressEvent: unknown button')
+         
+    def mouseReleaseEvent(self, event):
+        b = event.button()
+        if b == Qt.NoButton:
+            print('mouseReleaseEvent: button=Qt.NoButton')
+        elif b == Qt.LeftButton:
+            print('mouseReleaseEvent: button=Qt.LeftButton')
+            self.left_mbutton_down = False
+        elif b == Qt.MidButton:
+            print('mouseReleaseEvent: button=Qt.MidButton')
+            self.mid_mbutton_down = False
+        elif b == Qt.RightButton:
+            print('mouseReleaseEvent: button=Qt.RightButton')
+            self.right_mbutton_down = False
+        else:
+            print('mouseReleaseEvent: unknown button')
+ 
+    def mouseDoubleClickEvent(self, event):
+        b = event.button()
+        if b == Qt.NoButton:
+            print('mouseDoubleClickEvent: button=Qt.NoButton')
+        elif b == Qt.LeftButton:
+            print('mouseDoubleClickEvent: button=Qt.LeftButton')
+        elif b == Qt.MidButton:
+            print('mouseDoubleClickEvent: button=Qt.MidButton')
+        elif b == Qt.RightButton:
+            print('mouseDoubleClickEvent: button=Qt.RightButton')
+        else:
+            print('mouseDoubleClickEvent: unknown button')
+ 
+    def mouseMoveEvent(self, event):
+        x = event.x()
+        y = event.y()
+        if self.left_mbutton_down:
+            if self.start_drag_x is None:
+                print(f'Start of drag: x={x}, y={y}')
+            else:
+                drag_delta_x = x - self.start_drag_x
+                drag_delta_y = y - self.start_drag_y
+                print(f'drag=({drag_delta_x},{drag_delta_y})')
+                # drag the map
+            self.start_drag_x = x
+            self.start_drag_y = y
+
+    def keyPressEvent(self, event):
+        """Capture a keyboard event."""
+
+        print(f'key press event={event.key()}')
+
+    def keyReleaseEvent(self, event):
+
+        print(f'key release event={e.key()}')
+
+    def wheelEvent(self, event):
+
+        print('wheelEvent:')
 
     def use_level(self, level):
         self.level = level
