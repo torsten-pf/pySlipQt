@@ -133,7 +133,7 @@ class BaseTiles(object):
         self.max_level = max(self.levels)
         self.level = self.min_level
 
-        # setup the tile cache (note, no callback set since net unused)
+        # setup the tile cache
         self.cache = Cache(tiles_dir=tiles_dir, max_lru=max_lru)
 
         #####
@@ -224,7 +224,8 @@ class BaseTiles(object):
         Only used with internet tiles.  See "tiles_net.py".
         """
 
-        raise Exception('You must override BaseTiles.setCallback(callback))')
+        pass
+        #raise Exception('You must override BaseTiles.setCallback(callback))')
 
     def Geo2Tile(self, xgeo, ygeo):
         """Convert geo to tile fractional coordinates for level in use.
