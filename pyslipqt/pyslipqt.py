@@ -69,6 +69,9 @@ class PySlipQt(QLabel):
         self.start_drag_x = None
         self.start_drag_y = None
 
+        self.view_width = 0
+        self.view_height = 0
+
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.setMinimumSize(self.TileWidth, self.TileHeight)
 
@@ -104,6 +107,8 @@ class PySlipQt(QLabel):
         elif b == Qt.LeftButton:
             print('mouseReleaseEvent: button=Qt.LeftButton')
             self.left_mbutton_down = False
+            self.start_drag_x = None    # end drag, if any
+            self.start_drag_y = None
         elif b == Qt.MidButton:
             print('mouseReleaseEvent: button=Qt.MidButton')
             self.mid_mbutton_down = False
@@ -127,18 +132,19 @@ class PySlipQt(QLabel):
             print('mouseDoubleClickEvent: unknown button')
  
     def mouseMoveEvent(self, event):
+        """Handle a mouse move event."""
+
         x = event.x()
         y = event.y()
+
         if self.left_mbutton_down:
-            if self.start_drag_x is None:
-                print(f'Start of drag: x={x}, y={y}')
-            else:
-                drag_delta_x = x - self.start_drag_x
-                drag_delta_y = y - self.start_drag_y
-                print(f'drag=({drag_delta_x},{drag_delta_y})')
+            if self.start_drag_x:
                 # drag the map
+                self.view_offset_x += self.start_drag_x - x
+                self.view_offset_y += self.start_drag_y - y
             self.start_drag_x = x
             self.start_drag_y = y
+            self.update()
 
     def keyPressEvent(self, event):
         """Capture a keyboard event."""
@@ -156,19 +162,21 @@ class PySlipQt(QLabel):
     def use_level(self, level):
         self.level = level
         self.tile_src.UseLevel(level)
-        (self.num_tiles_x,
-         self.num_tiles_y, _, _) = self.tile_src.GetInfo(self.level)
+        (self.num_tiles_x, self.num_tiles_y, _, _) = self.tile_src.GetInfo(self.level)
 
-    def set_xy(self, x, y):
-        self.view_offset_x = x
-        self.view_offset_y = y
+    def resizeEvent(self, event):
+        """Widget resized, recompute some state."""
 
-    def paintEvent(self, e):
+        self.view_width = self.width()
+        self.view_height = self.height()
+        print(f'resizeEvent, .view_width={self.view_width}, .view_height={self.view_height}')
+
+    def paintEvent(self, event):
         """Draw the base map and drawlist on top."""
 
         # get widget size
-        w = self.width()
-        h = self.height()
+#        w = self.width()
+#        h = self.height()
 
         # figure out how to draw tiles
         if self.view_offset_x < 0:
@@ -178,7 +186,7 @@ class PySlipQt(QLabel):
         else:
             # Map > View - determine layout in X direction
             start_x_tile = int(self.view_offset_x / self.tile_size_x)
-            stop_x_tile = int((self.view_offset_x + w
+            stop_x_tile = int((self.view_offset_x + self.view_width
                                + self.tile_size_x - 1) / self.tile_size_x)
             stop_x_tile = min(self.tile_src.num_tiles_x-1, stop_x_tile) + 1
             col_list = range(start_x_tile, stop_x_tile)
@@ -191,7 +199,7 @@ class PySlipQt(QLabel):
         else:
             # Map > View - determine layout in Y direction
             start_y_tile = int(self.view_offset_y / self.tile_size_y)
-            stop_y_tile = int((self.view_offset_y + h
+            stop_y_tile = int((self.view_offset_y + self.view_height
                                + self.tile_size_y - 1) / self.tile_size_y)
             stop_y_tile = min(self.tile_src.num_tiles_y-1, stop_y_tile) + 1
             row_list = range(start_y_tile, stop_y_tile)
