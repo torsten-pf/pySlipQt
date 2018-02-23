@@ -156,27 +156,38 @@ class PySlipQt(QLabel):
         print(f'key release event={e.key()}')
 
     def wheelEvent(self, event):
+        """Handle a mouse wheel rotation."""
 
-        print('wheelEvent:')
+        if event.angleDelta().y() < 0:
+            new_level = self.level + 1
+        else:
+            new_level = self.level - 1
+        self.use_level(new_level)
 
     def use_level(self, level):
-        self.level = level
-        self.tile_src.UseLevel(level)
-        (self.num_tiles_x, self.num_tiles_y, _, _) = self.tile_src.GetInfo(self.level)
+        """Try to use new map level.
+
+        level  the new level to use
+
+        Returns True if level change is OK, else False.
+        """
+
+        result = self.tile_src.UseLevel(level)
+        if result:
+            self.level = level
+            (self.num_tiles_x, self.num_tiles_y, _, _) = self.tile_src.GetInfo(level)
+            self.update()
+        return result
 
     def resizeEvent(self, event):
         """Widget resized, recompute some state."""
 
+        # new widget size
         self.view_width = self.width()
         self.view_height = self.height()
-        print(f'resizeEvent, .view_width={self.view_width}, .view_height={self.view_height}')
 
     def paintEvent(self, event):
         """Draw the base map and drawlist on top."""
-
-        # get widget size
-#        w = self.width()
-#        h = self.height()
 
         # figure out how to draw tiles
         if self.view_offset_x < 0:
@@ -206,7 +217,6 @@ class PySlipQt(QLabel):
             y_pix_start = start_y_tile * self.tile_size_y - self.view_offset_y
 
         # start pasting tiles onto the view
-        # use x_pix and y_pix to place tiles
         painter = QPainter()
         painter.begin(self)
 
