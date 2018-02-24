@@ -133,6 +133,9 @@ class BaseTiles(object):
         self.max_level = max(self.levels)
         self.level = self.min_level
 
+        self.wrap_x = False
+        self.wrap_y = False
+
         # setup the tile cache
         self.cache = Cache(tiles_dir=tiles_dir, max_lru=max_lru)
 
@@ -184,6 +187,13 @@ class BaseTiles(object):
         Tile coordinates are measured from map top-left.
         """
 
+        # if we are wrapping X or Y, get wrapped tile coords
+        if self.wrap_x:
+            x = (x + self.num_tiles_x*self.tile_size_x) % self.num_tiles_x
+        if self.wrap_y:
+            y = (y + self.num_tiles_y*self.tile_size_y) % self.num_tiles_y
+
+        # retrieve the tile
         try:
             # get tile from cache
             return self.cache[(self.level, x, y)]

@@ -1,5 +1,10 @@
 """
 A "slip map" widget for PyQt5.
+
+Some semantics:
+    map   the whole map
+    view  is the view of the map through the widget
+          (view may be smaller than map, or larger)
 """
 
 from PyQt5.QtCore import Qt
@@ -52,8 +57,12 @@ class PySlipQt(QLabel):
 
         # the tile coordinates
         self.level = start_level
+
+        # view and map limits
         self.view_offset_x = 0
         self.view_offset_y = 0
+        self.view_width = 0     
+        self.view_height = 0
 
         # set tile levels stuff - allowed levels, etc
         self.max_level = max(tile_src.levels)
@@ -68,9 +77,6 @@ class PySlipQt(QLabel):
 
         self.start_drag_x = None
         self.start_drag_y = None
-
-        self.view_width = 0
-        self.view_height = 0
 
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.setMinimumSize(self.TileWidth, self.TileHeight)
@@ -191,9 +197,13 @@ class PySlipQt(QLabel):
 
         # figure out how to draw tiles
         if self.view_offset_x < 0:
-            # View > Map in X - centre in X direction
-            col_list = range(self.tile_src.num_tiles_x)
-            x_pix_start = -self.view_offset_x
+            if self.wrap_x:
+                # View > Map in X - wrap in X direction
+
+            else:
+                # View > Map in X - centre in X direction
+                col_list = range(self.tile_src.num_tiles_x)
+                x_pix_start = -self.view_offset_x
         else:
             # Map > View - determine layout in X direction
             start_x_tile = int(self.view_offset_x / self.tile_size_x)
