@@ -83,8 +83,9 @@ class Tiles(tiles.BaseTiles):
         super(Tiles, self).__init__(TileLevels, TileWidth, TileHeight,
                                     max_lru=MaxLRU, tiles_dir=tiles_dir)
 
-        # we *can* wrap tiles in X direction
+        # we *can* wrap tiles in X direction, but not Y
         self.wrap_x = True
+        self.wrap_y = False
 
         # override the tiles.py extent here, the GMT tileset is different
         self.extent=(-65.0, 295.0, -66.66, 66.66)

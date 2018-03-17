@@ -71,6 +71,12 @@ class PySlipQt(QLabel):
         self.tile_size_x = tile_src.tile_size_x
         self.tile_size_y = tile_src.tile_size_y
 
+        # define position and tile coords of the "key" tile
+        self.key_tile_left = 0      # tile coordinates of key tile
+        self.key_tile_top = 0
+        self.key_tile_xoffset = 0   # view coordinates of key tile wrt view
+        self.key_tile_yoffset = 0
+
         self.left_mbutton_down = False
         self.mid_mbutton_down = False
         self.right_mbutton_down = False
@@ -144,13 +150,50 @@ class PySlipQt(QLabel):
         y = event.y()
 
         if self.left_mbutton_down:
-            if self.start_drag_x:
-                # drag the map
-                self.view_offset_x += self.start_drag_x - x
-                self.view_offset_y += self.start_drag_y - y
+            if self.start_drag_x:       # if we are already dragging
+                delta_x = self.start_drag_x - x
+                delta_y = self.start_drag_y - y
+
+                if self.tile_src.wrap_x:
+                    # wrapping in X direction, move 'key' tile
+                    self.key_tile_xoffset -= delta_x
+                    # normalize the 'key' tile coordinates
+                    while self.key_tile_xoffset > 0:
+                        self.key_tile_xoffset -= self.tile_size_x
+                        self.key_tile_left += 1
+                        self.key_tile_left %= self.num_tiles_x
+                    while self.key_tile_xoffset <= -self.tile_size_x:
+                        self.key_tile_xoffset += self.tile_size_x
+                        self.key_tile_left -= 1
+                        self.key_tile_left = (self.key_tile_left + self.num_tiles_x) % self.num_tiles_x
+                else:
+                    # if view > map, don't drag
+                    # map > view, allow drag
+#                    self.view_offset_x += self.start_drag_x - x
+                    pass
+
+                if self.tile_src.wrap_y:
+                    # wrapping in Y direction, move 'key' tile
+                    self.key_tile_yoffset -= delta_y
+                    # normalize the 'key' tile coordinates
+                    while self.key_tile_yoffset > 0:
+                        self.key_tile_yoffset -= self.tile_size_y
+                        self.key_tile_top += 1
+                        self.key_tile_top %= self.num_tiles_y
+                    while self.key_tile_yoffset <= -self.tile_size_y:
+                        self.key_tile_yoffset += self.tile_size_y
+                        self.key_tile_top -= 1
+                        self.key_tile_top = (self.key_tile_top + self.num_tiles_y) % self.num_tiles_y
+                else:
+                    # if view > map, don't drag
+                    # map > view, allow drag
+#                    self.view_offset_y += self.start_drag_y - y
+                    pass
+
+                self.update()
+
             self.start_drag_x = x
             self.start_drag_y = y
-            self.update()
 
     def keyPressEvent(self, event):
         """Capture a keyboard event."""
@@ -159,7 +202,7 @@ class PySlipQt(QLabel):
 
     def keyReleaseEvent(self, event):
 
-        print(f'key release event={e.key()}')
+        print(f'key release event={event.key()}')
 
     def wheelEvent(self, event):
         """Handle a mouse wheel rotation."""
@@ -192,47 +235,79 @@ class PySlipQt(QLabel):
         self.view_width = self.width()
         self.view_height = self.height()
 
+        # recalculate the "top left" tile stuff
+        self.recalc_wrap()
+
+    def recalc_wrap(self):
+        """Recalculate the "top left" tile information."""
+
+        pass
+
     def paintEvent(self, event):
         """Draw the base map and drawlist on top."""
 
-        # figure out how to draw tiles
-        if self.view_offset_x < 0:
-            if self.wrap_x:
-                # View > Map in X - wrap in X direction
+        print(f'paintEvent: self.key_tile_left={self.key_tile_left}, self.key_tile_xoffset={self.key_tile_xoffset}')
 
-            else:
-                # View > Map in X - centre in X direction
-                col_list = range(self.tile_src.num_tiles_x)
-                x_pix_start = -self.view_offset_x
-        else:
-            # Map > View - determine layout in X direction
-            start_x_tile = int(self.view_offset_x / self.tile_size_x)
-            stop_x_tile = int((self.view_offset_x + self.view_width
-                               + self.tile_size_x - 1) / self.tile_size_x)
-            stop_x_tile = min(self.tile_src.num_tiles_x-1, stop_x_tile) + 1
-            col_list = range(start_x_tile, stop_x_tile)
-            x_pix_start = start_x_tile * self.tile_size_y - self.view_offset_x
+        # figure out how to draw tiles, set up 'row_list' and 'col_list' which
+        # are list of tile coords to draw (row and colums)
+        col_list = []
+        x_coord = self.key_tile_left
+        x_pix_start = self.key_tile_xoffset
+        while x_pix_start < self.view_width:
+            col_list.append(x_coord)
+            if not self.tile_src.wrap_x and x_coord >= self.num_tiles_x-1:
+                break
+            x_coord = (x_coord + 1) % self.num_tiles_x
+            x_pix_start += self.tile_src.tile_size_x
 
-        if self.view_offset_y < 0:
-            # View > Map in Y - centre in Y direction
-            row_list = range(self.tile_src.num_tiles_y)
-            y_pix_start = -self.view_offset_y
-        else:
-            # Map > View - determine layout in Y direction
-            start_y_tile = int(self.view_offset_y / self.tile_size_y)
-            stop_y_tile = int((self.view_offset_y + self.view_height
-                               + self.tile_size_y - 1) / self.tile_size_y)
-            stop_y_tile = min(self.tile_src.num_tiles_y-1, stop_y_tile) + 1
-            row_list = range(start_y_tile, stop_y_tile)
-            y_pix_start = start_y_tile * self.tile_size_y - self.view_offset_y
+        row_list = []
+        y_coord = self.key_tile_top
+        y_pix_start = self.key_tile_yoffset
+        while y_pix_start < self.view_height:
+            row_list.append(y_coord)
+            if not self.tile_src.wrap_y and y_coord >= self.num_tiles_y-1:
+                break
+            y_coord = (y_coord + 1) % self.num_tiles_y
+            y_pix_start += self.tile_src.tile_size_y
+
+#        # figure out how to draw tiles
+#        if self.view_offset_x < 0:
+#            if self.wrap_x:
+#                # View > Map in X - wrap in X direction
+#                pass
+#            else:
+#                # View > Map in X - centre in X direction
+#                col_list = range(self.tile_src.num_tiles_x)
+#                x_pix_start = -self.view_offset_x
+#        else:
+#            # Map > View - determine layout in X direction
+#            start_x_tile = int(self.view_offset_x / self.tile_size_x)
+#            stop_x_tile = int((self.view_offset_x + self.view_width
+#                               + self.tile_size_x - 1) / self.tile_size_x)
+#            stop_x_tile = min(self.tile_src.num_tiles_x-1, stop_x_tile) + 1
+#            col_list = range(start_x_tile, stop_x_tile)
+#            x_pix_start = start_x_tile * self.tile_size_y - self.view_offset_x
+#
+#        if self.view_offset_y < 0:
+#            # View > Map in Y - centre in Y direction
+#            row_list = range(self.tile_src.num_tiles_y)
+#            y_pix_start = -self.view_offset_y
+#        else:
+#            # Map > View - determine layout in Y direction
+#            start_y_tile = int(self.view_offset_y / self.tile_size_y)
+#            stop_y_tile = int((self.view_offset_y + self.view_height
+#                               + self.tile_size_y - 1) / self.tile_size_y)
+#            stop_y_tile = min(self.tile_src.num_tiles_y-1, stop_y_tile) + 1
+#            row_list = range(start_y_tile, stop_y_tile)
+#            y_pix_start = start_y_tile * self.tile_size_y - self.view_offset_y
 
         # start pasting tiles onto the view
         painter = QPainter()
         painter.begin(self)
 
-        x_pix = x_pix_start
+        x_pix = self.key_tile_xoffset
         for x in col_list:
-            y_pix = y_pix_start
+            y_pix = self.key_tile_yoffset
             for y in row_list:
                 QPainter.drawPixmap(painter, x_pix, y_pix,
                                     self.tile_src.GetTile(x, y))
