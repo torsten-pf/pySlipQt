@@ -2,6 +2,8 @@
 A test program to display tiles from the GMT tileset.
 
 Usage: test.py [osm|gmt]
+
+This will eventually morph into the pySlipQt example program.
 """
 
 import sys
@@ -99,6 +101,7 @@ def usage(msg=None):
         print(f"{'*'*60}\n{msg}\n{'*'*60}")
     print(__doc__)
     sys.exit(1)
+
 
 # look at sys.argv, decide on tileset and source directory
 if len(sys.argv) == 2:

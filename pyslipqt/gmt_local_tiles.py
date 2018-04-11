@@ -85,6 +85,7 @@ class Tiles(tiles.BaseTiles):
 
         # we *can* wrap tiles in X direction, but not Y
         self.wrap_x = True
+        #self.wrap_x = False
         self.wrap_y = False
 
         # override the tiles.py extent here, the GMT tileset is different

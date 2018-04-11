@@ -99,49 +99,49 @@ class PySlipQt(QLabel):
     def mousePressEvent(self, event):
         b = event.button()
         if b == Qt.NoButton:
-            print('mousePressEvent: button=Qt.NoButton')
+            log('mousePressEvent: button=Qt.NoButton')
         elif b == Qt.LeftButton:
-            print('mousePressEvent: button=Qt.LeftButton')
+            log('mousePressEvent: button=Qt.LeftButton')
             self.left_mbutton_down = True
         elif b == Qt.MidButton:
-            print('mousePressEvent: button=Qt.MidButton')
+            log('mousePressEvent: button=Qt.MidButton')
             self.mid_mbutton_down = True
         elif b == Qt.RightButton:
-            print('mousePressEvent: button=Qt.RightButton')
+            log('mousePressEvent: button=Qt.RightButton')
             self.right_mbutton_down = True
         else:
-            print('mousePressEvent: unknown button')
+            log('mousePressEvent: unknown button')
          
     def mouseReleaseEvent(self, event):
         b = event.button()
         if b == Qt.NoButton:
-            print('mouseReleaseEvent: button=Qt.NoButton')
+            log('mouseReleaseEvent: button=Qt.NoButton')
         elif b == Qt.LeftButton:
-            print('mouseReleaseEvent: button=Qt.LeftButton')
+            log('mouseReleaseEvent: button=Qt.LeftButton')
             self.left_mbutton_down = False
             self.start_drag_x = None    # end drag, if any
             self.start_drag_y = None
         elif b == Qt.MidButton:
-            print('mouseReleaseEvent: button=Qt.MidButton')
+            log('mouseReleaseEvent: button=Qt.MidButton')
             self.mid_mbutton_down = False
         elif b == Qt.RightButton:
-            print('mouseReleaseEvent: button=Qt.RightButton')
+            log('mouseReleaseEvent: button=Qt.RightButton')
             self.right_mbutton_down = False
         else:
-            print('mouseReleaseEvent: unknown button')
+            log('mouseReleaseEvent: unknown button')
  
     def mouseDoubleClickEvent(self, event):
         b = event.button()
         if b == Qt.NoButton:
-            print('mouseDoubleClickEvent: button=Qt.NoButton')
+            log('mouseDoubleClickEvent: button=Qt.NoButton')
         elif b == Qt.LeftButton:
-            print('mouseDoubleClickEvent: button=Qt.LeftButton')
+            log('mouseDoubleClickEvent: button=Qt.LeftButton')
         elif b == Qt.MidButton:
-            print('mouseDoubleClickEvent: button=Qt.MidButton')
+            log('mouseDoubleClickEvent: button=Qt.MidButton')
         elif b == Qt.RightButton:
-            print('mouseDoubleClickEvent: button=Qt.RightButton')
+            log('mouseDoubleClickEvent: button=Qt.RightButton')
         else:
-            print('mouseDoubleClickEvent: unknown button')
+            log('mouseDoubleClickEvent: unknown button')
  
     def mouseMoveEvent(self, event):
         """Handle a mouse move event."""
@@ -153,59 +153,73 @@ class PySlipQt(QLabel):
             if self.start_drag_x:       # if we are already dragging
                 delta_x = self.start_drag_x - x
                 delta_y = self.start_drag_y - y
-
-                if self.tile_src.wrap_x:
-                    # wrapping in X direction, move 'key' tile
-                    self.key_tile_xoffset -= delta_x
-                    # normalize the 'key' tile coordinates
-                    while self.key_tile_xoffset > 0:
-                        self.key_tile_xoffset -= self.tile_size_x
-                        self.key_tile_left += 1
-                        self.key_tile_left %= self.num_tiles_x
-                    while self.key_tile_xoffset <= -self.tile_size_x:
-                        self.key_tile_xoffset += self.tile_size_x
-                        self.key_tile_left -= 1
-                        self.key_tile_left = (self.key_tile_left + self.num_tiles_x) % self.num_tiles_x
-                else:
-                    # if view > map, don't drag
-                    # map > view, allow drag
-#                    self.view_offset_x += self.start_drag_x - x
-                    pass
-
-                if self.tile_src.wrap_y:
-                    # wrapping in Y direction, move 'key' tile
-                    self.key_tile_yoffset -= delta_y
-                    # normalize the 'key' tile coordinates
-                    while self.key_tile_yoffset > 0:
-                        self.key_tile_yoffset -= self.tile_size_y
-                        self.key_tile_top += 1
-                        self.key_tile_top %= self.num_tiles_y
-                    while self.key_tile_yoffset <= -self.tile_size_y:
-                        self.key_tile_yoffset += self.tile_size_y
-                        self.key_tile_top -= 1
-                        self.key_tile_top = (self.key_tile_top + self.num_tiles_y) % self.num_tiles_y
-                else:
-                    # if view > map, don't drag
-                    # map > view, allow drag
-#                    self.view_offset_y += self.start_drag_y - y
-                    pass
-
-                self.update()
+                self.normalize_view(delta_x, delta_y)   # normalize the "key" tile
+                self.update()                           # force a repaint
 
             self.start_drag_x = x
             self.start_drag_y = y
 
+    def normalize_view(self, delta_x=None, delta_y=None):
+        """After drag/zoom, set "key" tile correctly.
+
+        delta_x  the X amount dragged (pixels), None if not dragged
+        delta_y  the Y amount dragged (pixels), None if not dragged
+        """
+
+        if delta_x:
+            if self.tile_src.wrap_x:
+                # wrapping in X direction, move 'key' tile
+                self.key_tile_xoffset -= delta_x
+                # normalize the 'key' tile coordinates
+                while self.key_tile_xoffset > 0:
+                    self.key_tile_xoffset -= self.tile_size_x
+                    self.key_tile_left += 1
+                    self.key_tile_left %= self.num_tiles_x
+                while self.key_tile_xoffset <= -self.tile_size_x:
+                    self.key_tile_xoffset += self.tile_size_x
+                    self.key_tile_left -= 1
+                    self.key_tile_left = ((self.key_tile_left + self.num_tiles_x)
+                                             % self.num_tiles_x)
+            else:
+                # if view > map, don't drag, ensure centred
+                #if 
+                # map > view, allow drag
+    #                    self.view_offset_x += self.start_drag_x - x
+                pass
+
+        if delta_y:
+            if self.tile_src.wrap_y:
+                # wrapping in Y direction, move 'key' tile
+                self.key_tile_yoffset -= delta_y
+                # normalize the 'key' tile coordinates
+                while self.key_tile_yoffset > 0:
+                    self.key_tile_yoffset -= self.tile_size_y
+                    self.key_tile_top += 1
+                    self.key_tile_top %= self.num_tiles_y
+                while self.key_tile_yoffset <= -self.tile_size_y:
+                    self.key_tile_yoffset += self.tile_size_y
+                    self.key_tile_top -= 1
+                    self.key_tile_top = ((self.key_tile_top + self.num_tiles_y)
+                                            % self.num_tiles_y)
+            else:
+                # if view > map, don't drag
+                # map > view, allow drag
+    #                    self.view_offset_y += self.start_drag_y - y
+                pass
+
     def keyPressEvent(self, event):
         """Capture a keyboard event."""
 
-        print(f'key press event={event.key()}')
+        log(f'key press event={event.key()}')
 
     def keyReleaseEvent(self, event):
 
-        print(f'key release event={event.key()}')
+        log(f'key release event={event.key()}')
 
     def wheelEvent(self, event):
         """Handle a mouse wheel rotation."""
+
+        log(f"wheelEvent: {'UP' if event.angleDelta().y() < 0 else 'DOWN'}")
 
         if event.angleDelta().y() < 0:
             new_level = self.level + 1
@@ -214,19 +228,17 @@ class PySlipQt(QLabel):
         self.use_level(new_level)
 
     def use_level(self, level):
-        """Try to use new map level.
+        """Use new map level.
 
         level  the new level to use
+
+        This code will try to maintain the centre of the view at the same
+        GEO coordinates, if possible.  The "key" tile is updated.
 
         Returns True if level change is OK, else False.
         """
 
-        result = self.tile_src.UseLevel(level)
-        if result:
-            self.level = level
-            (self.num_tiles_x, self.num_tiles_y, _, _) = self.tile_src.GetInfo(level)
-            self.update()
-        return result
+        return self.zoom_level(level)
 
     def resizeEvent(self, event):
         """Widget resized, recompute some state."""
@@ -244,12 +256,16 @@ class PySlipQt(QLabel):
         pass
 
     def paintEvent(self, event):
-        """Draw the base map and drawlist on top."""
+        """Draw the base map and then the layers on top."""
 
-        print(f'paintEvent: self.key_tile_left={self.key_tile_left}, self.key_tile_xoffset={self.key_tile_xoffset}')
+        log(f'paintEvent: self.key_tile_left={self.key_tile_left}, self.key_tile_xoffset={self.key_tile_xoffset}')
 
-        # figure out how to draw tiles, set up 'row_list' and 'col_list' which
-        # are list of tile coords to draw (row and colums)
+        ######
+        # The "key" tile position is maintained by other code, we just
+        # assume it's set.  Figure out how to draw tiles, set up 'row_list' and
+        # 'col_list' which are list of tile coords to draw (row and colums).
+        ######
+
         col_list = []
         x_coord = self.key_tile_left
         x_pix_start = self.key_tile_xoffset
@@ -270,41 +286,15 @@ class PySlipQt(QLabel):
             y_coord = (y_coord + 1) % self.num_tiles_y
             y_pix_start += self.tile_src.tile_size_y
 
-#        # figure out how to draw tiles
-#        if self.view_offset_x < 0:
-#            if self.wrap_x:
-#                # View > Map in X - wrap in X direction
-#                pass
-#            else:
-#                # View > Map in X - centre in X direction
-#                col_list = range(self.tile_src.num_tiles_x)
-#                x_pix_start = -self.view_offset_x
-#        else:
-#            # Map > View - determine layout in X direction
-#            start_x_tile = int(self.view_offset_x / self.tile_size_x)
-#            stop_x_tile = int((self.view_offset_x + self.view_width
-#                               + self.tile_size_x - 1) / self.tile_size_x)
-#            stop_x_tile = min(self.tile_src.num_tiles_x-1, stop_x_tile) + 1
-#            col_list = range(start_x_tile, stop_x_tile)
-#            x_pix_start = start_x_tile * self.tile_size_y - self.view_offset_x
-#
-#        if self.view_offset_y < 0:
-#            # View > Map in Y - centre in Y direction
-#            row_list = range(self.tile_src.num_tiles_y)
-#            y_pix_start = -self.view_offset_y
-#        else:
-#            # Map > View - determine layout in Y direction
-#            start_y_tile = int(self.view_offset_y / self.tile_size_y)
-#            stop_y_tile = int((self.view_offset_y + self.view_height
-#                               + self.tile_size_y - 1) / self.tile_size_y)
-#            stop_y_tile = min(self.tile_src.num_tiles_y-1, stop_y_tile) + 1
-#            row_list = range(start_y_tile, stop_y_tile)
-#            y_pix_start = start_y_tile * self.tile_size_y - self.view_offset_y
+        ######
+        # Ready to update the view
+        ######
 
-        # start pasting tiles onto the view
+        # prepare the canvas
         painter = QPainter()
         painter.begin(self)
 
+        # paste all background tiles onto the view
         x_pix = self.key_tile_xoffset
         for x in col_list:
             y_pix = self.key_tile_yoffset
@@ -315,3 +305,53 @@ class PySlipQt(QLabel):
             x_pix += self.tile_size_x
 
         painter.end()
+
+################################################################################
+# Below are the "external" API methods.
+################################################################################
+
+    def zoom_level(self, level):
+        """Zoom to a map level.
+
+        level  map level to zoom to
+
+        Change the map zoom level to that given. Returns True if the zoom
+        succeeded, else False. If False is returned the method call has no effect.
+        """
+
+        result = self.tile_src.UseLevel(level)
+        if result:
+            self.level = level
+            (self.num_tiles_x, self.num_tiles_y, _, _) = self.tile_src.GetInfo(level)
+            self.update()
+        return result
+
+    def pan_position(self, posn):
+        """Pan to the given position in the current map zoom level.
+
+        posn  a tuple (xgeo, ygeo)
+        """
+
+        pass
+
+    def zoom_level_position(self, level, posn):
+        """Zoom to a map level and pan to the given position in the map.
+
+        level  map level to zoom to
+        posn  a tuple (xgeo, ygeo)
+        """
+
+        pass
+
+    def zoom_area(self, posn, size):
+        """Zoom to a map level and area.
+
+        posn  a tuple (xgeo, ygeo) of the centre of the area to show
+        size  a tuple (width, height) of area in geo coordinate units
+
+        Zooms to a map level and pans to a position such that the specified area
+        is completely within the view. Provides a simple way to ensure an
+        extended feature is wholly within the centre of the view.
+        """
+
+        pass

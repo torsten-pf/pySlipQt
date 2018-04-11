@@ -154,6 +154,8 @@ class BaseTiles(object):
                 raise Exception(msg)
             os.makedirs(tiles_dir)
 
+        self.UseLevel(min(self.levels))
+
     def UseLevel(self, level):
         """Prepare to serve tiles from the required level.
 
