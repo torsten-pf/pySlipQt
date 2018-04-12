@@ -88,12 +88,13 @@ class TileWorker(QThread):
         while True:
             # get zoom level and tile coordinates to retrieve
             (level, x, y) = self.requests.get()
-#            log(f'run: getting tile ({level},{x},{y})')
+            log(f'run: getting tile ({level},{x},{y})')
 
             image = self.error_tile_image
             error = False       # True if we get an error
             try:
                 tile_url = self.server + self.tilepath.format(Z=level, X=x, Y=y)
+                log(f'tile_url={tile_url}')
                 response = request.urlopen(tile_url)
                 headers = response.info()
                 content_type = headers.get_content_type()
@@ -215,6 +216,7 @@ class Tiles(tiles.BaseTiles):
 
         # test for firewall - use proxy (if supplied)
         test_url = self.servers[0] + self.url_path.format(Z=0, X=0, Y=0)
+        log(f'test_url={test_url}')
         try:
             request.urlopen(test_url)
         except urllib.error.HTTPError as e:

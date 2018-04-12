@@ -40,9 +40,14 @@ TilesetVersion = '1.0'
 
 # the pool of tile servers used
 TileServers = [
-               'https://a.tile.openstreetmap.org',
-               'https://b.tile.openstreetmap.org',
-               'https://c.tile.openstreetmap.org',
+# using 'https://' we get "SSL: CERTIFICATE_VERIFY_FAILED" errors
+# try to modify get code to use https and no SSL
+#               'https://a.tile.openstreetmap.org',
+#               'https://b.tile.openstreetmap.org',
+#               'https://c.tile.openstreetmap.org',
+               'http://a.tile.openstreetmap.org',
+               'http://b.tile.openstreetmap.org',
+               'http://c.tile.openstreetmap.org',
               ]
 
 # the path on the server to a tile
@@ -87,6 +92,8 @@ class Tiles(tiles.Tiles):
                                     url_path=TileURLPath,
                                     max_server_requests=MaxServerRequests,
                                     max_lru=MaxLRU, http_proxy=http_proxy)
+        self.wrap_x = True
+        self.wrap_y = False
 
     def Geo2Tile(self, geo):
         """Convert geo to tile fractional coordinates for level in use.
