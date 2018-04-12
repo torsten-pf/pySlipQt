@@ -63,14 +63,6 @@ MaxServerRequests = 2
 # set maximum number of in-memory tiles for each level
 MaxLRU = 10000
 
-# size of tiles
-TileWidth = 256
-TileHeight = 256
-
-# where earlier-cached tiles will be
-# this can be overridden in the __init__ method
-TilesDir = './osm_tiles'
-
 
 ################################################################################
 # Class for these tiles.   Builds on tiles.BaseTiles.
@@ -79,6 +71,14 @@ TilesDir = './osm_tiles'
 class Tiles(tiles.Tiles):
     """An object to source server tiles for pySlipQt."""
 
+    # size of tiles
+    TileWidth = 256
+    TileHeight = 256
+
+    # where earlier-cached tiles will be
+    # this can be overridden in the __init__ method
+    TilesDir = './osm_tiles'
+
     def __init__(self, tiles_dir=TilesDir, http_proxy=None):
         """Override the base class for these tiles.
 
@@ -86,7 +86,8 @@ class Tiles(tiles.Tiles):
         and provide the Geo2Tile() and Tile2Geo() methods.
         """
 
-        super(Tiles, self).__init__(TileLevels, TileWidth, TileHeight,
+        super(Tiles, self).__init__(TileLevels,
+                                    Tiles.TileWidth, Tiles.TileHeight,
                                     tiles_dir=tiles_dir,
                                     servers=TileServers,
                                     url_path=TileURLPath,

@@ -56,14 +56,6 @@ MaxServerRequests = None
 # set maximum number of in-memory tiles for each level
 MaxLRU = 10000
 
-# size of tiles
-TileWidth = 256
-TileHeight = 256
-
-# where earlier-cached tiles will be
-# this can be overridden in the __init__ method
-TilesDir = os.path.abspath(os.path.expanduser('~/gmt_tiles'))
-
 ################################################################################
 # Class for GMT local tiles.   Builds on tiles.BaseTiles.
 ################################################################################
@@ -73,6 +65,14 @@ class Tiles(tiles.BaseTiles):
 
     TileInfoFilename = "tile.info"
 
+    # size of tiles
+    TileWidth = 256
+    TileHeight = 256
+
+    # where earlier-cached tiles will be
+    # this can be overridden in the __init__ method
+    TilesDir = os.path.abspath(os.path.expanduser('~/gmt_tiles'))
+
     def __init__(self, tiles_dir=TilesDir):
         """Override the base class for GMT tiles.
 
@@ -80,12 +80,13 @@ class Tiles(tiles.BaseTiles):
         and provide the Geo2Tile() and Tile2Geo() methods.
         """
 
-        super(Tiles, self).__init__(TileLevels, TileWidth, TileHeight,
+        super(Tiles, self).__init__(TileLevels,
+                                    Tiles.TileWidth, Tiles.TileHeight,
                                     max_lru=MaxLRU, tiles_dir=tiles_dir)
 
         # we *can* wrap tiles in X direction, but not Y
-        self.wrap_x = True
-        #self.wrap_x = False
+#        self.wrap_x = True
+        self.wrap_x = False
         self.wrap_y = False
 
         # override the tiles.py extent here, the GMT tileset is different

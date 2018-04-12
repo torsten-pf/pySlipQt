@@ -59,10 +59,14 @@ class PySlipQt(QLabel):
         self.level = start_level
 
         # view and map limits
-        self.view_offset_x = 0
-        self.view_offset_y = 0
-        self.view_width = 0     
-        self.view_height = 0
+        self.view_offset_x = 0  # distance between map & view left edge
+        self.view_offset_y = 0  # distance between map & view top edge
+
+        self.view_width = 0     # width/height of the view
+        self.view_height = 0    # changes when the widget changes size
+
+        self.map_width = 0      # width/height of the virtual map (not wrapped)
+        self.map_height = 0     # in pixels (changes when zoom level changes)
 
         # set tile levels stuff - allowed levels, etc
         self.max_level = max(tile_src.levels)
@@ -153,17 +157,17 @@ class PySlipQt(QLabel):
             if self.start_drag_x:       # if we are already dragging
                 delta_x = self.start_drag_x - x
                 delta_y = self.start_drag_y - y
-                self.normalize_view(delta_x, delta_y)   # normalize the "key" tile
+                self.normalize_view_drag(delta_x, delta_y)   # normalize the "key" tile
                 self.update()                           # force a repaint
 
             self.start_drag_x = x
             self.start_drag_y = y
 
-    def normalize_view(self, delta_x=None, delta_y=None):
-        """After drag/zoom, set "key" tile correctly.
+    def normalize_view_drag(self, delta_x=None, delta_y=None):
+        """After drag, set "key" tile correctly.
 
-        delta_x  the X amount dragged (pixels), None if not dragged
-        delta_y  the Y amount dragged (pixels), None if not dragged
+        delta_x  the X amount dragged (pixels), None if not dragged in X
+        delta_y  the Y amount dragged (pixels), None if not dragged in Y
         """
 
         if delta_x:
@@ -182,10 +186,12 @@ class PySlipQt(QLabel):
                                              % self.num_tiles_x)
             else:
                 # if view > map, don't drag, ensure centred
-                #if 
-                # map > view, allow drag
-    #                    self.view_offset_x += self.start_drag_x - x
-                pass
+                if self.map_width < self.view_width:
+                    log(f'self.map_width={self.map_width}, self.view_width={self.view_width}')
+                    self.key_tile_xoffset = (self.view_width - self.map_width) // 2
+                else:
+                    # map > view, allow drag
+                    self.view_offset_x += self.start_drag_x - delta_x
 
         if delta_y:
             if self.tile_src.wrap_y:
@@ -202,10 +208,13 @@ class PySlipQt(QLabel):
                     self.key_tile_top = ((self.key_tile_top + self.num_tiles_y)
                                             % self.num_tiles_y)
             else:
-                # if view > map, don't drag
-                # map > view, allow drag
-    #                    self.view_offset_y += self.start_drag_y - y
-                pass
+                # if view > map, don't drag, ensure centred
+                if self.map_height < self.view_height:
+                    log(f'self.map_height={self.map_height}, self.view_height={self.view_height}')
+                    self.key_tile_yoffset = (self.view_height - self.map_height) // 2
+                else:
+                    # map > view, allow drag
+                    self.view_offset_y += self.start_drag_y - delta_y
 
     def keyPressEvent(self, event):
         """Capture a keyboard event."""
@@ -323,6 +332,9 @@ class PySlipQt(QLabel):
         if result:
             self.level = level
             (self.num_tiles_x, self.num_tiles_y, _, _) = self.tile_src.GetInfo(level)
+            self.map_width = self.num_tiles_x * self.tile_src.TileWidth
+            self.map_height = self.num_tiles_y * self.tile_src.TileHeight
+            log(f'self.map_width={self.map_width}, self.map_height={self.map_height}')
             self.update()
         return result
 
