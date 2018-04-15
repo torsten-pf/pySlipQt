@@ -170,6 +170,11 @@ class PySlipQt(QLabel):
         delta_y  the Y amount dragged (pixels), None if not dragged in Y
         """
 
+
+
+
+
+
         if delta_x:
             if self.tile_src.wrap_x:
                 # wrapping in X direction, move 'key' tile
@@ -191,7 +196,18 @@ class PySlipQt(QLabel):
                     self.key_tile_xoffset = (self.view_width - self.map_width) // 2
                 else:
                     # map > view, allow drag
-                    self.view_offset_x += self.start_drag_x - delta_x
+                    self.key_tile_xoffset -= delta_x
+                    log(f'map > view: delta_x={delta_x}, new self.view_offset_x={self.view_offset_x}')
+                    # normalize the 'key' tile coordinates
+                    while self.key_tile_xoffset > 0:
+                        self.key_tile_xoffset -= self.tile_size_x
+                        self.key_tile_left += 1
+                        self.key_tile_left %= self.num_tiles_x
+                    while self.key_tile_xoffset <= -self.tile_size_x:
+                        self.key_tile_xoffset += self.tile_size_x
+                        self.key_tile_left -= 1
+                        self.key_tile_left = ((self.key_tile_left + self.num_tiles_x)
+                                                 % self.num_tiles_x)
 
         if delta_y:
             if self.tile_src.wrap_y:
@@ -214,7 +230,8 @@ class PySlipQt(QLabel):
                     self.key_tile_yoffset = (self.view_height - self.map_height) // 2
                 else:
                     # map > view, allow drag
-                    self.view_offset_y += self.start_drag_y - delta_y
+                    self.key_tile_yoffset -= delta_y
+                    log(f'map > view: delta_y={delta_y}, new self.key_tile_yoffset={self.key_tile_yoffset}')
 
     def keyPressEvent(self, event):
         """Capture a keyboard event."""

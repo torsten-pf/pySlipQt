@@ -56,7 +56,7 @@ class TileWorker(QThread):
     """Thread class that gets request from queue, loads tile, calls callback."""
 
     def __init__(self, id_num, server, tilepath, requests, callback,
-                 error_tile, content_type, rerequest_age):
+                 error_tile, content_type, rerequest_age, error_image):
         """Prepare the tile worker.
 
         id_num         a unique numer identifying the worker instance
@@ -68,6 +68,7 @@ class TileWorker(QThread):
         content_type   expected Content-Type string
         rerequest_age  number of days in tile age before re-requesting
                        (0 means don't update tiles)
+        error_image    the image to return on some error
 
         Results are returned in the callback() params.
         """
@@ -82,6 +83,7 @@ class TileWorker(QThread):
         self.error_tile_image = error_tile
         self.content_type = content_type
         self.rerequest_age = rerequest_age
+        self.error_image = error_image
         self.daemon = True
 
     def run(self):
@@ -90,8 +92,8 @@ class TileWorker(QThread):
             (level, x, y) = self.requests.get()
             log(f'run: getting tile ({level},{x},{y})')
 
-            image = self.error_tile_image
-            error = False       # True if we get an error
+            # try to retrieve the image
+            error = False
             try:
                 tile_url = self.server + self.tilepath.format(Z=level, X=x, Y=y)
                 log(f'tile_url={tile_url}')
@@ -103,7 +105,9 @@ class TileWorker(QThread):
                     pixmap = QPixmap()
                     pixmap.loadFromData(data)
                 else:
+                    # show error, don't cache returned error tile
                     error = True
+                    pixmap = self.error_image
             except Exception as e:
                 error = True
                 log(f'{type(e).__name__} exception getting tile {level},{x},{y} '
@@ -234,24 +238,24 @@ class Tiles(tiles.BaseTiles):
                 % (type(e).__name__, test_url))
             log(''.join(traceback.format_exc()))
 
-#            if http_proxy:
-#                #proxy = urllib2.ProxyHandler({'http': http_proxy})
-#                proxy = urllib.ProxyHandler({'http': http_proxy})
-#                #opener = urllib2.build_opener(proxy)
-#                opener = urllib.build_opener(proxy)
-#                #urllib2.install_opener(opener)
-#                urllib.install_opener(opener)
-#                try:
-#                    #urllib2.urlopen(test_url)
-#                    urllib.urlopen(test_url)
-#                except:
-#                    msg = ("Using HTTP proxy %s, "
-#                           "but still can't get through a firewall!")
-#                    raise Exception(msg)
-#            else:
-#                msg = ("There is a firewall but you didn't "
-#                       "give me an HTTP proxy to get through it?")
-#                raise Exception(msg)
+            if http_proxy:
+                proxy = urllib2.ProxyHandler({'http': http_proxy})
+                #proxy = urllib.ProxyHandler({'http': http_proxy})
+                opener = urllib2.build_opener(proxy)
+                #opener = urllib.build_opener(proxy)
+                urllib2.install_opener(opener)
+                #urllib.install_opener(opener)
+                try:
+                    urllib2.urlopen(test_url)
+                    #urllib.urlopen(test_url)
+                except:
+                    msg = ("Using HTTP proxy %s, "
+                           "but still can't get through a firewall!")
+                    raise Exception(msg)
+            else:
+                msg = ("There is a firewall but you didn't "
+                       "give me an HTTP proxy to get through it?")
+                raise Exception(msg)
 
         # set up the request queue and worker threads
         self.request_queue = queue.Queue()  # entries are (level, x, y)
@@ -261,7 +265,7 @@ class Tiles(tiles.BaseTiles):
                 worker = TileWorker(num_thread, server, self.url_path,
                                     self.request_queue, self.tile_is_available,
                                     self.error_tile, self.content_type,
-                                    self.rerequest_age)
+                                    self.rerequest_age, self.error_tile)
                 self.workers.append(worker)
                 worker.start()
 
