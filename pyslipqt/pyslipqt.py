@@ -163,17 +163,20 @@ class PySlipQt(QLabel):
             self.start_drag_x = x
             self.start_drag_y = y
 
+    def normalize_key_tile(self):
+        """Make the key tile behave after drag/zoom.
+
+        Ensures the map is centred in the view if map < view.
+        """
+
+        pass
+
     def normalize_view_drag(self, delta_x=None, delta_y=None):
         """After drag, set "key" tile correctly.
 
         delta_x  the X amount dragged (pixels), None if not dragged in X
         delta_y  the Y amount dragged (pixels), None if not dragged in Y
         """
-
-
-
-
-
 
         if delta_x:
             if self.tile_src.wrap_x:
@@ -232,6 +235,17 @@ class PySlipQt(QLabel):
                     # map > view, allow drag
                     self.key_tile_yoffset -= delta_y
                     log(f'map > view: delta_y={delta_y}, new self.key_tile_yoffset={self.key_tile_yoffset}')
+                    # normalize the 'key' tile coordinates
+                    while self.key_tile_yoffset > 0:
+                        self.key_tile_yoffset -= self.tile_size_y
+                        self.key_tile_top += 1
+                        self.key_tile_top %= self.num_tiles_y
+                    while self.key_tile_yoffset <= -self.tile_size_y:
+                        self.key_tile_yoffset += self.tile_size_y
+                        self.key_tile_top -= 1
+                        self.key_tile_top = ((self.key_tile_top + self.num_tiles_y)
+                                                 % self.num_tiles_y)
+
 
     def keyPressEvent(self, event):
         """Capture a keyboard event."""
@@ -273,6 +287,9 @@ class PySlipQt(QLabel):
         self.view_width = self.width()
         self.view_height = self.height()
 
+        # recalculate the max/min "key" tile coords
+
+
         # recalculate the "top left" tile stuff
         self.recalc_wrap()
 
@@ -285,6 +302,8 @@ class PySlipQt(QLabel):
         """Draw the base map and then the layers on top."""
 
         log(f'paintEvent: self.key_tile_left={self.key_tile_left}, self.key_tile_xoffset={self.key_tile_xoffset}')
+        log(f'self.view_width={self.view_width}, self.view_height={self.view_height}')
+        log(f'tile_size_x={self.tile_src.tile_size_x}, tile_size_y={self.tile_src.tile_size_y}')
 
         ######
         # The "key" tile position is maintained by other code, we just
@@ -296,6 +315,7 @@ class PySlipQt(QLabel):
         x_coord = self.key_tile_left
         x_pix_start = self.key_tile_xoffset
         while x_pix_start < self.view_width:
+            log(f'loop: x_pix_start={x_pix_start}, self.view_width={self.view_width}')
             col_list.append(x_coord)
             if not self.tile_src.wrap_x and x_coord >= self.num_tiles_x-1:
                 break
@@ -312,6 +332,8 @@ class PySlipQt(QLabel):
             y_coord = (y_coord + 1) % self.num_tiles_y
             y_pix_start += self.tile_src.tile_size_y
 
+        log(f'col_list={col_list}, row_list={row_list}')
+
         ######
         # Ready to update the view
         ######
@@ -327,6 +349,10 @@ class PySlipQt(QLabel):
             for y in row_list:
                 QPainter.drawPixmap(painter, x_pix, y_pix,
                                     self.tile_src.GetTile(x, y))
+                log(f'drawing tile ({x}, {y}) at {x_pix}, {y_pix}')
+                log(f'tile extends right to {x_pix+self.tile_src.tile_size_x}')
+                log(f'tile extends down to {y_pix+self.tile_src.tile_size_y}')
+
                 y_pix += self.tile_size_y
             x_pix += self.tile_size_x
 
