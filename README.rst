@@ -22,6 +22,11 @@ pySlipQt works on Linux, Mac and Windows.  Requirements are python 3 and PyQt5.
 The widget API is documented in
 `the wiki <https://github.com/rzzzwilson/pySlipQt/wiki/The-pySlipQt-API>`_.
 
+pySlipQt is a rewrite of
+`pySlip <https://github.com/rzzzwilson/pySlip>`_ which was written for python 2
+and wxPython.  If you find references to pySlip below and in other documents
+they are just oversights and will disappear at some stage.
+
 Screenshots
 ===========
 
