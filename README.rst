@@ -51,10 +51,10 @@ Or you could install through PyPI:
 
 ::
 
-    pip install pyslip
+    pip install pyslipqt
 
 Using pip is the recommended way to install pySlipQt as the cheese shop code
-is guaranteed to work.  The code in the GitHib repository is, unfortunately,
+is guaranteed to work.  The code in the GitHub repository is, unfortunately,
 a moving target.
 
 Map Tiles Licensing
