@@ -9,7 +9,7 @@ Some semantics:
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QLabel, QSizePolicy
-from PyQt5.QtGui import QPainter
+from PyQt5.QtGui import QPainter, QColor
 
 
 # if we don't have log.py, don't crash
@@ -39,8 +39,11 @@ __version__ = '0.1.0'
 
 class PySlipQt(QLabel):
 
-    TileWidth = 256
-    TileHeight = 256
+    # widget default background colour
+    Background_R = 192
+    Background_G = 192
+    Background_B = 192
+    Background = f'rgb({Background_R}, {Background_G}, {Background_B})'
 
     def __init__(self, parent, tile_src, start_level=0, **kwargs):
         """Initialize the pySlipQt widget.
@@ -51,9 +54,16 @@ class PySlipQt(QLabel):
         kwargs       keyword args passed through to the underlying QLabel
         """
 
-        super().__init__(parent)
+        super().__init__(parent, **kwargs)    # inherit all parent object setup
+
+        # set default widget background colour
+        self.setStyleSheet(f'background-color: {PySlipQt.Background};')
 
         self.tile_src = tile_src
+
+        # set tile wdth and height from the tile source
+        self.tile_width = tile_src.TileWidth
+        self.tile_height = tile_src.TileHeight
 
         # the tile coordinates
         self.level = start_level
@@ -89,14 +99,15 @@ class PySlipQt(QLabel):
         self.start_drag_y = None
 
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.setMinimumSize(self.TileWidth, self.TileHeight)
+        self.setMinimumSize(self.tile_width, self.tile_height)
 
         tile_src.setCallback(self.update)
 
-        self.setAutoFillBackground(True)
-        p = self.palette()
-        p.setColor(self.backgroundRole(), Qt.lightGray)
-        self.setPalette(p)
+#        # set background colour of widget
+#        self.setAutoFillBackground(True)
+#        p = self.palette()
+#        p.setColor(self.backgroundRole(), PySlipQt.Background)
+#        self.setPalette(p)
 
 #        self.setMouseTracking(True)
 
@@ -375,8 +386,10 @@ class PySlipQt(QLabel):
         if result:
             self.level = level
             (self.num_tiles_x, self.num_tiles_y, _, _) = self.tile_src.GetInfo(level)
-            self.map_width = self.num_tiles_x * self.tile_src.TileWidth
-            self.map_height = self.num_tiles_y * self.tile_src.TileHeight
+#            self.map_width = self.num_tiles_x * self.tile_src.tile_width
+            self.map_width = self.num_tiles_x * self.tile_width
+#            self.map_height = self.num_tiles_y * self.tile_src.tile_height
+            self.map_height = self.num_tiles_y * self.tile_height
             log(f'self.map_width={self.map_width}, self.map_height={self.map_height}')
             self.update()
         return result

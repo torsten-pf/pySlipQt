@@ -61,7 +61,8 @@ class TestPySlipQt(QWidget):
 
         self.tile_src = tiles.Tiles(tiles_dir=tiles_dir)
 
-        self.canvas = pyslipqt.PySlipQt(self, self.tile_src)
+        self.canvas = pyslipqt.PySlipQt(self, self.tile_src, {'background': (255, 0, 0, 255)})
+#        self.canvas.setStyleSheet('background-color: rgb(255, 0, 0);')
         self.min_level = min(self.tile_src.levels)
         self.max_level = max(self.tile_src.levels)
         (self.num_tiles_x, self.num_tiles_y, _, _) = self.tile_src.GetInfo(self.l_coord)
