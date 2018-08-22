@@ -96,6 +96,11 @@ class Tiles(tiles.Tiles):
         self.wrap_x = True
         self.wrap_y = False
 
+        # get tile information into instance
+        self.level = min(TileLevels)
+        (self.num_tiles_x, self.num_tiles_y,
+         self.ppd_x, self.ppd_y) = self.GetInfo(self.level)
+
     def Geo2Tile(self, geo):
         """Convert geo to tile fractional coordinates for level in use.
 

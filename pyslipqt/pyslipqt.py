@@ -14,7 +14,6 @@ from PyQt5.QtGui import QPainter, QColor
 
 # if we don't have log.py, don't crash
 try:
-#    from . import log
     import log
     log = log.Log('pyslipqt.log')
 except AttributeError:
@@ -54,26 +53,20 @@ class PySlipQt(QLabel):
         kwargs       keyword args passed through to the underlying QLabel
         """
 
-        log(f'PySlipQt(): before super(), start_level={start_level}, kwargs={kwargs}')
         super().__init__(parent, **kwargs)    # inherit all parent object setup
-        log(f'PySlipQt(): after super(), start_level={start_level}')
 
         # set default widget background colour
         self.setStyleSheet(f'background-color: {PySlipQt.Background};')
 
+        # remember the tile source object
         self.tile_src = tile_src
-
-        # set tile wdth and height from the tile source
-        self.tile_width = tile_src.TileWidth
-        self.tile_height = tile_src.TileHeight
 
         # the tile coordinates
         self.level = start_level
-        log(f'self.level={self.level}')
 
         # view and map limits
-        self.view_offset_x = 0  # distance between map & view left edge
-        self.view_offset_y = 0  # distance between map & view top edge
+        self.view_offset_x = 0  # distance between map & view left edge     # NOT USED?
+        self.view_offset_y = 0  # distance between map & view top edge      # NOT USED?
 
         self.view_width = 0     # width/height of the view
         self.view_height = 0    # changes when the widget changes size
@@ -81,12 +74,15 @@ class PySlipQt(QLabel):
         self.map_width = 0      # width/height of the virtual map (not wrapped)
         self.map_height = 0     # in pixels (changes when zoom level changes)
 
-        # set tile levels stuff - allowed levels, etc
-        self.max_level = max(tile_src.levels)
-        self.min_level = min(tile_src.levels)
-
-        self.tile_size_x = tile_src.tile_size_x
-        self.tile_size_y = tile_src.tile_size_y
+        # set tile and levels stuff
+        self.max_level = max(tile_src.levels)   # max level displayed
+        self.min_level = min(tile_src.levels)   # min level displayed
+        self.tile_width = tile_src.tile_size_x  # width of tile in pixels
+        self.tile_height = tile_src.tile_size_y # height of tile in pixels
+        self.num_tiles_x = tile_src.num_tiles_x # number of unwrapped tiles in X direction
+        self.num_tiles_y = tile_src.num_tiles_y # number of unwrapped tiles in Y direction
+        self.wrap_x = tile_src.wrap_x           # True if tiles wrap in X direction
+        self.wrap_y = tile_src.wrap_y           # True if tiles wrap in Y direction
 
         # define position and tile coords of the "key" tile
         self.key_tile_left = 0      # tile coordinates of key tile
@@ -106,7 +102,7 @@ class PySlipQt(QLabel):
 
         tile_src.setCallback(self.update)
 
-#        self.resizeEvent()
+        # do a "resize" after this function, does recalc_wrap()
         QTimer.singleShot(10, self.resizeEvent)
         log(f'AFTER QTIMER')
 
@@ -185,11 +181,11 @@ class PySlipQt(QLabel):
         """Normalize the key tile X coordinate."""
 
         while self.key_tile_xoffset > 0:
-            self.key_tile_xoffset -= self.tile_size_x
+            self.key_tile_xoffset -= self.tile_width
             self.key_tile_left += 1
             self.key_tile_left %= self.num_tiles_x
-        while self.key_tile_xoffset <= -self.tile_size_x:
-            self.key_tile_xoffset += self.tile_size_x
+        while self.key_tile_xoffset <= -self.tile_width:
+            self.key_tile_xoffset += self.tile_width
             self.key_tile_left -= 1
             self.key_tile_left = ((self.key_tile_left + self.num_tiles_x)
                                      % self.num_tiles_x)
@@ -198,11 +194,11 @@ class PySlipQt(QLabel):
         """Normalize the key tile Y coordinate."""
 
         while self.key_tile_yoffset > 0:
-            self.key_tile_yoffset -= self.tile_size_y
+            self.key_tile_yoffset -= self.tile_height
             self.key_tile_top += 1
             self.key_tile_top %= self.num_tiles_y
-        while self.key_tile_yoffset <= -self.tile_size_y:
-            self.key_tile_yoffset += self.tile_size_y
+        while self.key_tile_yoffset <= -self.tile_height:
+            self.key_tile_yoffset += self.tile_height
             self.key_tile_top -= 1
             self.key_tile_top = ((self.key_tile_top + self.num_tiles_y)
                                      % self.num_tiles_y)
@@ -214,7 +210,7 @@ class PySlipQt(QLabel):
         delta_y  the Y amount dragged (pixels), None if not dragged in Y
         """
 
-        if self.tile_src.wrap_x:
+        if self.wrap_x:
             # wrapping in X direction, move 'key' tile
             self.key_tile_xoffset -= delta_x
             # normalize the 'key' tile X coordinates
@@ -230,16 +226,16 @@ class PySlipQt(QLabel):
                 self.normalize_x_offset()
 
 #        if delta_x:
-#            if self.tile_src.wrap_x:
+#            if self.wrap_x:
 #                # wrapping in X direction, move 'key' tile
 #                self.key_tile_xoffset -= delta_x
 #                # normalize the 'key' tile coordinates
 #                while self.key_tile_xoffset > 0:
-#                    self.key_tile_xoffset -= self.tile_size_x
+#                    self.key_tile_xoffset -= self.tile_width
 #                    self.key_tile_left += 1
 #                    self.key_tile_left %= self.num_tiles_x
-#                while self.key_tile_xoffset <= -self.tile_size_x:
-#                    self.key_tile_xoffset += self.tile_size_x
+#                while self.key_tile_xoffset <= -self.tile_width:
+#                    self.key_tile_xoffset += self.tile_width
 #                    self.key_tile_left -= 1
 #                    self.key_tile_left = ((self.key_tile_left + self.num_tiles_x)
 #                                             % self.num_tiles_x)
@@ -254,17 +250,17 @@ class PySlipQt(QLabel):
 #                    log(f'map > view: delta_x={delta_x}, new self.view_offset_x={self.view_offset_x}')
 #                    # normalize the 'key' tile coordinates
 #                    while self.key_tile_xoffset > 0:
-#                        self.key_tile_xoffset -= self.tile_size_x
+#                        self.key_tile_xoffset -= self.tile_width
 #                        self.key_tile_left += 1
 #                        self.key_tile_left %= self.num_tiles_x
-#                    while self.key_tile_xoffset <= -self.tile_size_x:
-#                        self.key_tile_xoffset += self.tile_size_x
+#                    while self.key_tile_xoffset <= -self.tile_width:
+#                        self.key_tile_xoffset += self.tile_width
 #                        self.key_tile_left -= 1
 #                        self.key_tile_left = ((self.key_tile_left + self.num_tiles_x)
 #                                                 % self.num_tiles_x)
 
         if delta_y:
-            if self.tile_src.wrap_y:
+            if self.wrap_y:
                 # wrapping in Y direction, move 'key' tile
                 self.key_tile_yoffset -= delta_y
 
@@ -282,17 +278,17 @@ class PySlipQt(QLabel):
                     self.normalize_y_offset()
 
 #        if delta_y:
-#            if self.tile_src.wrap_y:
+#            if self.wrap_y:
 #                # wrapping in Y direction, move 'key' tile
 #                self.key_tile_yoffset -= delta_y
 #
 #                # normalize the 'key' tile coordinates
 #                while self.key_tile_yoffset > 0:
-#                    self.key_tile_yoffset -= self.tile_size_y
+#                    self.key_tile_yoffset -= self.tile_height
 #                    self.key_tile_top += 1
 #                    self.key_tile_top %= self.num_tiles_y
-#                while self.key_tile_yoffset <= -self.tile_size_y:
-#                    self.key_tile_yoffset += self.tile_size_y
+#                while self.key_tile_yoffset <= -self.tile_height:
+#                    self.key_tile_yoffset += self.tile_height
 #                    self.key_tile_top -= 1
 #                    self.key_tile_top = ((self.key_tile_top + self.num_tiles_y)
 #                                            % self.num_tiles_y)
@@ -308,11 +304,11 @@ class PySlipQt(QLabel):
 #
 #                    # normalize the 'key' tile coordinates
 #                    while self.key_tile_yoffset > 0:
-#                        self.key_tile_yoffset -= self.tile_size_y
+#                        self.key_tile_yoffset -= self.tile_height
 #                        self.key_tile_top += 1
 #                        self.key_tile_top %= self.num_tiles_y
-#                    while self.key_tile_yoffset <= -self.tile_size_y:
-#                        self.key_tile_yoffset += self.tile_size_y
+#                    while self.key_tile_yoffset <= -self.tile_height:
+#                        self.key_tile_yoffset += self.tile_height
 #                        self.key_tile_top -= 1
 #                        self.key_tile_top = ((self.key_tile_top + self.num_tiles_y)
 #                                                 % self.num_tiles_y)
@@ -365,16 +361,38 @@ class PySlipQt(QLabel):
         self.recalc_wrap()
 
     def recalc_wrap(self):
-        """Recalculate the "top left" tile information."""
+        """Recalculate the "key" tile information.
+        
+        Called if widget changes level or resized.
+        .map_width, .map_height, .view_width and .view_height have been set.
+        """
 
-        pass
+        if self.wrap_x:
+            # wrapping in X direction, don't change anything as wrap will fix
+            pass
+        else:
+            # not wrapping in X direction
+            if self.map_width >= self.view_width:
+                pass
+            else:
+                self.key_tile_left = 0
+                self.key_tile_xoffset = (self.view_width - self.map_width) // 2
+
+        if self.wrap_y:
+            # wrapping in Y direction, don't change anything as wrap will fix
+            pass
+        else:
+            # not wrapping in Y direction
+            if self.map_height >= self.map_height:
+                self.key_tile_top = 0
+                self.key_tile_yoffset = (self.view_height - self.map_height) // 2
 
     def paintEvent(self, event):
         """Draw the base map and then the layers on top."""
 
         log(f'paintEvent: self.key_tile_left={self.key_tile_left}, self.key_tile_xoffset={self.key_tile_xoffset}')
         log(f'self.view_width={self.view_width}, self.view_height={self.view_height}')
-        log(f'tile_size_x={self.tile_src.tile_size_x}, tile_size_y={self.tile_src.tile_size_y}')
+        log(f'tile_width={self.tile_width}, tile_height={self.tile_height}')
 
         ######
         # The "key" tile position is maintained by other code, we just
@@ -388,20 +406,20 @@ class PySlipQt(QLabel):
         while x_pix_start < self.view_width:
             log(f'loop: x_pix_start={x_pix_start}, self.view_width={self.view_width}')
             col_list.append(x_coord)
-            if not self.tile_src.wrap_x and x_coord >= self.num_tiles_x-1:
+            if not self.wrap_x and x_coord >= self.num_tiles_x-1:
                 break
             x_coord = (x_coord + 1) % self.num_tiles_x
-            x_pix_start += self.tile_src.tile_size_x
+            x_pix_start += self.tile_height
 
         row_list = []
         y_coord = self.key_tile_top
         y_pix_start = self.key_tile_yoffset
         while y_pix_start < self.view_height:
             row_list.append(y_coord)
-            if not self.tile_src.wrap_y and y_coord >= self.num_tiles_y-1:
+            if not self.wrap_y and y_coord >= self.num_tiles_y-1:
                 break
             y_coord = (y_coord + 1) % self.num_tiles_y
-            y_pix_start += self.tile_src.tile_size_y
+            y_pix_start += self.tile_height
 
         log(f'col_list={col_list}, row_list={row_list}')
 
@@ -421,83 +439,97 @@ class PySlipQt(QLabel):
                 QPainter.drawPixmap(painter, x_pix, y_pix,
                                     self.tile_src.GetTile(x, y))
                 log(f'drawing tile ({x}, {y}) at {x_pix}, {y_pix}')
-                log(f'tile extends right to {x_pix+self.tile_src.tile_size_x}')
-                log(f'tile extends down to {y_pix+self.tile_src.tile_size_y}')
+                log(f'tile extends right to {x_pix+self.tile_width}')
+                log(f'tile extends down to {y_pix+self.tile_height}')
 
-                y_pix += self.tile_size_y
-            x_pix += self.tile_size_x
+                y_pix += self.tile_height
+            x_pix += self.tile_width
 
         log('paintEvent: end')
         painter.end()
 
-    def get_centre_tile(self):
-        """Get details of the view centre_tile.
+    def tile_to_view(tile_x, tile_y):
+        """Convert tile fractional coordinates to view coordinates.
 
-        Returns a tuple:
-            (tile_left, tile_top, tile_xoff, tile_yoff)
+        tile_x  fractional tile coordinate in X direction
+        tile_y  fractional tile coordinate in Y direction
+
+        Returns the view coordinates (x, y) if position is in view, else None.
         """
 
-        log(f'get_centre_tile: .key_tile_left={self.key_tile_left}, .key_tile_top={self.key_tile_top}')
-
-        # figure out view centre offset in pixels
-        centre_x = self.view_width // 2
-        centre_y = self.view_height // 2
-        log(f'get_centre_tile: centre_x={centre_x}, centre_y={centre_y}')
-
-        # get centre in tile width/height plus part tile pixels from key tile
-        x_pixels = self.key_tile_left + centre_x
-        y_pixels = self.key_tile_top + centre_y
-        log(f'get_centre_tile: x_pixels={x_pixels}, y_pixels={y_pixels}')
-
-
-#        self.key_tile_left = 0      # tile coordinates of key tile
-#        self.key_tile_top = 0
-#        self.key_tile_xoffset = 0   # view coordinates of key tile wrt view
-#        self.key_tile_yoffset = 0
-#
-#            (self.num_tiles_x, self.num_tiles_y, _, _) = self.tile_src.GetInfo(level)
-#            self.map_width = self.num_tiles_x * self.tile_width
-#            self.map_height = self.num_tiles_y * self.tile_height
-#            log(f'self.map_width={self.map_width}, self.map_height={self.map_height}')
-#
-#        self.view_offset_x = 0  # distance between map & view left edge
-#        self.view_offset_y = 0  # distance between map & view top edge
-#
-#        self.view_width = 0     # width/height of the view
-#        self.view_height = 0    # changes when the widget changes size
-
-        return (0, 0, 0, 0)
-
+        return (0, 0)
 
 ################################################################################
 # Below are the "external" API methods.
 ################################################################################
 
-    def zoom_level(self, level):
+    def dump_key_data(self):
+        """Debug function to return string describing 'key' tile data."""
+
+        return (f'\t.key_tile_left={self.key_tile_left}\n'
+                f'\t.key_tile_top={self.key_tile_top}\n'
+                f'\t.key_tile_xoffset={self.key_tile_xoffset}\n'
+                f'\t.key_tile_yoffset={self.key_tile_yoffset}\n'
+                f'\t.view_width={self.view_width}\n'
+                f'\t.view_height={self.view_height}\n'
+                f'\t.map_width={self.map_width}\n'
+                f'\t.map_height={self.map_height}\n'
+               )
+
+    def zoom_level(self, level, x=None, y=None):
         """Zoom to a map level.
 
         level  map level to zoom to
+        x, y   view coordinates of point around which we zoom
 
         Change the map zoom level to that given. Returns True if the zoom
         succeeded, else False. If False is returned the method call has no effect.
         """
 
-        log(f'zoom_level: .key_tile_xoffset={self.key_tile_xoffset}, .key_tile_yoffset={self.key_tile_yoffset}')
+        # if x,y not given, use view centre
+        if x is None:
+            x = self.view_width // 2
+        if y is None:
+            y = self.view_height // 2
+
+        log(f'zoom_level: level={level}, x={x}, y={y}')
+        log(f'zoom_level: before, key tile data:\n{self.dump_key_data()}')
 
         # get tile source to use the new level
         result = self.tile_src.UseLevel(level)
 
-        # if tile-source changed, set internal state to the new level
+        # if tile-source changed, calculate new centre tile
         if result:
+            # calculate centre tile coordinates before zoom
+            c_tile_left = self.key_tile_left
+            while c_tile_left < 
+
+            # figure out the scale of the zoom (2 or 0.5)
             log(f'level={level}, self.level={self.level}')
             scale = (self.level + 1) / (level + 1)
             scale = 2**(level - self.level)
             log(f'zoom_level: scale={scale}')
 
-            # get centre tile details
-            (c_tile_left, c_tile_top,
-                c_tile_xoffset, c_tile_yoffset) = self.get_centre_tile()
-            log(f'zoom_level: centre tile x_offset={c_tile_xoffset}, y_offset={c_tile_yoffset}')
+            # get centre tile details and move to key
+            xtile = self.key_tile_left
+            xoffset = self.key_tile_xoffset
+            while xoffset > 0:
+                log(f'canon X: xoffset={xoffset}, xtile={xtile}')
+                if xtile == 0:
+                    break
+                xtile -= 1
+                xoffset -= self.tile_width
+
+            ytile = self.key_tile_top
+            yoffset = self.key_tile_yoffset
+            while yoffset > 0:
+                log(f'canon Y: yoffset={yoffset}, ytile={ytile}')
+                if ytile == 0:
+                    break
+                ytile -= 1
+                yoffset -= self.tile_height
+
+            log(f"'centre' tile: xtile={xtile}, xoffset={xoffset}, ytile={ytile}, yoffset={yoffset}")
 
             # move to new level
             self.level = level
@@ -511,31 +543,26 @@ class PySlipQt(QLabel):
 #        self.key_tile_xoffset = 0   # view coordinates of key tile wrt view
 #        self.key_tile_yoffset = 0
 
-            if scale > 1:
-                log(f'Zoom in')
-                c_tile_xoffset *= 2
-                c_tile_yoffset *= 2
-                log(f'c_tile_xoffset becomes {c_tile_xoffset}')
-            elif scale < 1:
-                log(f'Zoom out')
-                c_tile_xoffset //= 2
-                c_tile_yoffset //= 2
-            log(f'zoom_level: new centre tile x_offset={c_tile_xoffset}, y_offset={c_tile_yoffset}')
-
             # calculate the key tile data
-            while c_tile_left > 0:
-                c_tile_left -= self.tile_width
-                c_tile_xoffset -= 1
-                log(f'c_tile_left normalized to {c_tile_left}, c_tile_xoffset={c_tile_xoffset}')
-            while c_tile_top > 0:
-                c_tile_top -= self.tile_height
-                c_tile_yoffset -= 1
+            while xtile > 0:
+                xtile -= self.tile_width
+                xoffset -= 1
+            log(f'X normalized to xtile={xtile}, xoffset={xoffset}')
+            while ytile > 0:
+                ytile -= self.tile_height
+                yoffset -= 1
+            log(f'Y normalized to ytile={ytile}, yoffset={yoffset}')
 
-            self.key_tile_xoffset = c_tile_xoffset
-            self.key_tile_yoffset = c_tile_yoffset
-            log(f'c_tile_left left at {c_tile_left}')
+            self.key_tile_left = xtile
+            self.key_tile_top = ytile
+            self.key_tile_xoffset = xoffset
+            self.key_tile_yoffset = yoffset
+
+            self.recalc_wrap()
 
             self.update()       # redraw the map
+
+        log(f'zoom_level:  after, key tile data:\n{self.dump_key_data()}')
 
         return result
 
