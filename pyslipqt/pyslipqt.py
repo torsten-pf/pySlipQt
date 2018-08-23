@@ -104,7 +104,7 @@ class PySlipQt(QLabel):
 
         # do a "resize" after this function, does recalc_wrap()
         QTimer.singleShot(10, self.resizeEvent)
-        log(f'AFTER QTIMER')
+        QTimer.singleShot(20, self.test)
 
 #        # set background colour of widget
 #        self.setAutoFillBackground(True)
@@ -113,6 +113,31 @@ class PySlipQt(QLabel):
 #        self.setPalette(p)
 
 #        self.setMouseTracking(True)
+
+    def test(self):
+        # test the view_to_tile() function
+        log(f'before test: .key_tile_left={self.key_tile_left}, .key_tile_top={self.key_tile_top}')
+        log(f'             .key_tile_xoffset={self.key_tile_xoffset}, .key_tile_yoffset={self.key_tile_yoffset}')
+        log(f'             .tile_width={self.tile_width}, .tile_height={self.tile_height}')
+        res = self.view_to_tile()
+        log(f'view_to_tile(): res={res}')
+        log(f' after test: .key_tile_left={self.key_tile_left}, .key_tile_top={self.key_tile_top}')
+        log(f'             .key_tile_xoffset={self.key_tile_xoffset}, .key_tile_yoffset={self.key_tile_yoffset}')
+        log(f'             .tile_width={self.tile_width}, .tile_height={self.tile_height}')
+
+        # test the view_to_tile() function
+        self.key_tile_left = 1
+        self.key_tile_top = 1
+        self.key_tile_xoffset = -20
+        self.key_tile_yoffset= -10
+        log(f'before test: .key_tile_left={self.key_tile_left}, .key_tile_top={self.key_tile_top}')
+        log(f'             .key_tile_xoffset={self.key_tile_xoffset}, .key_tile_yoffset={self.key_tile_yoffset}')
+        log(f'             .tile_width={self.tile_width}, .tile_height={self.tile_height}')
+        res = self.view_to_tile()
+        log(f'view_to_tile(): res={res}')
+        log(f' after test: .key_tile_left={self.key_tile_left}, .key_tile_top={self.key_tile_top}')
+        log(f'             .key_tile_xoffset={self.key_tile_xoffset}, .key_tile_yoffset={self.key_tile_yoffset}')
+        log(f'             .tile_width={self.tile_width}, .tile_height={self.tile_height}')
 
     def mousePressEvent(self, event):
         b = event.button()
@@ -448,16 +473,59 @@ class PySlipQt(QLabel):
         log('paintEvent: end')
         painter.end()
 
-    def tile_to_view(tile_x, tile_y):
-        """Convert tile fractional coordinates to view coordinates.
+    def tile_to_key(self, x, y, tile_x, tile_y):
+        """Convert tile fractional coordinates to 'key' tile coordinates.
 
+        x, y    coords of view point that matches (tile_x, tile_y)
         tile_x  fractional tile coordinate in X direction
         tile_y  fractional tile coordinate in Y direction
 
-        Returns the view coordinates (x, y) if position is in view, else None.
+        Returns a tuple (kt_left, kt_top, kt_xoff, kt_yoff) of 'key'
+        tile coordinates in the current zoom.
         """
 
-        return (0, 0)
+        kt_left = 0
+        kt_top = 0
+        kt_xoff = 0
+        kt_yoff = 0
+
+        return (kt_left, kt_top, kt_xoff, kt_yoff)
+
+    def view_to_tile(self, x=None, y=None):
+        """Convert view coordinates to the fractional tile coordinates.
+
+        x, y  view point coordinates in pixels (view centre is default)
+
+        Returns a tuple (x.pix, y.pix) of tile fractional coordinates
+        in the current zoom.
+        """
+
+        # handle the default - centre of the view
+        if x is None:
+            x = self.view_width // 2
+        if y is None:
+            y = self.view_height // 2
+
+        log(f'view_to_tile: x={x}, y={y}')
+
+        # work out X tile coordinate
+        d_x = x - self.key_tile_xoffset     # pixels from key tile left to point
+        log(f'view_to_tile: d_x=x - self.key_tile_xoffset={d_x}')
+        (dx_whole, dx_off) = divmod(d_x, self.tile_width)   # (a // b, a % b)
+        log(f'view_to_tile: dx_whole=d_x // self.tile_width={dx_whole}')
+        log(f'view_to_tile: dx_off=d_x % self.tile_width={d_x}')
+        t_x = self.key_tile_left + dx_whole + dx_off/self.tile_width
+        log(f'view_to_tile: t_x=self.key_tile_left + dx_whole + dx_off/self.tile_width={t_x}')
+
+        # work out Y tile coordinate
+        d_y = y - self.key_tile_yoffset     # piyels from key tile top to point
+        dy_whole = d_y // self.tile_height  # number of complete tiles to point
+        dy_off = d_y % self.tile_height     # left over piyels
+        t_y = self.key_tile_top + dy_whole + dy_off/self.tile_height
+
+        log(f'view_to_tile: returning {(t_x, t_y)}')
+
+        return (t_x, t_y)
 
 ################################################################################
 # Below are the "external" API methods.
@@ -501,8 +569,9 @@ class PySlipQt(QLabel):
         # if tile-source changed, calculate new centre tile
         if result:
             # calculate centre tile coordinates before zoom
-            c_tile_left = self.key_tile_left
-            while c_tile_left < 
+            res = self.view_to_tile()
+#            c_tile_left = self.key_tile_left
+#            while c_tile_left < 
 
             # figure out the scale of the zoom (2 or 0.5)
             log(f'level={level}, self.level={self.level}')
