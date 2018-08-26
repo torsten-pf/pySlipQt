@@ -104,7 +104,7 @@ class PySlipQt(QLabel):
 
         # do a "resize" after this function, does recalc_wrap()
         QTimer.singleShot(10, self.resizeEvent)
-        QTimer.singleShot(20, self.test)
+#        QTimer.singleShot(20, self.test)
 
 #        # set background colour of widget
 #        self.setAutoFillBackground(True)
@@ -196,6 +196,7 @@ class PySlipQt(QLabel):
             if self.start_drag_x:       # if we are already dragging
                 delta_x = self.start_drag_x - x
                 delta_y = self.start_drag_y - y
+                log(f'mouseMoveEvent: delta_x={delta_x}')
                 self.normalize_view_drag(delta_x, delta_y)  # normalize the "key" tile
                 self.update()                               # force a repaint
 
@@ -203,17 +204,20 @@ class PySlipQt(QLabel):
             self.start_drag_y = y
 
     def normalize_x_offset(self):
-        """Normalize the key tile X coordinate."""
+        """Normalize the key tile X coordinate.
+       
+        The key tile has moved in the X direction, normalize the movement.
+        """
 
         while self.key_tile_xoffset > 0:
             self.key_tile_xoffset -= self.tile_width
             self.key_tile_left += 1
-            self.key_tile_left %= self.num_tiles_x
+        self.key_tile_left %= self.num_tiles_x
+
         while self.key_tile_xoffset <= -self.tile_width:
             self.key_tile_xoffset += self.tile_width
             self.key_tile_left -= 1
-            self.key_tile_left = ((self.key_tile_left + self.num_tiles_x)
-                                     % self.num_tiles_x)
+        self.key_tile_left = (self.key_tile_left + self.num_tiles_x) % self.num_tiles_x
 
     def normalize_y_offset(self):
         """Normalize the key tile Y coordinate."""
@@ -221,12 +225,12 @@ class PySlipQt(QLabel):
         while self.key_tile_yoffset > 0:
             self.key_tile_yoffset -= self.tile_height
             self.key_tile_top += 1
-            self.key_tile_top %= self.num_tiles_y
+        self.key_tile_top %= self.num_tiles_y
+
         while self.key_tile_yoffset <= -self.tile_height:
             self.key_tile_yoffset += self.tile_height
             self.key_tile_top -= 1
-            self.key_tile_top = ((self.key_tile_top + self.num_tiles_y)
-                                     % self.num_tiles_y)
+        self.key_tile_top = (self.key_tile_top + self.num_tiles_y) % self.num_tiles_y
 
     def normalize_view_drag(self, delta_x=None, delta_y=None):
         """After drag, set "key" tile correctly.
@@ -236,10 +240,12 @@ class PySlipQt(QLabel):
         """
 
         if self.wrap_x:
+            log(f'normalize_view_drag: before, delta_x={delta_x}, .key_tile_xoffset={self.key_tile_xoffset}, .key_tile_left={self.key_tile_left}')
             # wrapping in X direction, move 'key' tile
             self.key_tile_xoffset -= delta_x
             # normalize the 'key' tile X coordinates
             self.normalize_x_offset()
+            log(f'normalize_view_drag:  after, .key_tile_xoffset={self.key_tile_xoffset}, .key_tile_left={self.key_tile_left}')
         else:
             # if view > map, don't drag, ensure centred
             if self.map_width < self.view_width:
@@ -249,40 +255,6 @@ class PySlipQt(QLabel):
                 self.key_tile_xoffset -= delta_x
                 # normalize the 'key' tile X coordinates
                 self.normalize_x_offset()
-
-#        if delta_x:
-#            if self.wrap_x:
-#                # wrapping in X direction, move 'key' tile
-#                self.key_tile_xoffset -= delta_x
-#                # normalize the 'key' tile coordinates
-#                while self.key_tile_xoffset > 0:
-#                    self.key_tile_xoffset -= self.tile_width
-#                    self.key_tile_left += 1
-#                    self.key_tile_left %= self.num_tiles_x
-#                while self.key_tile_xoffset <= -self.tile_width:
-#                    self.key_tile_xoffset += self.tile_width
-#                    self.key_tile_left -= 1
-#                    self.key_tile_left = ((self.key_tile_left + self.num_tiles_x)
-#                                             % self.num_tiles_x)
-#            else:
-#                # if view > map, don't drag, ensure centred
-#                if self.map_width < self.view_width:
-#                    log(f'self.map_width={self.map_width}, self.view_width={self.view_width}')
-#                    self.key_tile_xoffset = (self.view_width - self.map_width) // 2
-#                else:
-#                    # map > view, allow drag
-#                    self.key_tile_xoffset -= delta_x
-#                    log(f'map > view: delta_x={delta_x}, new self.view_offset_x={self.view_offset_x}')
-#                    # normalize the 'key' tile coordinates
-#                    while self.key_tile_xoffset > 0:
-#                        self.key_tile_xoffset -= self.tile_width
-#                        self.key_tile_left += 1
-#                        self.key_tile_left %= self.num_tiles_x
-#                    while self.key_tile_xoffset <= -self.tile_width:
-#                        self.key_tile_xoffset += self.tile_width
-#                        self.key_tile_left -= 1
-#                        self.key_tile_left = ((self.key_tile_left + self.num_tiles_x)
-#                                                 % self.num_tiles_x)
 
         if delta_y:
             if self.wrap_y:
@@ -301,43 +273,6 @@ class PySlipQt(QLabel):
 
                     # normalize the 'key' tile coordinates
                     self.normalize_y_offset()
-
-#        if delta_y:
-#            if self.wrap_y:
-#                # wrapping in Y direction, move 'key' tile
-#                self.key_tile_yoffset -= delta_y
-#
-#                # normalize the 'key' tile coordinates
-#                while self.key_tile_yoffset > 0:
-#                    self.key_tile_yoffset -= self.tile_height
-#                    self.key_tile_top += 1
-#                    self.key_tile_top %= self.num_tiles_y
-#                while self.key_tile_yoffset <= -self.tile_height:
-#                    self.key_tile_yoffset += self.tile_height
-#                    self.key_tile_top -= 1
-#                    self.key_tile_top = ((self.key_tile_top + self.num_tiles_y)
-#                                            % self.num_tiles_y)
-#            else:
-#                # if view > map, don't drag, ensure centred
-#                if self.map_height < self.view_height:
-#                    log(f'normalize_view_drag: view > map, self.map_height={self.map_height}, self.view_height={self.view_height}')
-#                    self.key_tile_yoffset = (self.view_height - self.map_height) // 2
-#                else:
-#                    # map > view, allow drag
-#                    self.key_tile_yoffset -= delta_y
-#                    log(f'normalize_view_drag: map > view, delta_y={delta_y}, new self.key_tile_yoffset={self.key_tile_yoffset}')
-#
-#                    # normalize the 'key' tile coordinates
-#                    while self.key_tile_yoffset > 0:
-#                        self.key_tile_yoffset -= self.tile_height
-#                        self.key_tile_top += 1
-#                        self.key_tile_top %= self.num_tiles_y
-#                    while self.key_tile_yoffset <= -self.tile_height:
-#                        self.key_tile_yoffset += self.tile_height
-#                        self.key_tile_top -= 1
-#                        self.key_tile_top = ((self.key_tile_top + self.num_tiles_y)
-#                                                 % self.num_tiles_y)
-
 
     def keyPressEvent(self, event):
         """Capture a keyboard event."""
@@ -569,9 +504,8 @@ class PySlipQt(QLabel):
         # if tile-source changed, calculate new centre tile
         if result:
             # calculate centre tile coordinates before zoom
-            res = self.view_to_tile()
-#            c_tile_left = self.key_tile_left
-#            while c_tile_left < 
+            c_tile = self.view_to_tile()
+            log(f'zoom_level: c_tile={c_tile}')
 
             # figure out the scale of the zoom (2 or 0.5)
             log(f'level={level}, self.level={self.level}')
