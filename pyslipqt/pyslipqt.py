@@ -364,6 +364,8 @@ class PySlipQt(QLabel):
         # recalculate the "top left" tile stuff
         self.recalc_wrap_limits()
 
+        self.normalize_view_drag(0, 0)
+
     def recalc_wrap_limits(self):
         """Recalculate the maximum "key" tile information.
         
@@ -443,31 +445,132 @@ class PySlipQt(QLabel):
         log('paintEvent: end')
         painter.end()
 
-    def tile_to_key(self, x, y, tile_x, tile_y):
-        """Convert tile fractional coordinates to 'key' tile coordinates.
+    def tile_frac_to_parts(self, t_frac):
+        """Split a tile coordinate into integer and fractional parts.
 
-        x, y    coords of view point that matches (tile_x, tile_y)
-        tile_x  fractional tile coordinate in X direction
-        tile_y  fractional tile coordinate in Y direction
+        frac  a fractional tile coordinate
 
-        Returns a tuple (kt_left, kt_top, kt_xoff, kt_yoff) of 'key'
-        tile coordinates in the current zoom.
+        Return (int, frac) parts of 't_frac'.
         """
 
-        kt_left = 0
-        kt_top = 0
-        kt_xoff = 0
-        kt_yoff = 0
+        int_part = int(t_frac)
+        frac_part = t_frac - int_part
 
-        return (kt_left, kt_top, kt_xoff, kt_yoff)
+        return (int_part, frac_part)
+
+    def tile_parts_to_frac(self, t_coord, t_offset, length):
+        """Convert a tile coord plus offset to a fractional tile value.
+
+        t_coord   the tile integer coordinate
+        t_offset  the pixel further offset
+        length    the width orr height of the tile
+
+        Returns a fractional tile coordinate.
+        """
+
+        log(f'tile_parts_to_frac: t_coord={t_coord}, t_offset={t_offset}, length={length}')
+        log(f'tile_parts_to_frac: returning t_coord + t_offset/length={t_coord + t_offset/length}')
+        return t_coord + t_offset/length
+
+    def zoom_tile(self, c_tile, scale):
+        """Zoom into centre tile at given scale.
+
+        c_tile  tuple (x_frac, y_frac) of fractional tile coords for point
+        scale   2.0 if zooming in, 0.5 if zooming out
+
+        Returns a tuple (zx_frac, zy_frac) of fractional coordinates of the
+        point after the zoom.
+        """
+
+        # a simple doubling/halving of fractional coordinates
+        (x_frac, y_frac) = c_tile
+        log(f'zoom_tile: x_frac={x_frac}, y_frac={y_frac}')
+        (tile_left, tile_xoff) = self.tile_frac_to_parts(x_frac)
+        (tile_top, tile_yoff) = self.tile_frac_to_parts(y_frac)
+        log(f'zoom_tile: tile_left={tile_left}, tile_xoff={tile_xoff}')
+
+        if tile_xoff < self.tile_width // 2:
+            tile_left = tile_left * 2
+            tile_xoff = tile_xoff * self.tile_width * 2
+            log(f'zoom_tile: left half double, tile_left={tile_left}, tile_xoff={tile_xoff}')
+        else:
+            tile_left = tile_left*2 + 1
+            tile_xoff = tile_xoff*self.tile_width*2 - self.tile_width
+            log(f'zoom_tile: right half double, tile_left={tile_left}, tile_xoff={tile_xoff}')
+
+        if tile_yoff < self.tile_height // 2:
+            tile_top = tile_top * 2
+            tile_yoff = tile_yoff * self.tile_height * 2
+        else:
+            tile_top = tile_top*2 + 1
+            tile_yoff = tile_yoff*self.tile_height*2 % self.tile_height
+
+        zx_frac = self.tile_parts_to_frac(tile_left, tile_xoff, self.tile_width)
+        log(f'zoom_tile: zx_frac={zx_frac}')
+        zy_frac = self.tile_parts_to_frac(tile_top, tile_yoff, self.tile_height)
+
+        log(f'zoom_tile: returning ({zx_frac}, {zy_frac})')
+
+        return (zx_frac, zy_frac)
+
+    def tile_to_key(self, z_point, x, y):
+        """Get new 'key' tile data given a zoom point and a view point.
+
+        z_point  the tile coordinates of the zoom point (zx_tile, zy_tile)
+        x, y     the view coordinates of the zoom point
+
+        Returns (key_tile_left, key_tile_xoffset, key_tile.top, key_tile_yoffset)
+        which define the new 'key' tile values after a zoom.
+        """
+
+        # split out X and Y fractional coordinates
+        (zx_tile, zy_tile) = z_point
+
+        # get tile fractions from the view point to the view edges
+        x_off = x / self.tile_width
+        y_off = y / self.tile_height
+
+        # get the fractional coordinates of the left and top edges
+        left_coord = zx_tile - x_off/self.tile_width
+        top_coord = zy_tile - y_off/self.tile_height
+
+        # get 'key' tile coordinates
+        (l_int, l_frac) = self.tile_frac_to_parts(left_coord)
+        key_tile_left = l_int
+        key_tile_xoffset = -l_frac * self.tile_width
+        log(f'tile_to_key: l_int={l_int}, l_frac={l_frac}, key_tile_left={key_tile_left}, key_tile_xoffset={key_tile_xoffset}')
+
+        (r_int, r_frac) = self.tile_frac_to_parts(top_coord)
+        key_tile_top = r_int
+        key_tile_yoffset = -r_frac * self.tile_height
+
+        return (key_tile_left, key_tile_xoffset, key_tile_top, key_tile_yoffset)
 
     def view_to_tile(self, x=None, y=None):
         """Convert view coordinates to the fractional tile coordinates.
 
         x, y  view point coordinates in pixels (view centre is default)
 
-        Returns a tuple (x.pix, y.pix) of tile fractional coordinates
-        in the current zoom.
+        Returns a tuple (tile_x, tile_y) of fraction tile coordinates of
+        the given point in the view.
+
+            map bounds
+           +---------------------------------
+           |    view bounds     |
+           |   +----------------+--------
+           |   |     centre tile|
+           |   |     +------------------+
+           |   |     |          |       |
+           |   |     |          | tile_y|
+           |   |     |          v       |
+           |---+-----+--------->o       |
+           |   |     | tile_x    \      |
+           |   |     |         position |
+           |         |                  |
+                     |                  |
+                     +------------------+
+
+        This method is the reverse of self.tile_to_view().
         """
 
         # handle the default - centre of the view
@@ -476,26 +579,28 @@ class PySlipQt(QLabel):
         if y is None:
             y = self.view_height // 2
 
+        log(f'view_to_tile: .view_width={self.view_width}, .key_tile_left={self.key_tile_left}, .key_tile_xoffset={self.key_tile_xoffset}')
+        log(f'view_to_tile: .view_height={self.view_height}, .key_tile_top={self.key_tile_top}, .key_tile_yoffset={self.key_tile_yoffset}')
         log(f'view_to_tile: x={x}, y={y}')
 
         # work out X tile coordinate
-        d_x = x - self.key_tile_xoffset     # pixels from key tile left to point
-        log(f'view_to_tile: d_x=x - self.key_tile_xoffset={d_x}')
-        (dx_whole, dx_off) = divmod(d_x, self.tile_width)   # (a // b, a % b)
-        log(f'view_to_tile: dx_whole=d_x // self.tile_width={dx_whole}')
-        log(f'view_to_tile: dx_off=d_x % self.tile_width={d_x}')
-        t_x = self.key_tile_left + dx_whole + dx_off/self.tile_width
-        log(f'view_to_tile: t_x=self.key_tile_left + dx_whole + dx_off/self.tile_width={t_x}')
+        dx = x - self.key_tile_xoffset     # pixels from key tile left to point
+        log(f'view_to_tile: dx={dx} - self.key_tile_xoffset={self.key_tile_xoffset}')
+        (dx_whole, dx_off) = divmod(dx, self.tile_width)   # (a // b, a % b)
+        log(f'view_to_tile: dx_whole=dx // self.tile_width={dx_whole}')
+        log(f'view_to_tile: dx_off=dx % self.tile_width={dx_off}')
+        tile_x = self.key_tile_left + dx_whole + dx_off/self.tile_width
+        log(f'view_to_tile: tile_x=self.key_tile_left + dx_whole + dx_off/self.tile_width={tile_x}')
 
         # work out Y tile coordinate
-        d_y = y - self.key_tile_yoffset     # piyels from key tile top to point
+        d_y = y - self.key_tile_yoffset     # pixels from key tile top to point
         dy_whole = d_y // self.tile_height  # number of complete tiles to point
         dy_off = d_y % self.tile_height     # left over piyels
-        t_y = self.key_tile_top + dy_whole + dy_off/self.tile_height
+        tile_y = self.key_tile_top + dy_whole + dy_off/self.tile_height
 
-        log(f'view_to_tile: returning {(t_x, t_y)}')
+        log(f'view_to_tile: returning {(tile_x, tile_y)}')
 
-        return (t_x, t_y)
+        return (tile_x, tile_y)
 
 ################################################################################
 # Below are the "external" API methods.
@@ -538,9 +643,9 @@ class PySlipQt(QLabel):
 
         # if tile-source changed, calculate new centre tile
         if result:
-            # calculate centre tile coordinates before zoom
-#            c_tile = self.view_to_tile()
-#            log(f'zoom_level: c_tile={c_tile}')
+            # calculate zoom point tile coordinates before zoom
+            z_point = self.view_to_tile()
+            log(f'zoom_level: z_point={z_point}')
 
             # figure out the scale of the zoom (2 or 0.5)
             log(f'level={level}, self.level={self.level}')
@@ -548,26 +653,33 @@ class PySlipQt(QLabel):
             scale = 2**(level - self.level)
             log(f'zoom_level: scale={scale}')
 
-            # get centre tile details and move to key
-            xtile = self.key_tile_left
-            xoffset = self.key_tile_xoffset
-            while xoffset > 0:
-                log(f'canon X: xoffset={xoffset}, xtile={xtile}')
-                if xtile == 0:
-                    break
-                xtile -= 1
-                xoffset -= self.tile_width
+            new_z_point = self.zoom_tile(z_point, scale)
+            log(f'zoom_level: new_z_point={new_z_point}')
 
-            ytile = self.key_tile_top
-            yoffset = self.key_tile_yoffset
-            while yoffset > 0:
-                log(f'canon Y: yoffset={yoffset}, ytile={ytile}')
-                if ytile == 0:
-                    break
-                ytile -= 1
-                yoffset -= self.tile_height
+            new_key = self.tile_to_key(new_z_point, x, y)
+            log(f'zoom_level: new_key={new_key}')
 
-            log(f"'centre' tile: xtile={xtile}, xoffset={xoffset}, ytile={ytile}, yoffset={yoffset}")
+            (self.key_tile_left, self.key_tile_xoffset,
+                    self.key_tile_top, self.key_tile_yoffset) = new_key
+
+#            # get centre tile details and move to key
+##            xtile = self.key_tile_left
+#            xoffset = self.key_tile_xoffset
+#            while xoffset > 0:
+#                log(f'canon X: xoffset={xoffset}, xtile={xtile}')
+#                if xtile == 0:
+#                    break
+#                xtile -= 1
+#                xoffset -= self.tile_width
+#
+#            ytile = self.key_tile_top
+#            yoffset = self.key_tile_yoffset
+#            while yoffset > 0:
+#                log(f'canon Y: yoffset={yoffset}, ytile={ytile}')
+#                if ytile == 0:
+#                    break
+#                ytile -= 1
+#                yoffset -= self.tile_height
 
             # move to new level
             self.level = level
@@ -581,20 +693,20 @@ class PySlipQt(QLabel):
 #        self.key_tile_xoffset = 0   # view coordinates of key tile wrt view
 #        self.key_tile_yoffset = 0
 
-            # calculate the key tile data
-            while xtile > 0:
-                xtile -= self.tile_width
-                xoffset -= 1
-            log(f'X normalized to xtile={xtile}, xoffset={xoffset}')
-            while ytile > 0:
-                ytile -= self.tile_height
-                yoffset -= 1
-            log(f'Y normalized to ytile={ytile}, yoffset={yoffset}')
-
-            self.key_tile_left = xtile
-            self.key_tile_top = ytile
-            self.key_tile_xoffset = xoffset
-            self.key_tile_yoffset = yoffset
+#            # calculate the key tile data
+#            while xtile > 0:
+#                xtile -= self.tile_width
+#                xoffset -= 1
+#            log(f'X normalized to xtile={xtile}, xoffset={xoffset}')
+#            while ytile > 0:
+#                ytile -= self.tile_height
+#                yoffset -= 1
+#            log(f'Y normalized to ytile={ytile}, yoffset={yoffset}')
+#
+#            self.key_tile_left = xtile
+#            self.key_tile_top = ytile
+#            self.key_tile_xoffset = xoffset
+#            self.key_tile_yoffset = yoffset
 
             self.recalc_wrap_limits()
 
