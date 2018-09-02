@@ -99,7 +99,7 @@ class PySlipQt(QLabel):
 
         tile_src.setCallback(self.update)
 
-        # do a "resize" after this function, does recalc_wrap()
+        # do a "resize" after this function, does recalc_wrap_limits()
         QTimer.singleShot(10, self.resizeEvent)
 #        QTimer.singleShot(20, self.test)
 
@@ -265,15 +265,7 @@ class PySlipQt(QLabel):
                         self.key_tile_xoffset = 0
                     log(f'AFTER RIGHT: self.key_tile_left={self.key_tile_left}, self.key_tile_xoffset={self.key_tile_xoffset}')
                 else:
-                    # was dragged to the left, don't allow right edge to show
-
-                    # figure out the maximum 'key' tile coordinates
-                    # should do this in 'resize' handler
-                    tiles_in_view = self.view_width // self.tile_width
-                    left_margin = self.view_width - tiles_in_view*self.tile_width
-                    self.max_key_xoffset = -(self.tile_width - left_margin)
-                    self.max_key_left = self.num_tiles_x - tiles_in_view - 1
-
+                    log(f'DRAG LR: .key_tile_left={self.key_tile_left}, .key_tile_xoffset={self.key_tile_xoffset}')
                     # if dragged too far, reset key tile data
                     if self.key_tile_left > self.max_key_left:
                         self.key_tile_left = self.max_key_left
@@ -314,21 +306,11 @@ class PySlipQt(QLabel):
 
                 if delta_y < 0:
                     # was dragged to the top, don't allow bottom edge to show
-                    log(f'DRAG UP: self.key_tile_top={self.key_tile_top}, self.key_tile_yoffset={self.key_tile_yoffset}')
                     if self.key_tile_top > old_top:
                         self.key_tile_top = 0
                         self.key_tile_yoffset = 0
-                    log(f'AFTER RIGHT: self.key_tile_top={self.key_tile_top}, self.key_tile_yoffset={self.key_tile_yoffset}')
                 else:
-                    # was dragged to the bottom, don't allow top edge to show
-
-                    # figure out the maximum 'key' tile coordinates
-                    # should do this in 'resize' handler
-                    tiles_in_view = self.view_height // self.tile_height
-                    margin = self.view_height - tiles_in_view*self.tile_height
-                    self.max_key_yoffset = -(self.tile_height - margin)
-                    self.max_key_top = self.num_tiles_y - tiles_in_view - 1
-
+                    log(f'DRAG UD: .key_tile_top={self.key_tile_top}, .key_tile_yoffset={self.key_tile_yoffset}')
                     # if dragged too far, reset key tile data
                     if self.key_tile_top > self.max_key_top:
                         self.key_tile_top = self.max_key_top
@@ -377,38 +359,28 @@ class PySlipQt(QLabel):
         self.view_width = self.width()
         self.view_height = self.height()
 
-        # recalculate the max/min "key" tile coords
         log(f'resizeEvent: event={event}, width={self.view_width}, height={self.view_height}')
 
         # recalculate the "top left" tile stuff
-        self.recalc_wrap()
+        self.recalc_wrap_limits()
 
-    def recalc_wrap(self):
-        """Recalculate the "key" tile information.
+    def recalc_wrap_limits(self):
+        """Recalculate the maximum "key" tile information.
         
         Called if widget changes level or resized.
         .map_width, .map_height, .view_width and .view_height have been set.
         """
 
-        if self.wrap_x:
-            # wrapping in X direction, don't change anything as wrap will fix
-            pass
-        else:
-            # not wrapping in X direction
-            if self.map_width >= self.view_width:
-                pass
-            else:
-                self.key_tile_left = 0
-                self.key_tile_xoffset = (self.view_width - self.map_width) // 2
+        # figure out the maximum 'key' tile coordinates
+        tiles_in_view = self.view_width // self.tile_width
+        left_margin = self.view_width - tiles_in_view*self.tile_width
+        self.max_key_xoffset = -(self.tile_width - left_margin)
+        self.max_key_left = self.num_tiles_x - tiles_in_view - 1
 
-        if self.wrap_y:
-            # wrapping in Y direction, don't change anything as wrap will fix
-            pass
-        else:
-            # not wrapping in Y direction
-            if self.map_height >= self.map_height:
-                self.key_tile_top = 0
-                self.key_tile_yoffset = (self.view_height - self.map_height) // 2
+        tiles_in_view = self.view_height // self.tile_height
+        margin = self.view_height - tiles_in_view*self.tile_height
+        self.max_key_yoffset = -(self.tile_height - margin)
+        self.max_key_top = self.num_tiles_y - tiles_in_view - 1
 
     def paintEvent(self, event):
         """Draw the base map and then the layers on top."""
@@ -567,8 +539,8 @@ class PySlipQt(QLabel):
         # if tile-source changed, calculate new centre tile
         if result:
             # calculate centre tile coordinates before zoom
-            c_tile = self.view_to_tile()
-            log(f'zoom_level: c_tile={c_tile}')
+#            c_tile = self.view_to_tile()
+#            log(f'zoom_level: c_tile={c_tile}')
 
             # figure out the scale of the zoom (2 or 0.5)
             log(f'level={level}, self.level={self.level}')
@@ -624,7 +596,7 @@ class PySlipQt(QLabel):
             self.key_tile_xoffset = xoffset
             self.key_tile_yoffset = yoffset
 
-            self.recalc_wrap()
+            self.recalc_wrap_limits()
 
             self.update()       # redraw the map
 
