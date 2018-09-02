@@ -114,31 +114,6 @@ class PySlipQt(QLabel):
 
 #        self.setMouseTracking(True)
 
-    def test(self):
-        # test the view_to_tile() function
-        log(f'before test: .key_tile_left={self.key_tile_left}, .key_tile_top={self.key_tile_top}')
-        log(f'             .key_tile_xoffset={self.key_tile_xoffset}, .key_tile_yoffset={self.key_tile_yoffset}')
-        log(f'             .tile_width={self.tile_width}, .tile_height={self.tile_height}')
-        res = self.view_to_tile()
-        log(f'view_to_tile(): res={res}')
-        log(f' after test: .key_tile_left={self.key_tile_left}, .key_tile_top={self.key_tile_top}')
-        log(f'             .key_tile_xoffset={self.key_tile_xoffset}, .key_tile_yoffset={self.key_tile_yoffset}')
-        log(f'             .tile_width={self.tile_width}, .tile_height={self.tile_height}')
-
-        # test the view_to_tile() function
-        self.key_tile_left = 1
-        self.key_tile_top = 1
-        self.key_tile_xoffset = -20
-        self.key_tile_yoffset= -10
-        log(f'before test: .key_tile_left={self.key_tile_left}, .key_tile_top={self.key_tile_top}')
-        log(f'             .key_tile_xoffset={self.key_tile_xoffset}, .key_tile_yoffset={self.key_tile_yoffset}')
-        log(f'             .tile_width={self.tile_width}, .tile_height={self.tile_height}')
-        res = self.view_to_tile()
-        log(f'view_to_tile(): res={res}')
-        log(f' after test: .key_tile_left={self.key_tile_left}, .key_tile_top={self.key_tile_top}')
-        log(f'             .key_tile_xoffset={self.key_tile_xoffset}, .key_tile_yoffset={self.key_tile_yoffset}')
-        log(f'             .tile_width={self.tile_width}, .tile_height={self.tile_height}')
-
     def mousePressEvent(self, event):
         b = event.button()
         if b == Qt.NoButton:
@@ -196,7 +171,7 @@ class PySlipQt(QLabel):
             if self.start_drag_x:       # if we are already dragging
                 delta_x = self.start_drag_x - x
                 delta_y = self.start_drag_y - y
-                log(f'mouseMoveEvent: delta_x={delta_x}')
+                log(f'mouseMoveEvent: delta_x={delta_x}, delta_y={delta_y}')
                 self.normalize_view_drag(delta_x, delta_y)  # normalize the "key" tile
                 self.update()                               # force a repaint
 
@@ -210,26 +185,30 @@ class PySlipQt(QLabel):
         """
 
         while self.key_tile_xoffset > 0:
+            # 'key' tile too far right
+            self.key_tile_left -= 1
             self.key_tile_xoffset -= self.tile_width
-            self.key_tile_left += 1
         self.key_tile_left %= self.num_tiles_x
 
         while self.key_tile_xoffset <= -self.tile_width:
+            # 'key' tile too far left
+            self.key_tile_left += 1
             self.key_tile_xoffset += self.tile_width
-            self.key_tile_left -= 1
         self.key_tile_left = (self.key_tile_left + self.num_tiles_x) % self.num_tiles_x
 
     def normalize_y_offset(self):
         """Normalize the key tile Y coordinate."""
 
         while self.key_tile_yoffset > 0:
+            # 'key' tile too low
+            self.key_tile_top -= 1
             self.key_tile_yoffset -= self.tile_height
-            self.key_tile_top += 1
         self.key_tile_top %= self.num_tiles_y
 
         while self.key_tile_yoffset <= -self.tile_height:
+            # 'key' tile too high
+            self.key_tile_top += 1
             self.key_tile_yoffset += self.tile_height
-            self.key_tile_top -= 1
         self.key_tile_top = (self.key_tile_top + self.num_tiles_y) % self.num_tiles_y
 
     def normalize_view_drag(self, delta_x=None, delta_y=None):
@@ -240,12 +219,10 @@ class PySlipQt(QLabel):
         """
 
         if self.wrap_x:
-            log(f'normalize_view_drag: before, delta_x={delta_x}, .key_tile_xoffset={self.key_tile_xoffset}, .key_tile_left={self.key_tile_left}')
             # wrapping in X direction, move 'key' tile
             self.key_tile_xoffset -= delta_x
             # normalize the 'key' tile X coordinates
             self.normalize_x_offset()
-            log(f'normalize_view_drag:  after, .key_tile_xoffset={self.key_tile_xoffset}, .key_tile_left={self.key_tile_left}')
         else:
             # if view > map, don't drag, ensure centred
             if self.map_width < self.view_width:
@@ -256,23 +233,20 @@ class PySlipQt(QLabel):
                 # normalize the 'key' tile X coordinates
                 self.normalize_x_offset()
 
-        if delta_y:
-            if self.wrap_y:
-                # wrapping in Y direction, move 'key' tile
-                self.key_tile_yoffset -= delta_y
-
-                # normalize the 'key' tile coordinates
-                self.normalize_y_offset()
+        if self.wrap_y:
+            # wrapping in Y direction, move 'key' tile
+            self.key_tile_yoffset -= delta_y
+            # normalize the 'key' tile X coordinates
+            self.normalize_y_offset()
+        else:
+            # if view > map, don't drag, ensure centred
+            if self.map_height < self.view_height:
+                self.key_tile_yoffset = (self.view_height - self.map_height) // 2
             else:
-                # if view > map, don't drag, ensure centred
-                if self.map_height < self.view_height:
-                    self.key_tile_yoffset = (self.view_height - self.map_height) // 2
-                else:
-                    # map > view, allow drag
-                    self.key_tile_yoffset -= delta_y
-
-                    # normalize the 'key' tile coordinates
-                    self.normalize_y_offset()
+                # map > view, allow drag
+                self.key_tile_yoffset -= delta_y
+                # normalize the 'key' tile Y coordinates
+                self.normalize_y_offset()
 
     def keyPressEvent(self, event):
         """Capture a keyboard event."""
