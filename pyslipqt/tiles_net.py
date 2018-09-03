@@ -94,6 +94,7 @@ class TileWorker(QThread):
 
             # try to retrieve the image
             error = False
+            pixmap = self.error_image
             try:
                 tile_url = self.server + self.tilepath.format(Z=level, X=x, Y=y)
                 log(f'tile_url={tile_url}')
