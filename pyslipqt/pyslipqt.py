@@ -445,16 +445,17 @@ class PySlipQt(QLabel):
         log('paintEvent: end')
         painter.end()
 
-    def tile_frac_to_parts(self, t_frac):
+    def tile_frac_to_parts(self, t_frac, length):
         """Split a tile coordinate into integer and fractional parts.
 
         frac  a fractional tile coordinate
+        length  size of tile width or height
 
         Return (int, frac) parts of 't_frac'.
         """
 
         int_part = int(t_frac)
-        frac_part = t_frac - int_part
+        frac_part = int((t_frac - int_part) * length)
 
         return (int_part, frac_part)
 
@@ -482,31 +483,55 @@ class PySlipQt(QLabel):
         point after the zoom.
         """
 
-        # a simple doubling/halving of fractional coordinates
+        # unpack the centre tile coords
         (x_frac, y_frac) = c_tile
         log(f'zoom_tile: x_frac={x_frac}, y_frac={y_frac}')
-        (tile_left, tile_xoff) = self.tile_frac_to_parts(x_frac)
-        (tile_top, tile_yoff) = self.tile_frac_to_parts(y_frac)
+
+        # convert tile fractional coords to tile # + offset
+        (tile_left, tile_xoff) = self.tile_frac_to_parts(x_frac, self.tile_width)
+        (tile_top, tile_yoff) = self.tile_frac_to_parts(y_frac, self.tile_height)
         log(f'zoom_tile: tile_left={tile_left}, tile_xoff={tile_xoff}')
 
-        if tile_xoff < self.tile_width // 2:
-            tile_left = tile_left * 2
-            tile_xoff = tile_xoff * self.tile_width * 2
-            log(f'zoom_tile: left half double, tile_left={tile_left}, tile_xoff={tile_xoff}')
+        if scale > 1:
+            # assume scale is 2
+            # a simple doubling of fractional coordinates
+            if tile_xoff < self.tile_width // 2:
+                tile_left = tile_left * 2
+                tile_xoff = tile_xoff * 2
+                log(f'zoom_tile: left half double, tile_left={tile_left}, tile_xoff={tile_xoff}')
+            else:
+                tile_left = tile_left*2 + 1
+                tile_xoff = tile_xoff*2 - self.tile_width
+                log(f'zoom_tile: right half double, tile_left={tile_left}, tile_xoff={tile_xoff}')
+    
+            if tile_yoff < self.tile_height // 2:
+                tile_top = tile_top * 2
+                tile_yoff = tile_yoff * 2
+            else:
+                tile_top = tile_top*2 + 1
+                tile_yoff = tile_yoff*2 % self.tile_height
         else:
-            tile_left = tile_left*2 + 1
-            tile_xoff = tile_xoff*self.tile_width*2 - self.tile_width
-            log(f'zoom_tile: right half double, tile_left={tile_left}, tile_xoff={tile_xoff}')
+            # assume scale is 0.5
+            # a simple halving of fractional coordinates
+            log(f'BEFORE: tile_left={tile_left}, tile_xoff={tile_xoff}')
+            tile_left = tile_left // 2
+            if tile_left % 2 == 0:
+                # point in left half of 2x2
+                tile_xoff = tile_xoff // 2
+            else:
+                # point in right half of 2x2
+                tile_xoff = (tile_xoff + self.tile_width) // 2
 
-        if tile_yoff < self.tile_height // 2:
-            tile_top = tile_top * 2
-            tile_yoff = tile_yoff * self.tile_height * 2
-        else:
-            tile_top = tile_top*2 + 1
-            tile_yoff = tile_yoff*self.tile_height*2 % self.tile_height
-
+            tile_top = tile_top // 2
+            if tile_top % 2 == 0:
+                # point in top half of 2x2
+                tile_yoff = tile_yoff // 2
+            else:
+                # point in bottom half of 2x2
+                tile_yoff = (tile_yoff + self.tile_height) // 2
+            log(f'AFTER: tile_left={tile_left}, tile_xoff={tile_xoff}')
+    
         zx_frac = self.tile_parts_to_frac(tile_left, tile_xoff, self.tile_width)
-        log(f'zoom_tile: zx_frac={zx_frac}')
         zy_frac = self.tile_parts_to_frac(tile_top, tile_yoff, self.tile_height)
 
         log(f'zoom_tile: returning ({zx_frac}, {zy_frac})')
@@ -535,14 +560,14 @@ class PySlipQt(QLabel):
         top_coord = zy_tile - y_off/self.tile_height
 
         # get 'key' tile coordinates
-        (l_int, l_frac) = self.tile_frac_to_parts(left_coord)
+        (l_int, l_frac) = self.tile_frac_to_parts(left_coord, self.tile_width)
         key_tile_left = l_int
-        key_tile_xoffset = -l_frac * self.tile_width
+        key_tile_xoffset = -l_frac # * self.tile_width
         log(f'tile_to_key: l_int={l_int}, l_frac={l_frac}, key_tile_left={key_tile_left}, key_tile_xoffset={key_tile_xoffset}')
 
-        (r_int, r_frac) = self.tile_frac_to_parts(top_coord)
+        (r_int, r_frac) = self.tile_frac_to_parts(top_coord, self.tile_height)
         key_tile_top = r_int
-        key_tile_yoffset = -r_frac * self.tile_height
+        key_tile_yoffset = -r_frac # * self.tile_height
 
         return (key_tile_left, key_tile_xoffset, key_tile_top, key_tile_yoffset)
 
