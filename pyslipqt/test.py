@@ -10,6 +10,7 @@ import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QSpinBox
 from PyQt5.QtWidgets import QGridLayout
 from PyQt5.QtCore import Qt
+import traceback
 import pyslipqt
 
 # if we don't have log.py, don't crash
@@ -105,6 +106,20 @@ def usage(msg=None):
     print(__doc__)
     sys.exit(1)
 
+
+# our own handler for uncaught exceptions
+def excepthook(type, value, tb):
+    msg = '\n' + '=' * 80
+    msg += '\nUncaught exception:\n'
+    msg += ''.join(traceback.format_exception(type, value, tb))
+    msg += '=' * 80 + '\n'
+    log(msg)
+    print(msg)
+    sys.exit(1)
+
+
+# plug our handler into the python system
+sys.excepthook = excepthook
 
 # look at sys.argv, decide on tileset and source directory
 if len(sys.argv) == 2:
