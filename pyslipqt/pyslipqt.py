@@ -101,7 +101,6 @@ class PySlipQt(QLabel):
 
         # do a "resize" after this function, does recalc_wrap_limits()
         QTimer.singleShot(10, self.resizeEvent)
-#        QTimer.singleShot(20, self.test)
 
 #        # set background colour of widget
 #        self.setAutoFillBackground(True)
@@ -175,39 +174,6 @@ class PySlipQt(QLabel):
             self.start_drag_x = x
             self.start_drag_y = y
 
-    def normalize_x_offset(self):
-        """Normalize the key tile X coordinate.
-       
-        The key tile has moved in the X direction, normalize the movement.
-        """
-
-        while self.key_tile_xoffset > 0:
-            # 'key' tile too far right
-            self.key_tile_left -= 1
-            self.key_tile_xoffset -= self.tile_width
-        self.key_tile_left %= self.num_tiles_x
-
-        while self.key_tile_xoffset <= -self.tile_width:
-            # 'key' tile too far left
-            self.key_tile_left += 1
-            self.key_tile_xoffset += self.tile_width
-        self.key_tile_left = (self.key_tile_left + self.num_tiles_x) % self.num_tiles_x
-
-    def normalize_y_offset(self):
-        """Normalize the key tile Y coordinate."""
-
-        while self.key_tile_yoffset > 0:
-            # 'key' tile too low
-            self.key_tile_top -= 1
-            self.key_tile_yoffset -= self.tile_height
-        self.key_tile_top %= self.num_tiles_y
-
-        while self.key_tile_yoffset <= -self.tile_height:
-            # 'key' tile too high
-            self.key_tile_top += 1
-            self.key_tile_yoffset += self.tile_height
-        self.key_tile_top = (self.key_tile_top + self.num_tiles_y) % self.num_tiles_y
-
     def normalize_view_drag(self, delta_x=None, delta_y=None):
         """After drag, set "key" tile correctly.
 
@@ -218,8 +184,6 @@ class PySlipQt(QLabel):
         if self.wrap_x:
             # wrapping in X direction, move 'key' tile
             self.key_tile_xoffset -= delta_x
-            # normalize the 'key' tile X coordinates
-            #self.normalize_x_offset()
             while self.key_tile_xoffset > 0:
                 # 'key' tile too far right
                 self.key_tile_left -= 1
@@ -243,8 +207,6 @@ class PySlipQt(QLabel):
                 # map > view, allow drag, but don't go past the edge
                 self.key_tile_xoffset -= delta_x
 
-                # normalize the 'key' tile X coordinates
-                #self.normalize_x_offset()
                 while self.key_tile_xoffset > 0:
                     # 'key' tile too far right
                     self.key_tile_left -= 1
@@ -277,8 +239,6 @@ class PySlipQt(QLabel):
         if self.wrap_y:
             # wrapping in Y direction, move 'key' tile
             self.key_tile_yoffset -= delta_y
-            # normalize the 'key' tile X coordinates
-            self.normalize_y_offset()
         else:
             # if view > map, don't drag, ensure centred
             if self.map_height < self.view_height:
@@ -290,8 +250,6 @@ class PySlipQt(QLabel):
                 # map > view, allow drag, but don't go past the edge
                 self.key_tile_yoffset -= delta_y
 
-                # normalize the 'key' tile X coordinates
-                #self.normalize_x_offset()
                 while self.key_tile_yoffset > 0:
                     # 'key' tile too far right
                     self.key_tile_top -= 1
@@ -441,6 +399,8 @@ class PySlipQt(QLabel):
 
                 y_pix += self.tile_height
             x_pix += self.tile_width
+
+        # now draw the layers of each type
 
         log('paintEvent: end')
         painter.end()
