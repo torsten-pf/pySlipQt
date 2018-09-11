@@ -837,7 +837,7 @@ class AppFrame(wx.Frame):
 
             # make sure highlight layer is BELOW selected layer
             self.pyslipqt.PlaceLayerBelowLayer(self.sel_point_layer,
-                                             self.point_layer)
+                                               self.point_layer)
         # else: we ignore an empty selection
 
         return True
@@ -850,11 +850,11 @@ class AppFrame(wx.Frame):
         if event.state:
             self.point_view_layer = \
                 self.pyslipqt.AddPointLayer(PointViewData, map_rel=False,
-                                          placement=PointViewDataPlacement,
-                                          colour=PointViewDataColour, radius=1,
-                                          delta=DefaultPointViewDelta,
-                                          visible=True,
-                                          name='<point_view_layer>')
+                                            placement=PointViewDataPlacement,
+                                            colour=PointViewDataColour, radius=1,
+                                            delta=DefaultPointViewDelta,
+                                            visible=True,
+                                            name='<point_view_layer>')
         else:
             self.pyslipqt.DeleteLayer(self.point_view_layer)
             self.point_view_layer = None
@@ -922,10 +922,10 @@ class AppFrame(wx.Frame):
             # assume a box selection
             self.sel_point_view_layer = \
                 self.pyslipqt.AddPointLayer(highlight, map_rel=False,
-                                          placement='se',
-                                          colour='#0000ff',
-                                          radius=3, visible=True,
-                                          name='<sel_pt_view_layer>')
+                                            placement='se',
+                                            colour='#0000ff',
+                                            radius=3, visible=True,
+                                            name='<sel_pt_view_layer>')
         else:
             self.sel_point_view = None
 
@@ -1153,10 +1153,10 @@ class AppFrame(wx.Frame):
                 point = eval(point_place_coords[img_placement])
                 self.sel_imagepoint_view_layer = \
                     self.pyslipqt.AddPointLayer((point,), map_rel=False,
-                                              colour='green',
-                                              radius=5, visible=True,
-                                              placement=img_placement,
-                                              name='<sel_image_view_point>')
+                                                colour='green',
+                                                radius=5, visible=True,
+                                                placement=img_placement,
+                                                name='<sel_image_view_point>')
 
             # add polygon outline around image
             p_dict = {'placement': img_placement, 'width': 3, 'colour': 'green', 'closed': True}
@@ -1175,8 +1175,8 @@ class AppFrame(wx.Frame):
             pdata = eval(poly_place_coords[img_placement])
             self.sel_image_view_layer = \
                 self.pyslipqt.AddPolygonLayer((pdata,), map_rel=False,
-                                            name='<sel_image_view_outline>',
-                                           )
+                                              name='<sel_image_view_outline>',
+                                             )
 
         return True
 
@@ -1188,10 +1188,10 @@ class AppFrame(wx.Frame):
         if event.state:
             self.text_layer = \
                 self.pyslipqt.AddTextLayer(TextData, map_rel=True,
-                                         name='<text_layer>', visible=True,
-                                         delta=DefaultTextMapDelta,
-                                         show_levels=MRTextShowLevels,
-                                         placement='ne')
+                                           name='<text_layer>', visible=True,
+                                           delta=DefaultTextMapDelta,
+                                           show_levels=MRTextShowLevels,
+                                           placement='ne')
         else:
             self.pyslipqt.DeleteLayer(self.text_layer)
             self.text_layer = None
@@ -1262,12 +1262,12 @@ class AppFrame(wx.Frame):
 
             self.sel_text_layer = \
                 self.pyslipqt.AddPointLayer(points, map_rel=True,
-                                          colour='#0000ff',
-                                          radius=5, visible=True,
-                                          show_levels=MRTextShowLevels,
-                                          name='<sel_text_layer>')
+                                            colour='#0000ff',
+                                            radius=5, visible=True,
+                                            show_levels=MRTextShowLevels,
+                                            name='<sel_text_layer>')
             self.pyslipqt.PlaceLayerBelowLayer(self.sel_text_layer,
-                                             self.text_layer)
+                                               self.text_layer)
 
         return True
 
@@ -1279,13 +1279,13 @@ class AppFrame(wx.Frame):
         if event.state:
             self.text_view_layer = \
                 self.pyslipqt.AddTextLayer(TextViewData, map_rel=False,
-                                         name='<text_view_layer>',
-                                         delta=DefaultTextViewDelta,
-                                         placement=TextViewDataPlace,
-                                         visible=True,
-                                         fontsize=24, textcolour='#0000ff',
-                                         offset_x=TextViewDataOffX,
-                                         offset_y=TextViewDataOffY)
+                                           name='<text_view_layer>',
+                                           delta=DefaultTextViewDelta,
+                                           placement=TextViewDataPlace,
+                                           visible=True,
+                                           fontsize=24, textcolour='#0000ff',
+                                           offset_x=TextViewDataOffX,
+                                           offset_y=TextViewDataOffY)
         else:
             self.pyslipqt.DeleteLayer(self.text_view_layer)
             self.text_view_layer = None
@@ -1347,12 +1347,12 @@ class AppFrame(wx.Frame):
 
             self.sel_text_view_layer = \
                 self.pyslipqt.AddPointLayer(points, map_rel=False,
-                                          colour='black',
-                                          radius=5, visible=True,
-                                          show_levels=MRTextShowLevels,
-                                          name='<sel_text_view_layer>')
+                                            colour='black',
+                                            radius=5, visible=True,
+                                            show_levels=MRTextShowLevels,
+                                            name='<sel_text_view_layer>')
             self.pyslipqt.PlaceLayerBelowLayer(self.sel_text_view_layer,
-                                             self.text_view_layer)
+                                               self.text_view_layer)
 
         return True
 
@@ -1364,10 +1364,10 @@ class AppFrame(wx.Frame):
         if event.state:
             self.poly_layer = \
                 self.pyslipqt.AddPolygonLayer(PolyData, map_rel=True,
-                                            visible=True,
-                                            delta=DefaultPolygonMapDelta,
-                                            show_levels=MRPolyShowLevels,
-                                            name='<poly_layer>')
+                                              visible=True,
+                                              delta=DefaultPolygonMapDelta,
+                                              show_levels=MRPolyShowLevels,
+                                              name='<poly_layer>')
         else:
             self.pyslipqt.DeleteLayer(self.poly_layer)
             self.poly_layer = None
@@ -1439,10 +1439,10 @@ class AppFrame(wx.Frame):
 
             self.sel_poly_layer = \
                 self.pyslipqt.AddPointLayer(points, map_rel=True,
-                                          colour='#ff00ff',
-                                          radius=5, visible=True,
-                                          show_levels=[3,4],
-                                          name='<sel_poly>')
+                                            colour='#ff00ff',
+                                            radius=5, visible=True,
+                                            show_levels=[3,4],
+                                            name='<sel_poly>')
 
         return True
 
@@ -1454,10 +1454,10 @@ class AppFrame(wx.Frame):
         if event.state:
             self.poly_view_layer = \
                 self.pyslipqt.AddPolygonLayer(PolyViewData, map_rel=False,
-                                            delta=DefaultPolygonViewDelta,
-                                            name='<poly_view_layer>',
-                                            placement='cn', visible=True,
-                                            fontsize=24, colour='#0000ff')
+                                              delta=DefaultPolygonViewDelta,
+                                              name='<poly_view_layer>',
+                                              placement='cn', visible=True,
+                                              fontsize=24, colour='#0000ff')
         else:
             self.pyslipqt.DeleteLayer(self.poly_view_layer)
             self.poly_view_layer = None
@@ -1525,10 +1525,10 @@ class AppFrame(wx.Frame):
 
             self.sel_poly_view_layer = \
                 self.pyslipqt.AddPointLayer(points, map_rel=False,
-                                          colour='#ff00ff',
-                                          radius=5, visible=True,
-                                          show_levels=[3,4],
-                                          name='<sel_view_poly>')
+                                            colour='#ff00ff',
+                                            radius=5, visible=True,
+                                            show_levels=[3,4],
+                                            name='<sel_view_poly>')
 
         return True
 
@@ -1540,10 +1540,10 @@ class AppFrame(wx.Frame):
         if event.state:
             self.polyline_layer = \
                 self.pyslipqt.AddPolylineLayer(PolylineData, map_rel=True,
-                                             visible=True,
-                                             delta=DefaultPolylineMapDelta,
-                                             show_levels=MRPolyShowLevels,
-                                             name='<polyline_layer>')
+                                               visible=True,
+                                               delta=DefaultPolylineMapDelta,
+                                               show_levels=MRPolyShowLevels,
+                                               name='<polyline_layer>')
         else:
             self.pyslipqt.DeleteLayer(self.polyline_layer)
             self.polyline_layer = None
@@ -1615,10 +1615,10 @@ class AppFrame(wx.Frame):
             if relsel:
                 self.sel_polyline_layer2 = \
                     self.pyslipqt.AddPointLayer(relsel, map_rel=True,
-                                              colour='#40ff40',
-                                              radius=5, visible=True,
-                                              show_levels=[3,4],
-                                              name='<sel_polyline2>')
+                                                colour='#40ff40',
+                                                radius=5, visible=True,
+                                                show_levels=[3,4],
+                                                name='<sel_polyline2>')
 
             # get selected polygon points into form for point display layer
             points = []
@@ -1636,10 +1636,10 @@ class AppFrame(wx.Frame):
 
             self.sel_polyline_layer = \
                 self.pyslipqt.AddPointLayer(points, map_rel=True,
-                                          colour='#ff00ff',
-                                          radius=3, visible=True,
-                                          show_levels=[3,4],
-                                          name='<sel_polyline>')
+                                            colour='#ff00ff',
+                                            radius=3, visible=True,
+                                            show_levels=[3,4],
+                                            name='<sel_polyline>')
         return True
 
 ##### view-relative polyline layer
@@ -1650,10 +1650,10 @@ class AppFrame(wx.Frame):
         if event.state:
             self.polyline_view_layer = \
                 self.pyslipqt.AddPolylineLayer(PolylineViewData, map_rel=False,
-                                             delta=DefaultPolylineViewDelta,
-                                             name='<polyline_view_layer>',
-                                             placement='cn', visible=True,
-                                             fontsize=24, colour='#0000ff')
+                                               delta=DefaultPolylineViewDelta,
+                                               name='<polyline_view_layer>',
+                                               placement='cn', visible=True,
+                                               fontsize=24, colour='#0000ff')
         else:
             self.pyslipqt.DeleteLayer(self.polyline_view_layer)
             self.polyline_view_layer = None
@@ -1726,13 +1726,13 @@ class AppFrame(wx.Frame):
 
                 self.sel_polyline_view_layer2 = \
                     self.pyslipqt.AddPointLayer(relsel, map_rel=False,
-                                              placement=place,
-                                              offset_x=offset_x,
-                                              offset_y=offset_y,
-                                              colour='#4040ff',
-                                              radius=5, visible=True,
-                                              show_levels=[3,4],
-                                              name='<sel_view_polyline2>')
+                                                placement=place,
+                                                offset_x=offset_x,
+                                                offset_y=offset_y,
+                                                colour='#4040ff',
+                                                radius=5, visible=True,
+                                                show_levels=[3,4],
+                                                name='<sel_view_polyline2>')
 
             # get selected polyline points into form for point display layer
             points = []
@@ -1750,10 +1750,10 @@ class AppFrame(wx.Frame):
 
             self.sel_polyline_view_layer = \
                 self.pyslipqt.AddPointLayer(points, map_rel=False,
-                                          colour='#ff00ff',
-                                          radius=3, visible=True,
-                                          show_levels=[3,4],
-                                          name='<sel_view_polyline>')
+                                            colour='#ff00ff',
+                                            radius=3, visible=True,
+                                            show_levels=[3,4],
+                                            name='<sel_view_polyline>')
 
         return True
 
@@ -1792,6 +1792,7 @@ class AppFrame(wx.Frame):
         PointDataColour = '#ff000080'	# semi-transparent
 
         # create PointViewData - a point-rendition of 'PYSLIP'
+# TODO: add the suffix 'Qt'
         PointViewData = [(-66,-14),(-66,-13),(-66,-12),(-66,-11),(-66,-10),
                          (-66,-9),(-66,-8),(-66,-7),(-66,-6),(-66,-5),(-66,-4),
                          (-66,-3),(-65,-7),(-64,-7),(-63,-7),(-62,-7),(-61,-8),
@@ -1894,6 +1895,8 @@ class AppFrame(wx.Frame):
                    ]
         if sys.platform != 'win32':
             TextData.extend([
+                    (110.5, 24.783333, '阳朔县 (Yangshuo)', {'placement': 'sw'}),
+                    (117.183333, 39.133333, '天津市 (Tianjin)', {'placement': 'sw'}),
                     (106.36, +10.36, 'Mỹ Tho', {'placement': 'ne'}),
                     (105.85, +21.033333, 'Hà Nội', capital),
                     (106.681944, 10.769444, 'Thành phố Hồ Chí Minh',
@@ -2084,7 +2087,6 @@ if __name__ == '__main__':
         sys.exit(1)
 
     debug = 10              # no logging
-    inspector = False
 
     for (opt, param) in opts:
         if opt in ['-d', '--debug']:
@@ -2092,8 +2094,6 @@ if __name__ == '__main__':
         elif opt in ['-h', '--help']:
             usage()
             sys.exit(0)
-        elif opt == '-x':
-            inspector = True
 
     # convert any symbolic debug level to a number
     try:
@@ -2111,10 +2111,6 @@ if __name__ == '__main__':
     app = wx.App()
     app_frame = AppFrame()
     app_frame.Show()
-
-    if inspector:
-        import wx.lib.inspection
-        wx.lib.inspection.InspectionTool().Show()
 
     app.MainLoop()
 
