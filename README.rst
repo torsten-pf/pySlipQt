@@ -30,7 +30,7 @@ they are just oversights and will disappear at some stage.
 Screenshots
 ===========
 
-A few screenshots of pyslip_demo.py, the first showing OpenStreetMap tiles:
+A few screenshots of pyslipqt_demo.py, the first showing OpenStreetMap tiles:
 
 .. image:: pyslipqt/examples/graphics/pyslip_demo_osm.png
 
