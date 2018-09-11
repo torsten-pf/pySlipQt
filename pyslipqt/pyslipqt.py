@@ -36,6 +36,51 @@ except ImportError as e:
 __version__ = '0.1.0'
 
 
+######
+# A layer class - encapsulates all layer data.
+######
+
+class _Layer(object):
+    """A Layer object."""
+
+    DefaultDelta = 50      # default selection delta
+
+    def __init__(self, id=0, painter=None, data=None, map_rel=True,
+                 visible=False, show_levels=None, selectable=False,
+                 name="<no name given>", type=None):
+        """Initialise the Layer object.
+
+        id           unique layer ID
+        painter      render function
+        data         the layer data
+        map_rel      True if layer is map-relative, else layer-relative
+        visible      layer visibility
+        show_levels  list of levels at which to auto-show the level
+        selectable   True if select operates on this layer, else False
+        name         the name of the layer (for debug)
+        type         a layer 'type' flag
+        """
+
+        self.painter = painter          # routine to draw layer
+        self.data = data                # data that defines the layer
+        self.map_rel = map_rel          # True if layer is map relative
+        self.visible = visible          # True if layer visible
+        self.show_levels = show_levels  # None or list of levels to auto-show
+        self.selectable = selectable    # True if we can select on this layer
+        self.delta = self.DefaultDelta  # minimum distance for selection
+        self.name = name                # name of this layer
+        self.type = type                # type of layer
+        self.id = id                    # ID of this layer
+
+    def __str__(self):
+        return ('<pyslip Layer: id=%d, name=%s, map_rel=%s, visible=%s'
+                % (self.id, self.name, str(self.map_rel), str(self.visible)))
+
+
+######
+# The pySlipQt widget.
+######
+
 class PySlipQt(QLabel):
 
     # widget default background colour
@@ -93,6 +138,10 @@ class PySlipQt(QLabel):
 
         self.start_drag_x = None
         self.start_drag_y = None
+
+        # layer state cariables
+        self.layer_mapping = {}                 # maps layer ID to layer data
+        self.layer_z_order = []                 # layer Z order, contains layer IDs
 
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.setMinimumSize(self.tile_width, self.tile_height)
@@ -400,7 +449,12 @@ class PySlipQt(QLabel):
                 y_pix += self.tile_height
             x_pix += self.tile_width
 
-        # now draw the layers of each type
+        # now draw the layers
+        for id in self.layer_z_order:
+            l = self.layer_mapping[id]
+            if l.visible and self.level in l.show_levels:
+                l.painter(dc, l.data, map_rel=l.map_rel)
+
 
         log('paintEvent: end')
         painter.end()
@@ -587,6 +641,44 @@ class PySlipQt(QLabel):
 
         return (tile_x, tile_y)
 
+    def add_layer(self, painter, data, map_rel, visible, show_levels,
+                  selectable, name, type):
+        """Add a generic layer to the system.
+
+        painter      the function used to paint the layer
+        data         actual layer data (depends on layer type)
+        map_rel      True if points are map relative, else view relative
+        visible      True if layer is to be immediately shown, else False
+        show_levels  list of levels at which to auto-show the layer
+        selectable   True if select operates on this layer
+        name         name for this layer
+        type         flag for layer 'type'
+
+        Returns unique ID of the new layer.
+        """
+
+        # get layer ID
+        id = self.next_layer_id
+        self.next_layer_id += 1
+
+        # prepare the show_level value
+        if show_levels is None:
+            show_levels = range(self.tiles_min_level, self.tiles_max_level+1)[:]
+
+        # create layer, add unique ID to Z order list
+        l = _Layer(id=id, painter=painter, data=data, map_rel=map_rel,
+                   visible=visible, show_levels=show_levels,
+                   selectable=selectable, name=name, type=type)
+
+        self.layer_mapping[id] = l
+        self.layer_z_order.append(id)
+
+        # force display of new layer if it's visible
+        if visible:
+            self.Update()
+
+        return id
+
 ################################################################################
 # Below are the "external" API methods.
 ################################################################################
@@ -730,3 +822,97 @@ class PySlipQt(QLabel):
         """
 
         pass
+
+    ######
+    # "add a layer" routines
+    ######
+
+    def AddPointLayer(self, points, map_rel=True, visible=True,
+                      show_levels=None, selectable=False,
+                      name='<points_layer>', **kwargs):
+        """Add a layer of points, map or view relative.
+
+        points       iterable of point data:
+                         (x, y[, attributes])
+                     where x & y are either lon&lat (map) or x&y (view) coords
+                     and attributes is an optional dictionary of attributes for
+                     _each point_ with keys like:
+                         'placement'  a placement string
+                         'radius'     radius of point in pixels
+                         'colour'     colour of point
+                         'offset_x'   X offset
+                         'offset_y'   Y offset
+                         'data'       point user data object
+        map_rel      points are map relative if True, else view relative
+        visible      True if the layer is visible
+        show_levels  list of levels at which layer is auto-shown (or None==all)
+        selectable   True if select operates on this layer
+        name         the 'name' of the layer - mainly for debug
+        kwargs       a layer-specific attributes dictionary, has keys:
+                         'placement'  a placement string
+                         'radius'     radius of point in pixels
+                         'colour'     colour of point
+                         'offset_x'   X offset
+                         'offset_y'   Y offset
+                         'data'       point user data object
+        """
+
+        # merge global and layer defaults
+        if map_rel:
+            default_placement = kwargs.get('placement', self.DefaultPointPlacement)
+            default_radius = kwargs.get('radius', self.DefaultPointRadius)
+            default_colour = self.get_i18n_kw(kwargs, ('colour', 'color'),
+                                              self.DefaultPointColour)
+            default_offset_x = kwargs.get('offset_x', self.DefaultPointOffsetX)
+            default_offset_y = kwargs.get('offset_y', self.DefaultPointOffsetY)
+            default_data = kwargs.get('data', self.DefaultPointData)
+        else:
+            default_placement = kwargs.get('placement', self.DefaultPointViewPlacement)
+            default_radius = kwargs.get('radius', self.DefaultPointViewRadius)
+            default_colour = self.get_i18n_kw(kwargs, ('colour', 'color'),
+                                              self.DefaultPointViewColour)
+            default_offset_x = kwargs.get('offset_x', self.DefaultPointViewOffsetX)
+            default_offset_y = kwargs.get('offset_y', self.DefaultPointViewOffsetY)
+            default_data = kwargs.get('data', self.DefaultPointData)
+
+        # create draw data iterable for draw method
+        draw_data = []              # list to hold draw data
+
+        for pt in points:
+            if len(pt) == 3:
+                (x, y, attributes) = pt
+            elif len(pt) == 2:
+                (x, y) = pt
+                attributes = {}
+            else:
+                msg = ('Point data must be iterable of tuples: '
+                       '(x, y[, dict])\n'
+                       'Got: %s' % str(pt))
+                raise Exception(msg)
+
+            # plug in any required polygon values (override globals+layer)
+            placement = attributes.get('placement', default_placement)
+            radius = attributes.get('radius', default_radius)
+            colour = self.get_i18n_kw(attributes, ('colour', 'color'),
+                                      default_colour)
+            offset_x = attributes.get('offset_x', default_offset_x)
+            offset_y = attributes.get('offset_y', default_offset_y)
+            udata = attributes.get('data', default_data)
+
+            # check values that can be wrong
+            placement = placement.lower()
+            if placement not in self.valid_placements:
+                msg = ("Point placement value is invalid, got '%s'"
+                       % str(placement))
+                raise Exception(msg)
+
+            # append another point to draw data list
+            draw_data.append((float(x), float(y), placement,
+                              radius, colour, offset_x, offset_y, udata))
+
+        return self.add_layer(self.DrawPointLayer, draw_data, map_rel,
+                              visible=visible, show_levels=show_levels,
+                              selectable=selectable, name=name,
+                              type=self.TypePoint)
+
+
