@@ -36,6 +36,7 @@ except ImportError:
 #    tkinter_error(msg)
 
 #from PyQt5.QtWidgets import (QLabel, QLineEdit)
+from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QLabel,
                              QSpinBox, QVBoxLayout, QVBoxLayout, QAction,
                              QHBoxLayout, QVBoxLayout)
@@ -54,6 +55,9 @@ log = log.Log("pyslipqt.log")
 # demo name/version
 DemoName = 'pySlipQt %s - Demonstration' % pyslipqt.__version__
 DemoVersion = '1.0'
+
+DemoWidth = 800
+DemoHeight = 600
 
 # tiles info
 MinTileLevel = 0
@@ -179,18 +183,19 @@ class PySlipQtDemo(QMainWindow):
         self.init()
 
         # finally, set up application window position
-        self.Centre()
+#        self.Centre()
 
         # create select event dispatch directory
         self.demo_select_dispatch = {}
 
         # set the size of the demo window, etc
-        self.setWindowTitle(DemoName)
-        self.setGeometry(300, 300, TestWidth, TestHeight)
+        self.setGeometry(300, 300, DemoWidth, DemoHeight)
+        self.setWindowTitle('%s %s' % (DemoName, DemoVersion))
+        self.show()
 
-        self.panel = wx.Panel(self, wx.ID_ANY)
-        self.panel.SetBackgroundColour(wx.WHITE)
-        self.panel.ClearBackground()
+#        self.panel = wx.Panel(self, wx.ID_ANY)
+#        self.panel.SetBackgroundColour(wx.WHITE)
+#        self.panel.ClearBackground()
 
 #        # create tileset menuitems
 #        menuBar = wx.MenuBar()
@@ -218,14 +223,14 @@ class PySlipQtDemo(QMainWindow):
 #                            % (DefaultTileset, str(TileSources)))
 
         # finally, bind events to handlers
-        self.pyslipqt.Bind(pyslipqt.EVT_PYSLIP_SELECT, self.handle_select_event)
-        self.pyslipqt.Bind(pyslipqt.EVT_PYSLIP_BOXSELECT, self.handle_select_event)
-        self.pyslipqt.Bind(pyslipqt.EVT_PYSLIP_POSITION, self.handle_position_event)
-        self.pyslipqt.Bind(pyslipqt.EVT_PYSLIP_LEVEL, self.handle_level_change)
+#        self.pyslipqt.Bind(pyslipqt.EVT_PYSLIP_SELECT, self.handle_select_event)
+#        self.pyslipqt.Bind(pyslipqt.EVT_PYSLIP_BOXSELECT, self.handle_select_event)
+#        self.pyslipqt.Bind(pyslipqt.EVT_PYSLIP_POSITION, self.handle_position_event)
+#        self.pyslipqt.Bind(pyslipqt.EVT_PYSLIP_LEVEL, self.handle_level_change)
 
-        # select the required tileset
-        item_id = self.name2guiid[self.default_tileset_name]
-        tile_menu.Check(item_id, True)
+#        # select the required tileset
+#        item_id = self.name2guiid[self.default_tileset_name]
+#        tile_menu.Check(item_id, True)
 
     def onTilesetSelect(self, event):
         """User selected a tileset from the menu.
@@ -1859,16 +1864,18 @@ class PySlipQtDemo(QMainWindow):
         self.sel_polyline = None
 
         # get width and height of the compass rose image
-        cr_img = wx.Image(CompassRoseGraphic, wx.BITMAP_TYPE_ANY)
-        cr_bmap = cr_img.ConvertToBitmap()
-        (CR_Width, CR_Height) = cr_bmap.GetSize()
+        cr_img = QPixmap(CompassRoseGraphic)
+        size = cr_img.size()
+        CR_Height = size.height()
+        CR_Width = size.width()
+        print(f'CR_Height={CR_Height}, CR_Width={CR_Width}')
 
         # force pyslipqt initialisation
-        self.pyslipqt.OnSize()
+        self.pyslipqt.resizeEvent()
 
         # set initial view position
-        self.map_level.SetLabel('%d' % InitViewLevel)
-        wx.CallAfter(self.final_setup, InitViewLevel, InitViewPosition)
+        self.show_level.set_text('%d' % InitViewLevel)
+#        wx.CallAfter(self.final_setup, InitViewLevel, InitViewPosition)
 
     def final_setup(self, level, position):
         """Perform final setup.
