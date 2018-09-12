@@ -22,6 +22,7 @@ where <options> is zero or more of:
 
 import os
 import copy
+#from tkinter_error import tkinter_error
 try:
     import pyslipqt
 except ImportError:
@@ -31,11 +32,20 @@ try:
     import PyQt5
 except ImportError:
     msg = 'Sorry, you must install PyQt5'
-    tkinter_error(msg)
+    print(msg)
+#    tkinter_error(msg)
 
-from PyQt5.QtWidgets import (QLabel, QLineEdit)
+#from PyQt5.QtWidgets import (QLabel, QLineEdit)
+from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QLabel,
+                             QSpinBox, QVBoxLayout, QVBoxLayout, QAction,
+                             QHBoxLayout, QVBoxLayout)
+
 import log
 import gmt_local_tiles as tiles
+from display_text import DisplayText
+from layer_control import LayerControl
+
+log = log.Log("pyslipqt.log")
 
 ######
 # Various demo constants
@@ -142,197 +152,28 @@ PackBorder = 0
 
 
 ###############################################################################
-# Override the wx.TextCtrl class to add read-only style and background colour
-###############################################################################
-
-# background colour for the 'read-only' text field
-ControlReadonlyColour = '#ffffcc'
-
-class ROTextCtrl(QLineEdit):
-    """Override the QLineEdit widget to get read-only text control which
-    has a distinctive background colour."""
-
-    def __init__(self, parent, value, tooltip='', *args, **kwargs):
-        wx.TextCtrl.__init__(self, parent, wx.ID_ANY, value=value,
-                             style=wx.TE_READONLY, *args, **kwargs)
-        self.setReadOnly(True)
-        palette = self.palette()
-#        palette.setColor(QPalette.Active, QPalette.Text, QColor(255, 0, 0))
-        palette.setColor(QPalette.Active, QPalette.Base, QColor(50, 50, 50))
-        self.setPalette(palette)
-        self.setToolTip(tooltip)
-
-###############################################################################
-# Override the wx.StaticBox class to show our style
-###############################################################################
-
-class AppStaticBox(wx.StaticBox):
-
-    def __init__(self, parent, label, *args, **kwargs):
-#        if label:
-#            label = '  ' + label + '  '
-        if 'style' not in kwargs:
-            kwargs['style'] = wx.NO_BORDER
-        wx.StaticBox.__init__(self, parent, wx.ID_ANY, label, *args, **kwargs)
-
-###############################################################################
-# Class for a LayerControl widget.
-#
-# This is used to control each type of layer, whether map- or view-relative.
-###############################################################################
-
-myEVT_ONOFF = wx.NewEventType()
-myEVT_SHOWONOFF = wx.NewEventType()
-myEVT_SELECTONOFF = wx.NewEventType()
-
-EVT_ONOFF = wx.PyEventBinder(myEVT_ONOFF, 1)
-EVT_SHOWONOFF = wx.PyEventBinder(myEVT_SHOWONOFF, 1)
-EVT_SELECTONOFF = wx.PyEventBinder(myEVT_SELECTONOFF, 1)
-
-class LayerControlEvent(wx.PyCommandEvent):
-    """Event sent when a LayerControl is changed."""
-
-    def __init__(self, eventType, id):
-        wx.PyCommandEvent.__init__(self, eventType, id)
-
-class LayerControl(wx.Panel):
-
-    def __init__(self, parent, title, selectable=False, editable=False,
-                 **kwargs):
-        """Initialise a LayerControl instance.
-
-        parent      reference to parent object
-        title       text to ahow in static box outline
-        selectable  True if 'selectable' checkbox is to be displayed
-        editable    True if layer can be edited
-        **kwargs    keyword args for Panel
-        """
-
-        # create and initialise the base panel
-        wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY, **kwargs)
-        self.SetBackgroundColour(wx.WHITE)
-
-        self.selectable = selectable
-        self.editable = editable
-
-        box = AppStaticBox(self, title)
-        sbs = wx.StaticBoxSizer(box, orient=wx.VERTICAL)
-        gbs = wx.GridBagSizer(vgap=0, hgap=0)
-
-        self.cbx_onoff = wx.CheckBox(self, wx.ID_ANY, label='Add layer')
-        gbs.Add(self.cbx_onoff, (0,0), span=(1,4), border=PackBorder)
-
-        self.cbx_show = wx.CheckBox(self, wx.ID_ANY, label='Show')
-        gbs.Add(self.cbx_show, (1,1), border=PackBorder)
-        self.cbx_show.Disable()
-
-        if selectable:
-            self.cbx_select = wx.CheckBox(self, wx.ID_ANY, label='Select')
-            gbs.Add(self.cbx_select, (1,2), border=PackBorder)
-            self.cbx_select.Disable()
-
-        if editable:
-            self.cbx_edit = wx.CheckBox(self, wx.ID_ANY, label='Edit')
-            gbs.Add(self.cbx_edit, (1,3), border=PackBorder)
-            self.cbx_edit.Disable()
-
-        sbs.Add(gbs)
-        self.SetSizer(sbs)
-        sbs.Fit(self)
-
-        # tie handlers to change events
-        self.cbx_onoff.Bind(wx.EVT_CHECKBOX, self.onChangeOnOff)
-        self.cbx_show.Bind(wx.EVT_CHECKBOX, self.onChangeShowOnOff)
-        if selectable:
-            self.cbx_select.Bind(wx.EVT_CHECKBOX, self.onChangeSelectOnOff)
-#        if editable:
-#            self.cbx_edit.Bind(wx.EVT_CHECKBOX, self.onChangeEditOnOff)
-
-    def onChangeOnOff(self, event):
-        """Main checkbox changed."""
-
-        event = LayerControlEvent(myEVT_ONOFF, self.GetId())
-        event.state = self.cbx_onoff.IsChecked()
-        self.GetEventHandler().ProcessEvent(event)
-
-        if self.cbx_onoff.IsChecked():
-            self.cbx_show.Enable()
-            self.cbx_show.SetValue(True)
-            if self.selectable:
-                self.cbx_select.Enable()
-                self.cbx_select.SetValue(False)
-            if self.editable:
-                self.cbx_edit.Enable()
-                self.cbx_edit.SetValue(False)
-        else:
-            self.cbx_show.Disable()
-            if self.selectable:
-                self.cbx_select.Disable()
-            if self.editable:
-                self.cbx_edit.Disable()
-
-    def onChangeShowOnOff(self, event):
-        """Show checkbox changed."""
-
-        event = LayerControlEvent(myEVT_SHOWONOFF, self.GetId())
-        event.state = self.cbx_show.IsChecked()
-        self.GetEventHandler().ProcessEvent(event)
-
-    def onChangeSelectOnOff(self, event):
-        """Select checkbox changed."""
-
-        event = LayerControlEvent(myEVT_SELECTONOFF, self.GetId())
-        if self.selectable:
-            event.state = self.cbx_select.IsChecked()
-        else:
-            event_state = False
-        self.GetEventHandler().ProcessEvent(event)
-
-###############################################################################
 # The main application frame
 ###############################################################################
 
-class AppFrame(wx.Frame):
+#class PySlipQtDemo(QWidget):
+class PySlipQtDemo(QMainWindow):
     def __init__(self):
-        wx.Frame.__init__(self, None, size=DefaultAppSize,
-                          title='%s %s' % (DemoName, DemoVersion))
-        self.SetMinSize(DefaultAppSize)
-        self.panel = wx.Panel(self, wx.ID_ANY)
-        self.panel.SetBackgroundColour(wx.WHITE)
-        self.panel.ClearBackground()
+        super().__init__()
 
-        # create tileset menuitems
-        menuBar = wx.MenuBar()
-        tile_menu = wx.Menu()
+        #exitAct = QAction(QIcon('exit.png'), '&Exit', self)
+        exitAct = QAction('&Exit', self)
+        exitAct.setShortcut('Ctrl+Q')
+        exitAct.setStatusTip('Exit application')
+#        exitAct.triggered.connect(qApp.quit)
 
-        # initialise tileset handling
-        self.tile_source = None
-        # a dict of "gui_id: (name, module_name, object)" tuples
-        self.id2tiledata = {}
-        # a dict of "name: gui_id"
-        self.name2guiid = {}
-
-        self.default_tileset_name = None
-        for (name, module_name) in TileSources:
-            new_id = wx.NewId()
-            tile_menu.Append(new_id, name, name, wx.ITEM_RADIO)
-            self.Bind(wx.EVT_MENU, self.onTilesetSelect)
-            self.id2tiledata[new_id] = (name, module_name, None)
-            self.name2guiid[name] = new_id
-            if name == DefaultTileset:
-                self.default_tileset_name = name
-
-        if self.default_tileset_name is None:
-            raise Exception('Bad DefaultTileset (%s) or TileSources (%s)'
-                            % (DefaultTileset, str(TileSources)))
-
-        menuBar.Append(tile_menu, "&Tileset")
-        self.SetMenuBar(menuBar)
+        menubar = self.menuBar()
+        fileMenu = menubar.addMenu('&File')
+        fileMenu.addAction(exitAct)
 
         self.tile_source = tiles.Tiles()
 
         # build the GUI
-        self.make_gui(self.panel)
+        self.make_gui(self)
 
         # do initialisation stuff - all the application stuff
         self.init()
@@ -342,6 +183,39 @@ class AppFrame(wx.Frame):
 
         # create select event dispatch directory
         self.demo_select_dispatch = {}
+
+        # set the size of the demo window, etc
+        self.setWindowTitle(DemoName)
+        self.setGeometry(300, 300, TestWidth, TestHeight)
+
+        self.panel = wx.Panel(self, wx.ID_ANY)
+        self.panel.SetBackgroundColour(wx.WHITE)
+        self.panel.ClearBackground()
+
+#        # create tileset menuitems
+#        menuBar = wx.MenuBar()
+#        tile_menu = wx.Menu()
+#
+#        # initialise tileset handling
+#        self.tile_source = None
+#        # a dict of "gui_id: (name, module_name, object)" tuples
+#        self.id2tiledata = {}
+#        # a dict of "name: gui_id"
+#        self.name2guiid = {}
+#
+#        self.default_tileset_name = None
+#        for (name, module_name) in TileSources:
+#            new_id = wx.NewId()
+#            tile_menu.Append(new_id, name, name, wx.ITEM_RADIO)
+#            self.Bind(wx.EVT_MENU, self.onTilesetSelect)
+#            self.id2tiledata[new_id] = (name, module_name, None)
+#            self.name2guiid[name] = new_id
+#            if name == DefaultTileset:
+#                self.default_tileset_name = name
+#
+#        if self.default_tileset_name is None:
+#            raise Exception('Bad DefaultTileset (%s) or TileSources (%s)'
+#                            % (DefaultTileset, str(TileSources)))
 
         # finally, bind events to handlers
         self.pyslipqt.Bind(pyslipqt.EVT_PYSLIP_SELECT, self.handle_select_event)
@@ -393,18 +267,17 @@ class AppFrame(wx.Frame):
         """Create application GUI."""
 
         # start application layout
-        all_display = wx.BoxSizer(wx.HORIZONTAL)
-        parent.SetSizer(all_display)
+        all_display = QHBoxLayout()
 
         # put map view in left of horizontal box
         sl_box = self.make_gui_view(parent)
-        all_display.Add(sl_box, proportion=1, border=PackBorder, flag=wx.EXPAND)
+        all_display.addLayout(sl_box)
 
         # add controls at right
         controls = self.make_gui_controls(parent)
-        all_display.Add(controls, proportion=0, border=PackBorder)
+        all_display.addLayout(controls)
 
-        parent.SetSizerAndFit(all_display)
+        self.setLayout(all_display)
 
     def make_gui_view(self, parent):
         """Build the map view widget
@@ -415,15 +288,13 @@ class AppFrame(wx.Frame):
         """
 
         # create gui objects
-        sb = AppStaticBox(parent, '', style=wx.NO_BORDER)
-        self.pyslipqt = pyslipqt.PySlipQt(parent, tile_src=self.tile_source)
+        vbox = QVBoxLayout()
+        self.pyslipqt = pyslipqt.PySlipQt(parent, tile_src=self.tile_source,
+                                          start_level=0)
 #                                    min_level=MinTileLevel)
+        vbox.addWidget(self.pyslipqt)
 
-        # lay out objects
-        box = wx.StaticBoxSizer(sb, orient=wx.HORIZONTAL)
-        box.Add(self.pyslipqt, proportion=1, border=PackBorder, flag=wx.EXPAND)
-
-        return box
+        return vbox
 
     def make_gui_controls(self, parent):
         """Build the 'controls' part of the GUI
@@ -434,55 +305,55 @@ class AppFrame(wx.Frame):
         """
 
         # all controls in vertical box sizer
-        controls = wx.BoxSizer(wx.VERTICAL)
+        controls = QVBoxLayout()
 
         # put level and position into one 'controls' position
-        l_p = wx.BoxSizer(wx.HORIZONTAL)
-        level = self.make_gui_level(parent)
-        l_p.Add(level, proportion=0, flag=wx.EXPAND|wx.ALL)
-        mouse = self.make_gui_mouse(parent)
-        l_p.Add(mouse, proportion=0, flag=wx.EXPAND|wx.ALL)
-        controls.Add(l_p, proportion=0, flag=wx.EXPAND|wx.ALL)
+        l_p = QHBoxLayout()
+        self.show_level = DisplayText(title='Map level', label='Level:', tooltip=None, width=50)
+        l_p.addWidget(self.show_level)
+        self.map_posn = DisplayText(title='Cursor position', label='Lon/Lat:', tooltip=None, width=50)
+        l_p.addWidget(self.map_posn)
+        controls.addChildLayout(l_p)
 
         # controls for map-relative points layer
-        point = self.make_gui_point(parent)
-        controls.Add(point, proportion=0, flag=wx.EXPAND|wx.ALL)
+        point = LayerControl(parent, title='Points, map relative [3,4]', selectable=True, tooltip=None)
+        controls.addWidget(point)
 
-        # controls for view-relative points layer
-        point_view = self.make_gui_point_view(parent)
-        controls.Add(point_view, proportion=0, flag=wx.EXPAND|wx.ALL)
-
-        # controls for map-relative image layer
-        image = self.make_gui_image(parent)
-        controls.Add(image, proportion=0, flag=wx.EXPAND|wx.ALL)
-
-        # controls for map-relative image layer
-        image_view = self.make_gui_image_view(parent)
-        controls.Add(image_view, proportion=0, flag=wx.EXPAND|wx.ALL)
-
-        # controls for map-relative text layer
-        text = self.make_gui_text(parent)
-        controls.Add(text, proportion=0, flag=wx.EXPAND|wx.ALL)
-
-        # controls for view-relative text layer
-        text_view = self.make_gui_text_view(parent)
-        controls.Add(text_view, proportion=0, flag=wx.EXPAND|wx.ALL)
-
-        # controls for map-relative polygon layer
-        poly = self.make_gui_poly(parent)
-        controls.Add(poly, proportion=0, flag=wx.EXPAND|wx.ALL)
-
-        # controls for view-relative polygon layer
-        poly_view = self.make_gui_poly_view(parent)
-        controls.Add(poly_view, proportion=0, flag=wx.EXPAND|wx.ALL)
-
-        # controls for map-relative polyline layer
-        polyline = self.make_gui_polyline(parent)
-        controls.Add(polyline, proportion=0, flag=wx.EXPAND|wx.ALL)
-
-        # controls for view-relative polyline layer
-        polyline_view = self.make_gui_polyline_view(parent)
-        controls.Add(polyline_view, proportion=0, flag=wx.EXPAND|wx.ALL)
+#        # controls for view-relative points layer
+#        point_view = self.make_gui_point_view(parent)
+#        controls.Add(point_view, proportion=0, flag=wx.EXPAND|wx.ALL)
+#
+#        # controls for map-relative image layer
+#        image = self.make_gui_image(parent)
+#        controls.Add(image, proportion=0, flag=wx.EXPAND|wx.ALL)
+#
+#        # controls for map-relative image layer
+#        image_view = self.make_gui_image_view(parent)
+#        controls.Add(image_view, proportion=0, flag=wx.EXPAND|wx.ALL)
+#
+#        # controls for map-relative text layer
+#        text = self.make_gui_text(parent)
+#        controls.Add(text, proportion=0, flag=wx.EXPAND|wx.ALL)
+#
+#        # controls for view-relative text layer
+#        text_view = self.make_gui_text_view(parent)
+#        controls.Add(text_view, proportion=0, flag=wx.EXPAND|wx.ALL)
+#
+#        # controls for map-relative polygon layer
+#        poly = self.make_gui_poly(parent)
+#        controls.Add(poly, proportion=0, flag=wx.EXPAND|wx.ALL)
+#
+#        # controls for view-relative polygon layer
+#        poly_view = self.make_gui_poly_view(parent)
+#        controls.Add(poly_view, proportion=0, flag=wx.EXPAND|wx.ALL)
+#
+#        # controls for map-relative polyline layer
+#        polyline = self.make_gui_polyline(parent)
+#        controls.Add(polyline, proportion=0, flag=wx.EXPAND|wx.ALL)
+#
+#        # controls for view-relative polyline layer
+#        polyline_view = self.make_gui_polyline_view(parent)
+#        controls.Add(polyline_view, proportion=0, flag=wx.EXPAND|wx.ALL)
 
         return controls
 
@@ -2076,7 +1947,8 @@ if __name__ == '__main__':
         msg += ''.join(traceback.format_exception(type, value, tb))
         msg += '=' * 80 + '\n'
         log(msg)
-        tkinter_error(msg)
+        print(msg)
+#        tkinter_error(msg)
         sys.exit(1)
 
     # plug our handler into the python system
@@ -2113,9 +1985,7 @@ if __name__ == '__main__':
     log.set_level(debug)
 
     # start wxPython app
-    app = wx.App()
-    app_frame = AppFrame()
-    app_frame.Show()
-
-    app.MainLoop()
+    app = QApplication(args)
+    ex = PySlipQtDemo()
+    sys.exit(app.exec_())
 
