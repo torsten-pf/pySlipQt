@@ -1765,6 +1765,8 @@ class PySlipQt(QWidget):
                 raise Exception(msg)
 
             # convert various colour formats to internal (r, g, b, a)
+            log(f'AddImageLayer: colour={colour}')
+
             colour = self.colour_to_internal(colour)
 
             draw_data.append((float(lon), float(lat), bmap, w, h, placement,
@@ -2078,35 +2080,50 @@ class PySlipQt(QWidget):
     def colour_to_internal(self, colour):
         """Convert a colour in one of various forms to an internal format.
 
-        colour  either a HEX string ('#RRGGBBAA') or a tuple (r, g, b, a)
+        colour  either a HEX string ('#RRGGBBAA')
+                or a tuple (r, g, b, a)
+                or a colour name ('red')
 
-        Returns internal tuple form:  (r, g, b, c)
+        Returns internal form:  (r, g, b, a)
         """
 
         if isinstance(colour, str):
             # expect '#RRGGBBAA' form
             if len(colour) != 9 or colour[0] != '#':
-                msg = f"Colour value ({colour}) is not in the form '#RRGGBBAA'"
-                raise Exception(msg)
-            r = int(colour[1:3], 16)
-            g = int(colour[3:5], 16)
-            b = int(colour[5:7], 16)
-            a = int(colour[7:9], 16)
-            return (r, g, b, a)
+                # assume it's a colour *name*
+                c = QColor(colour)
+                result = (c.red(), c.blue(), c.green(), c.alpha())
+#                msg = f"Colour value ({colour}) is not in the form '#RRGGBBAA'"
+#                raise Exception(msg)
+            else:
+                # we try for a colour like '#RRGGBBAA'
+                r = int(colour[1:3], 16)
+                g = int(colour[3:5], 16)
+                b = int(colour[5:7], 16)
+                a = int(colour[7:9], 16)
+                result = (r, g, b, a)
         else:
             # we assume a list or tuple
-            if len(colour) != 4:
-                msg = f"Colour value ({colour}) is not in the form '(r, g, b, a)'"
+            try:
+                len_colour = len(colour)
+            except TypeError:
+                msg = f"Colour value '{colour}' is not in the form '(r, g, b, a)'"
+                raise Exception(msg)
+
+            if len_colour != 4:
+                msg = f"Colour value '{colour}' is not in the form '(r, g, b, a)'"
                 raise Exception(msg)
             result = []
             for v in colour:
                 try:
                     v = int(v)
                 except ValueError:
-                    msg = f"Colour value ({colour}) is not in the form '(r, g, b, a)'"
+                    msg = f"Colour value '{colour}' is not in the form '(r, g, b, a)'"
                     raise Exception(msg)
                 if v < 0 or v > 255:
-                    msg = f"Colour value ({colour}) is not in the form '(r, g, b, a)'"
+                    msg = f"Colour value '{colour}' is not in the form '(r, g, b, a)'"
                     raise Exception(msg)
                 result.append(v)
-            return tuple(result)
+            result = tuple(result)
+
+        return result

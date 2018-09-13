@@ -21,6 +21,7 @@ where <options> is zero or more of:
 
 
 import os
+import sys
 import copy
 from tkinter_error import tkinter_error
 try:
@@ -34,6 +35,7 @@ except ImportError:
     msg = 'Sorry, you must install PyQt5'
     print(msg)
     tkinter_error(msg)
+    sys.exit(1)
 
 #from PyQt5.QtWidgets import (QLabel, QLineEdit)
 from PyQt5.QtGui import QPixmap
