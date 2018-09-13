@@ -37,8 +37,8 @@ from rotextctrl import ROTextCtrl
 class DisplayText(QWidget):
 
     # size of the widget
-    WidgetWidth = 90
-    WidgetHeight = 50
+    WidgetWidth = 85
+    WidgetHeight = 55
 
     def __init__(self, title='', label='', text='', tooltip=None, width=None):
         QWidget.__init__(self)
@@ -52,18 +52,33 @@ class DisplayText(QWidget):
                    'margin-top: 5px; ')
 
         groupbox_style = ('QGroupBox {'
-                          '    border: 1px solid rgb(128, 128, 128); '
-                          '    border-radius: 3px;'
+#                          '    border: 1px solid rgb(128, 128, 128); '
+#                          '    border-radius: 3px;'
+                          '    background-color: rgb(232,255,255); '
                           '}'
                           'QGroupBox:title {'
                           '    subcontrol-origin: margin;'
                           '    subcontrol-position: top left;'
                           '    padding-left: 0px;'
                           '    padding-right: 5px;'
-                          '    padding-top: -7px;'
+                          '    padding-top: 1px;' # was -5
                           '    border-top: none;'
                           '}'
                          )
+
+#        groupbox_style = ('QGroupBox {'
+#                          '    border: 1px solid rgb(128, 128, 128); '
+#                          '    border-radius: 3px;'
+#                          '}'
+#                          'QGroupBox:title {'
+#                          '    subcontrol-origin: margin;'
+#                          '    subcontrol-position: top left;'
+#                          '    padding-left: 0px;'
+#                          '    padding-right: 5px;'
+#                          '    padding-top: -7px;'
+#                          '    border-top: none;'
+#                          '}'
+#                         )
 
         # define the widgets we are going to use
         lbl_label = QLabel(label, self)
@@ -98,6 +113,7 @@ class DisplayText(QWidget):
         hbox.addStretch()
 
         vbox.addLayout(hbox)
+        vbox.addStretch()
 
         groupbox.setLayout(vbox)
 

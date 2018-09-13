@@ -7,9 +7,9 @@ Some semantics:
           (view may be smaller than map, or larger)
 """
 
-from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtWidgets import QLabel, QSizePolicy
-from PyQt5.QtGui import QPainter, QColor
+from PyQt5.QtCore import Qt, QTimer, QPoint
+from PyQt5.QtWidgets import QLabel, QSizePolicy, QWidget
+from PyQt5.QtGui import QPainter, QColor, QPixmap, QPen
 
 
 # if we don't have log.py, don't crash
@@ -81,13 +81,117 @@ class _Layer(object):
 # The pySlipQt widget.
 ######
 
-class PySlipQt(QLabel):
+#class PySlipQt(QLabel):
+class PySlipQt(QWidget):
 
     # widget default background colour
     Background_R = 192
     Background_G = 192
     Background_B = 192
     Background = f'rgb({Background_R}, {Background_G}, {Background_B})'
+
+    # list of valid placement values
+    valid_placements = ['cc', 'nw', 'cn', 'ne', 'ce',
+                        'se', 'cs', 'sw', 'cw', None, False, '']
+
+    # panel background colour
+    BackgroundColour = '#808080'
+
+    # default point attributes - map relative
+    DefaultPointPlacement = 'cc'
+    DefaultPointRadius = 3
+    DefaultPointColour = Qt.red
+    DefaultPointOffsetX = 0
+    DefaultPointOffsetY = 0
+    DefaultPointData = None
+
+    # default point attributes - view relative
+    DefaultPointViewPlacement = 'cc'
+    DefaultPointViewRadius = 3
+    DefaultPointViewColour = Qt.red
+    DefaultPointViewOffsetX = 0
+    DefaultPointViewOffsetY = 0
+    DefaultPointViewData = None
+
+    # default image attributes - map relative
+    DefaultImagePlacement = 'nw'
+    DefaultImageRadius = 0
+    DefaultImageColour = Qt.black
+    DefaultImageOffsetX = 0
+    DefaultImageOffsetY = 0
+    DefaultImageData = None
+
+    # default image attributes - view relative
+    DefaultImageViewPlacement = 'nw'
+    DefaultImageViewRadius = 0
+    DefaultImageViewColour = Qt.black
+    DefaultImageViewOffsetX = 0
+    DefaultImageViewOffsetY = 0
+    DefaultImageViewData = None
+
+    # default text attributes - map relative
+    DefaultTextPlacement = 'nw'
+    DefaultTextRadius = 2
+    DefaultTextColour = Qt.black
+    DefaultTextTextColour = Qt.black
+    DefaultTextOffsetX = 5
+    DefaultTextOffsetY = 1
+    DefaultTextFontname = 'Arial'
+    DefaultTextFontSize = 10
+    DefaultTextData = None
+
+    # default text attributes - view relative
+    DefaultTextViewPlacement = 'nw'
+    DefaultTextViewRadius = 0
+    DefaultTextViewColour = Qt.black
+    DefaultTextViewTextColour = Qt.black
+    DefaultTextViewOffsetX = 0
+    DefaultTextViewOffsetY = 0
+    DefaultTextViewFontname = 'Arial'
+    DefaultTextViewFontSize = 10
+    DefaultTextViewData = None
+
+    # default polygon attributes - map view
+    DefaultPolygonPlacement = 'cc'
+    DefaultPolygonWidth = 1
+    DefaultPolygonColour = Qt.red
+    DefaultPolygonClose = False
+    DefaultPolygonFilled = False
+    DefaultPolygonFillcolour = 'blue'
+    DefaultPolygonOffsetX = 0
+    DefaultPolygonOffsetY = 0
+    DefaultPolygonData = None
+
+    # default polygon attributes - view relative
+    DefaultPolygonViewPlacement = 'nw'
+    DefaultPolygonViewWidth = 1
+    DefaultPolygonViewColour = Qt.red
+    DefaultPolygonViewClose = False
+    DefaultPolygonViewFilled = False
+    DefaultPolygonViewFillcolour = 'blue'
+    DefaultPolygonViewOffsetX = 0
+    DefaultPolygonViewOffsetY = 0
+    DefaultPolygonViewData = None
+
+    # default polyline attributes - map view
+    DefaultPolylinePlacement = 'cc'
+    DefaultPolylineWidth = 1
+    DefaultPolylineColour = Qt.red
+    DefaultPolylineOffsetX = 0
+    DefaultPolylineOffsetY = 0
+    DefaultPolylineData = None
+
+    # default polyline attributes - view relative
+    DefaultPolylineViewPlacement = 'cc'
+    DefaultPolylineViewWidth = 1
+    DefaultPolylineViewColour = Qt.red
+    DefaultPolylineViewOffsetX = 0
+    DefaultPolylineViewOffsetY = 0
+    DefaultPolylineViewData = None
+
+    # layer type values
+    (TypePoint, TypeImage, TypeText, TypePolygon, TypePolyline) = range(5)
+
 
     def __init__(self, parent, tile_src, start_level, **kwargs):
         """Initialize the pySlipQt widget.
@@ -125,6 +229,10 @@ class PySlipQt(QLabel):
         self.num_tiles_y = tile_src.num_tiles_y # number of unwrapped tiles in Y direction
         self.wrap_x = tile_src.wrap_x           # True if tiles wrap in X direction
         self.wrap_y = tile_src.wrap_y           # True if tiles wrap in Y direction
+
+        self.next_layer_id = 1                  # source of unique layer IDs
+        self.tiles_max_level = max(tile_src.levels) # maximum level in current tile source
+        self.tiles_min_level = min(tile_src.levels) # minimum level in current tile source
 
         # define position and tile coords of the "key" tile
         self.key_tile_left = 0      # tile coordinates of key tile
@@ -440,7 +548,9 @@ class PySlipQt(QLabel):
         for x in col_list:
             y_pix = self.key_tile_yoffset
             for y in row_list:
-                QPainter.drawPixmap(painter, x_pix, y_pix,
+#                QPainter.drawPixmap(painter, x_pix, y_pix,
+#                                    self.tile_src.GetTile(x, y))
+                painter.drawPixmap(x_pix, y_pix,
                                     self.tile_src.GetTile(x, y))
                 log(f'drawing tile ({x}, {y}) at {x_pix}, {y_pix}')
                 log(f'tile extends right to {x_pix+self.tile_width}')
@@ -453,7 +563,7 @@ class PySlipQt(QLabel):
         for id in self.layer_z_order:
             l = self.layer_mapping[id]
             if l.visible and self.level in l.show_levels:
-                l.painter(dc, l.data, map_rel=l.map_rel)
+                l.painter(painter, l.data, map_rel=l.map_rel)
 
 
         log('paintEvent: end')
@@ -675,9 +785,604 @@ class PySlipQt(QLabel):
 
         # force display of new layer if it's visible
         if visible:
-            self.Update()
+            self.update()
 
         return id
+
+    def AddLayer(self, painter, data, map_rel, visible, show_levels,
+                 selectable, name, type):
+        """Add a generic layer to the system.
+
+        painter      the function used to paint the layer
+        data         actual layer data (depends on layer type)
+        map_rel      True if points are map relative, else view relative
+        visible      True if layer is to be immediately shown, else False
+        show_levels  list of levels at which to auto-show the layer
+        selectable   True if select operates on this layer
+        name         name for this layer
+        type         flag for layer 'type'
+
+        Returns unique ID of the new layer.
+        """
+
+        # get layer ID
+        id = self.next_layer_id
+        self.next_layer_id += 1
+
+        # prepare the show_level value
+        if show_levels is None:
+            show_levels = range(self.tiles_min_level, self.tiles_max_level+1)[:]
+
+        # create layer, add unique ID to Z order list
+        l = _Layer(id=id, painter=painter, data=data, map_rel=map_rel,
+                   visible=visible, show_levels=show_levels,
+                   selectable=selectable, name=name, type=type)
+
+        self.layer_mapping[id] = l
+        self.layer_z_order.append(id)
+
+        # force display of new layer if it's visible
+        if visible:
+            self.update()
+
+        return id
+
+    ######
+    # Layer drawing routines
+    ######
+
+    def DrawPointLayer(self, dc, data, map_rel):
+        """Draw a points layer.
+
+        dc       the active device context to draw on
+        data     an iterable of point tuples:
+                     (x, y, place, radius, colour, x_off, y_off, udata)
+        map_rel  points relative to map if True, else relative to view
+        """
+
+        # get correct pex function
+        pex = self.PexPointView
+        if map_rel:
+            pex = self.PexPoint
+
+        # draw points on map/view
+        cache_colour = None     # speed up drawing mostly not changing colours
+
+        for (x, y, place, radius, colour, x_off, y_off, udata) in data:
+            (pt, ex) = pex(place, (x,y), x_off, y_off, radius)
+            if ex and radius:  # don't draw if not on screen or zero radius
+                if cache_colour != colour:
+                    log(f'DrawPointLayer: x={x}, y={y}, place={place}, radius={radius}, colour={colour}')
+                    qcolour = QColor(*colour)
+                    log(f'DrawPointLayer: qcolour={qcolour}')
+                    pen = QPen(qcolour, radius, Qt.SolidLine)
+                    dc.setPen(pen)
+                    dc.setBrush(qcolour)
+                    cache_colour = colour
+                (x, _, y, _) = ex
+                dc.drawEllipse(QPoint(x, y), radius, radius)
+
+    def DrawImageLayer(self, dc, images, map_rel):
+        """Draw an image Layer on the view.
+
+        dc       the active device context to draw on
+        images   a sequence of image tuple sequences
+                   (x,y,bmap,w,h,placement,offset_x,offset_y,idata)
+        map_rel  points relative to map if True, else relative to view
+        """
+
+        # get correct pex function
+        pex = self.PexExtentView
+        if map_rel:
+            pex = self.PexExtent
+
+        # draw the images
+        cache_colour = None     # speed up drawing mostly unchanging colours
+
+        for (lon, lat, bmap, w, h, place,
+                 x_off, y_off, radius, colour, idata) in images:
+            (pt, ex) = pex(place, (lon, lat), x_off, y_off, w, h)
+            if ex:
+                (ix, _, iy, _) = ex
+#                dc.DrawBitmap(bmap, ix, iy, False)
+                dc.drawPixmap(QPoint(ix, iy), bmap)
+
+            if pt and radius:
+                if cache_colour != colour:
+                    log(f'DrawImageLayer: colour={colour}')
+                    pen = QPen(colour, radius, Qt.SolidLine)
+                    painter.setPen(pen)
+                    paint.setBrush(pen)
+                    cache_colour = colour
+                (px, py) = pt
+                dc.drawEllipse(QPoint(px, py), radius, radius)
+
+    def DrawTextLayer(self, dc, text, map_rel):
+        """Draw a text Layer on the view.
+
+        dc       the active device context to draw on
+        text     a sequence of tuples:
+                     (lon, lat, tdata, placement, radius, colour, fontname,
+                      fontsize, offset_x, offset_y, tdata)
+        map_rel  points relative to map if True, else relative to view
+        """
+
+        # get correct pex function for mode (map/view)
+        pex = self.PexExtentView
+        if map_rel:
+            pex = self.PexExtent
+
+        # draw text on map/view
+        cache_textcolour = None # speed up mostly unchanging data
+        cache_font = None
+        cache_colour = None
+
+        for (lon, lat, tdata, place, radius, colour,
+                textcolour, fontname, fontsize, x_off, y_off, data) in text:
+
+            # set font characteristics so we calculate text width/height
+            if cache_textcolour != textcolour:
+                dc.SetTextForeground(textcolour)
+                cache_textcolour = textcolour
+
+            if cache_font != (fontname, fontsize):
+                font = wx.Font(fontsize, wx.SWISS, wx.NORMAL, wx.NORMAL,
+                               False, fontname)
+                dc.SetFont(font)
+                cache_font = (fontname, fontsize)
+
+            (w, h, _, _) = dc.GetFullTextExtent(tdata)
+
+            # get point + extent information (each can be None if off-view)
+            (pt, ex) = pex(place, (lon, lat), x_off, y_off, w, h)
+            if ex:
+                (lx, _, ty, _) = ex
+                dc.DrawText(tdata, lx, ty)
+
+            if pt and radius:
+                (x, y) = pt
+                if cache_colour != colour:
+                    dc.SetPen(wx.Pen(colour))
+                    dc.SetBrush(wx.Brush(colour))
+                dc.DrawCircle(x, y, radius)
+
+    def DrawPolygonLayer(self, dc, data, map_rel):
+        """Draw a polygon layer.
+
+        dc       the active device context to draw on
+        data     an iterable of polygon tuples:
+                     (p, placement, width, colour, closed,
+                      filled, fillcolour, offset_x, offset_y, udata)
+                 where p is an iterable of points: (x, y)
+        map_rel  points relative to map if True, else relative to view
+        """
+
+        # get the correct pex function for mode (map/view)
+        pex = self.PexPolygonView
+        if map_rel:
+            pex = self.PexPolygon
+
+        # draw polygons
+        cache_colour_width = None     # speed up mostly unchanging data
+        cache_fillcolour = None
+
+        for (p, place, width, colour, closed,
+                 filled, fillcolour, x_off, y_off, udata) in data:
+            (poly, extent) = pex(place, p, x_off, y_off)
+            if poly:
+                if cache_colour_width != (colour, width):
+                    dc.SetPen(wx.Pen(colour, width=width))
+                    cache_colour = (colour, width)
+
+                if filled:
+                    if cache_fillcolour != fillcolour:
+                        dc.SetBrush(wx.Brush(fillcolour))
+                        cache_fillcolour = fillcolour
+                else:
+                    dc.SetBrush(wx.TRANSPARENT_BRUSH)
+
+                if closed:
+                    dc.DrawPolygon(poly)
+                else:
+                    dc.DrawLines(poly)
+
+    def DrawPolylineLayer(self, dc, data, map_rel):
+        """Draw a polyline layer.
+
+        dc       the active device context to draw on
+        data     an iterable of polyline tuples:
+                     (p, placement, width, colour, offset_x, offset_y, udata)
+                 where p is an iterable of points: (x, y)
+        map_rel  points relative to map if True, else relative to view
+        """
+
+        # get the correct pex function for mode (map/view)
+        pex = self.PexPolygonView
+        if map_rel:
+            pex = self.PexPolygon
+
+        # draw polyline(s)
+        cache_colour_width = None       # speed up mostly unchanging data
+
+        for (p, place, width, colour, x_off, y_off, udata) in data:
+            (poly, extent) = pex(place, p, x_off, y_off)
+            if poly:
+                if cache_colour_width != (colour, width):
+                    dc.SetPen(wx.Pen(colour, width=width))
+                    cache_colour_width = (colour, width)
+                dc.SetBrush(wx.TRANSPARENT_BRUSH)
+                dc.DrawLines(poly)
+
+    def ViewExtent(self, place, view, w, h, x_off, y_off, dcw=0, dch=0):
+        """Get view extent of area.
+
+        place         placement string ('cc', 'se', etc)
+        view          tuple (xview,yview) of view coordinates of object point
+        w, h          area width and height (pixels)
+        x_off, y_off  x and y offset (pixels)
+
+        Return the view extent of the area: (left, right, top, bottom)
+        where:
+            left    pixel coords of left side of area
+            right   pixel coords of right side of area
+            top     pixel coords of top of area
+            bottom  pixel coords of bottom of area
+
+        Return a tuple (left, right, top, bottom) of the view coordinates of
+        the extent rectangle.
+        """
+
+        # top left corner
+        (x, y) = view
+        (left, top) = self.extent_placement(place, x, y, x_off, y_off,
+                                            w, h, dcw, dch)
+
+        # bottom right corner
+        right = left + w
+        bottom = top + h
+
+        return (left, right, top, bottom)
+
+######
+# Convert between geo and view coordinates
+######
+
+    def Geo2View(self, geo):
+        """Convert a geo coord to view.
+
+        geo  tuple (xgeo, ygeo)
+
+        Return a tuple (xview, yview) in view coordinates.
+        Assume point is in view.
+        """
+
+        # convert the Geo position to tile coordinates
+        (tx, ty) = self.tile_src.Geo2Tile(geo)
+
+        log(f'Geo2View: geo={geo}, tx={tx}, ty={ty}')
+
+        # using the key_tile_* variables convert to view coordinates
+        xview = ((tx - self.key_tile_left) * self.tile_src.tile_size_x) - self.key_tile_xoffset
+        log(f'Geo2View: .key_tile_left={self.key_tile_left}, tx-.key_tile_left={tx - self.key_tile_left}')
+        log(f'Geo2View: .tile_size_x={self.tile_src.tile_size_x}, .key_tile_xoffset={self.key_tile_xoffset}')
+        log(f'Geo2View: xview={xview}')
+        yview = ((ty - self.key_tile_top) * self.tile_src.tile_size_y) - self.key_tile_yoffset
+
+        return (xview, yview)
+#        return ((tx * self.tile_src.tile_size_x) - self.view_offset_x,
+#                (ty * self.tile_src.tile_size_y) - self.view_offset_y)
+
+    def Geo2ViewMasked(self, geo):
+        """Convert a geo (lon+lat) position to view pixel coords.
+
+        geo  tuple (xgeo, ygeo)
+
+        Return a tuple (xview, yview) of point if on-view,or None
+        if point is off-view.
+        """
+
+        (xgeo, ygeo) = geo
+
+        if (self.view_llon <= xgeo <= self.view_rlon and
+                self.view_blat <= ygeo <= self.view_tlat):
+            return self.Geo2View(geo)
+
+        return None
+
+######
+# PEX - Point & EXtension.
+#
+# These functions encapsulate the code that finds the extent of an object.
+# They all return a tuple (point, extent) where 'point' is the placement
+# point of an object (or list of points for a polygon) and an 'extent'
+# tuple (lx, rx, ty, by) [left, right, top, bottom].
+######
+
+    def PexPoint(self, place, geo, x_off, y_off, radius):
+        """Given a point object (geo coords) get point/extent in view coords.
+
+        place         placement string
+        geo           point position tuple (xgeo, ygeo)
+        x_off, y_off  X and Y offsets
+
+        Return a tuple of point and extent origins (point, extent) where 'point'
+        is (px, py) and extent is (elx, erx, ety, eby) (both in view coords).
+        Return None for either or both if off-view.
+
+        The 'extent' here is the extent of the point+radius.
+        """
+
+        # get point view coords
+        (xview, yview) = self.Geo2View(geo)
+        point = self.point_placement(place, xview, yview, x_off, y_off)
+        (px, py) = point
+
+        # extent = (left, right, top, bottom) in view coords
+        elx = px - radius
+        erx = px + radius
+        ety = py - radius
+        eby = py + radius
+        extent = (elx, erx, ety, eby)
+
+        # decide if point and extent are off-view
+        if px < 0 or px > self.view_width or py < 0 or py > self.view_height:
+            point = None
+
+        if erx < 0 or elx > self.view_width or eby < 0 or ety > self.view_height:
+            # no extent if ALL of extent is off-view
+            extent = None
+
+        return (point, extent)
+
+    def PexPointView(self, place, view, x_off, y_off, radius):
+        """Given a point object (view coords) get point/extent in view coords.
+
+        place         placement string
+        view          point position tuple (xview, yview)
+        x_off, y_off  X and Y offsets
+
+        Return a tuple of point and extent origins (point, extent) where 'point'
+        is (px, py) and extent is (elx, erx, ety, eby) (both in view coords).
+        Return None for either or both if off-view.
+
+        The 'extent' here is the extent of the point+radius.
+        """
+
+        # get point view coords and perturb point to placement
+        (xview, yview) = view
+        point = self.point_placement(place, xview, yview, x_off, y_off,
+                                     self.view_width, self.view_height)
+        (px, py) = point
+
+        # extent = (left, right, top, bottom) in view coords
+        elx = px - radius
+        erx = px + radius
+        ety = py - radius
+        eby = py + radius
+        extent = (elx, erx, ety, eby)
+
+        # decide if point and extent are off-view
+        if (px < 0 or px > self.view_width
+                or py < 0 or py > self.view_height):
+            view = None
+
+        if erx < 0 or elx > self.view_width or eby < 0 or ety > self.view_height:
+            # no extent if ALL of extent is off-view
+            extent = None
+
+        return (point, extent)
+
+    def PexExtent(self, place, geo, x_off, y_off, w, h):
+        """Given an extent object convert point/extent coords to view coords.
+
+        place         placement string
+        geo           point position tuple (xgeo, ygeo)
+        x_off, y_off  X and Y offsets
+        w, h          width and height of extent in pixels
+
+        Return a tuple of point and extent origins (point, extent) where 'point'
+        is (px, py) and extent is (elx, erx, ety, eby) (both in view coords).
+        Return None if point is off-view.
+
+        An extent object can be either an image object or a text object.
+        """
+
+        # get point view coords
+        point = self.Geo2View(geo)
+        (px, py) = point
+
+        # extent = (left, right, top, bottom) in view coords
+        extent = self.ViewExtent(place, point, w, h, x_off, y_off)
+        (elx, erx, ety, eby) = extent
+
+        # decide if point and extent are off-view
+        if px < 0 or px > self.view_width or py < 0 or py > self.view_height:
+            point = None
+
+        if erx < 0 or elx > self.view_width or eby < 0 or ety > self.view_height:
+            # no extent if ALL of extent is off-view
+            extent = None
+
+        return (point, extent)
+
+    def PexExtentView(self, place, view, x_off, y_off, w, h):
+        """Given a view object convert point/extent coords to view coords.
+
+        place         placement string
+        view          point position tuple (xview, yview)
+        x_off, y_off  X and Y offsets
+        w, h          width and height of extent in pixels
+
+        Return a tuple of point and extent origins (point, extent) where 'point'
+        is (px, py) and extent is (elx, erx, ety, eby) (both in view coords).
+        Either point or extent is None if object off-view.
+
+        Takes size of extent object into consideration.
+        """
+
+        # get point view coords and perturb point to placement origin
+        (xview, yview) = view
+        point = self.point_placement(place, xview, yview, 0, 0,
+                                     self.view_width, self.view_height)
+
+        # get point view coords (X and Y)
+        (px, py) = view
+
+        # extent = (left, right, top, bottom) in view coords
+        extent = self.ViewExtent(place, view, w, h, x_off, y_off,
+                                 self.view_width, self.view_height)
+        (elx, erx, ety, eby) = extent
+
+        # decide if point and extent are off-view
+        if px < 0 or px > self.view_width or py < 0 or py > self.view_height:
+            view = None
+
+        if erx < 0 or elx > self.view_width or eby < 0 or ety > self.view_height:
+            # no extent if ALL of extent is off-view
+            extent = None
+
+        return (point, extent)
+
+    def PexPolygon(self, place, poly, x_off, y_off):
+        """Given a polygon/line obj (geo coords) get point/extent in view coords.
+
+        place         placement string
+        poly          list of point position tuples (xgeo, ygeo)
+        x_off, y_off  X and Y offsets
+
+        Return a tuple of point and extent origins (point, extent) where 'point'
+        is a list of (px, py) and extent is (elx, erx, ety, eby) (both in view
+        coords).  Return None for either or both if off-view.
+        """
+
+        # get polygon/line points in perturbed view coordinates
+        view = []
+        for geo in poly:
+            (xview, yview) = self.Geo2View(geo)
+            point = self.point_placement(place, xview, yview, x_off, y_off)
+            view.append(point)
+
+        # get extent - max/min x and y
+        # extent = (left, right, top, bottom) in view coords
+        elx = min(view, key=lambda x: x[0])[0]
+        erx = max(view, key=lambda x: x[0])[0]
+        ety = min(view, key=lambda x: x[1])[1]
+        eby = max(view, key=lambda x: x[1])[1]
+        extent = (elx, erx, ety, eby)
+
+        # decide if polygon or extent are off-view
+        res_pt = None
+        res_ex = None
+        for (px, py) in view:
+            if ((px >= 0 and px < self.view_width)
+                    and (py >= 0 and py < self.view_height)):
+                res_pt = view
+                res_ex = extent
+                break
+
+        return (res_pt, res_ex)
+
+    def PexPolygonView(self, place, poly, x_off, y_off):
+        """Given a polygon/line obj (view coords) get point/extent in view coords.
+
+        place         placement string
+        poly          list of point position tuples (xview, yview)
+        x_off, y_off  X and Y offsets
+
+        Return a tuple of point and extent origins (point, extent) where 'point'
+        is a list of (px, py) and extent is (elx, erx, ety, eby) (both in view
+        coords).  Return None for either or both if off-view.
+        """
+
+        # get polygon/line points in view coordinates
+        view = []
+        for (xview, yview) in poly:
+            point = self.point_placement(place, xview, yview, x_off, y_off,
+                                         self.view_width, self.view_height)
+            view.append(point)
+
+        # get extent - max/min x and y
+        # extent = (left, right, top, bottom) in view coords
+        elx = min(view, key=lambda x: x[0])[0]
+        erx = max(view, key=lambda x: x[0])[0]
+        ety = min(view, key=lambda x: x[1])[1]
+        eby = max(view, key=lambda x: x[1])[1]
+        extent = (elx, erx, ety, eby)
+
+        # decide if polygon/line or extent are off-view
+        res_pt = None
+        res_ex = None
+        for (px, py) in view:
+            if ((px >= 0 and px < self.view_width)
+                    and (py >= 0 and py < self.view_height)):
+                res_pt = view
+                res_ex = extent
+                break
+
+        return (res_pt, res_ex)
+
+######
+# Placement routines instead of original 'exec' code.
+# Code in test_assumptions.py shows this is faster.
+######
+
+    @staticmethod
+    def point_placement(place, x, y, x_off, y_off, dcw=0, dch=0):
+        """Perform map- or view-relative placement for a single point.
+
+        place         placement key string
+        x, y          point relative to placement origin
+        x_off, y_off  offset from point
+        dcw, dch      width, height of the view draw context (0 if map-rel)
+
+        Returns a tuple (x, y) in view coordinates.
+        """
+
+        dcw2 = dcw/2
+        dch2 = dch/2
+
+        if place == 'cc':   x+=dcw2;       y+=dch2
+        elif place == 'nw': x+=x_off;      y+=y_off
+        elif place == 'cn': x+=dcw2;       y+=y_off
+        elif place == 'ne': x+=dcw-x_off;  y+=y_off
+        elif place == 'ce': x+=dcw-x_off;  y+=dch2
+        elif place == 'se': x+=dcw-x_off;  y+=dch-y_off
+        elif place == 'cs': x+=dcw2;       y+=dch-y_off
+        elif place == 'sw': x+=x_off;      y+=dch-y_off
+        elif place == 'cw': x+=x_off;      y+=dch2
+
+        return (x, y)
+
+    @staticmethod
+    def extent_placement(place, x, y, x_off, y_off, w, h, dcw=0, dch=0):
+        """Perform map- and view-relative placement for an extent object.
+
+        place         placement key string
+        x, y          point relative to placement origin
+        x_off, y_off  offset from point
+        w, h          width, height of the image
+        dcw, dcw      width/height of the view draw context
+
+        Returns a tuple (x, y).
+        """
+
+        w2 = w/2
+        h2 = h/2
+
+        dcw2 = dcw/2
+        dch2 = dch/2
+
+        if place == 'cc':   x+=dcw2-w2;       y+=dch2-h2
+        elif place == 'nw': x+=x_off;         y+=y_off
+        elif place == 'cn': x+=dcw2-w2;       y+=y_off
+        elif place == 'ne': x+=dcw-w-x_off;   y+=y_off
+        elif place == 'ce': x+=dcw-w-x_off;   y+=dch2-h2
+        elif place == 'se': x+=dcw-w-x_off;   y+=dch-h-y_off
+        elif place == 'cs': x+=dcw2-w2;       y+=dch-h-y_off
+        elif place == 'sw': x+=x_off;         y+=dch-h-y_off
+        elif place == 'cw': x+=x_off;         y+=dch2-h2
+
+        return (x, y)
 
 ################################################################################
 # Below are the "external" API methods.
@@ -823,9 +1528,55 @@ class PySlipQt(QLabel):
 
         pass
 
-    ######
-    # "add a layer" routines
-    ######
+    def get_i18n_kw(self, kwargs, kws, default):
+        """Get alternate international keyword value.
+
+        kwargs   dictionary to look for keyword value
+        kws      iterable of keyword spelling strings
+        default  default value if no keyword found
+
+        Returns the keyword value.
+        """
+
+        result = None
+        for kw_str in kws[:-1]:
+            result = kwargs.get(kw_str, None)
+            if result:
+                break
+        else:
+            result = kwargs.get(kws[-1], default)
+
+        return result
+
+    def info(self, msg):
+        """Display an information message, log and graphically."""
+
+        log_msg = '# ' + msg
+        length = len(log_msg)
+        prefix = '#### Information '
+        banner = prefix + '#'*(80 - len(log_msg) - len(prefix))
+        log(banner)
+        log(log_msg)
+        log(banner)
+
+        wx.MessageBox(msg, 'Warning', wx.OK | wx.ICON_INFORMATION)
+
+    def warn(self, msg):
+        """Display a warning message, log and graphically."""
+
+        log_msg = '# ' + msg
+        length = len(log_msg)
+        prefix = '#### Warning '
+        banner = prefix + '#'*(80 - len(log_msg) - len(prefix))
+        log(banner)
+        log(log_msg)
+        log(banner)
+
+        wx.MessageBox(msg, 'Warning', wx.OK | wx.ICON_ERROR)
+
+######
+# "add a layer" routines
+######
 
     def AddPointLayer(self, points, map_rel=True, visible=True,
                       show_levels=None, selectable=False,
@@ -906,6 +1657,9 @@ class PySlipQt(QLabel):
                        % str(placement))
                 raise Exception(msg)
 
+            # convert various colour formats to internal (r, g, b, a)
+            colour = self.colour_to_internal(colour)
+
             # append another point to draw data list
             draw_data.append((float(x), float(y), placement,
                               radius, colour, offset_x, offset_y, udata))
@@ -915,4 +1669,444 @@ class PySlipQt(QLabel):
                               selectable=selectable, name=name,
                               type=self.TypePoint)
 
+    def AddImageLayer(self, data, map_rel=True, visible=True,
+                      show_levels=None, selectable=False,
+                      name='<image_layer>', **kwargs):
+        """Add a layer of images, map or view relative.
 
+        data         list of (lon, lat, fname[, attributes]) (map_rel)
+                     or list of (x, y, fname[, attributes]) (view relative)
+                     attributes is a dictionary of attributes:
+                         placement  a placement string
+                         radius     object point radius
+                         colour     object point colour
+                         offset_x   X offset
+                         offset_y   Y offset
+                         data       image user data
+        map_rel      points drawn relative to map if True, else view relative
+        visible      True if the layer is to be immediately visible
+        show_levels  list of levels at which layer is auto-shown (or None)
+        selectable   True if select operates on this layer
+        name         name of this layer
+        kwargs       dictionary of extra params:
+                         placement  string describing placement wrt hotspot
+                         radius     object point radius
+                         colour     object point colour
+                         offset_x   hotspot X offset in pixels
+                         offset_y   hotspot Y offset in pixels
+                         data       image user data
+
+        The hotspot is placed at (lon, lat) or (x, y).  'placement' controls
+        where the image is displayed relative to the hotspot.
+        """
+
+        # merge global and layer defaults
+        if map_rel:
+            default_placement = kwargs.get('placement', self.DefaultImagePlacement)
+            default_radius = kwargs.get('radius', self.DefaultImageRadius)
+            default_colour = kwargs.get('colour', self.DefaultImageColour)
+            default_offset_x = kwargs.get('offset_x', self.DefaultImageOffsetX)
+            default_offset_y = kwargs.get('offset_y', self.DefaultImageOffsetY)
+            default_data = kwargs.get('data', self.DefaultImageData)
+        else:
+            default_placement = kwargs.get('placement', self.DefaultImageViewPlacement)
+            default_radius = kwargs.get('radius', self.DefaultImageViewRadius)
+            default_colour = kwargs.get('colour', self.DefaultImageViewColour)
+            default_offset_x = kwargs.get('offset_x', self.DefaultImageViewOffsetX)
+            default_offset_y = kwargs.get('offset_y', self.DefaultImageViewOffsetY)
+            default_data = kwargs.get('data', self.DefaultImageViewData)
+
+        # define cache variables for the image informtion
+        # used to minimise file access - just caches previous file informtion
+        fname_cache = None
+        bmp_cache = None
+        w_cache = None
+        h_cache = None
+
+        # load all image files, convert to bitmaps, create draw_data iterable
+        draw_data = []
+        for d in data:
+            if len(d) == 4:
+                (lon, lat, fname, attributes) = d
+            elif len(d) == 3:
+                (lon, lat, fname) = d
+                attributes = {}
+            else:
+                msg = ('Image data must be iterable of tuples: '
+                       '(x, y, fname[, dict])\nGot: %s' % str(d))
+                raise Exception(msg)
+
+            # get image specific values, if any
+            placement = attributes.get('placement', default_placement)
+            radius = attributes.get('radius', default_radius)
+            colour = attributes.get('colour', default_colour)
+            offset_x = attributes.get('offset_x', default_offset_x)
+            offset_y = attributes.get('offset_y', default_offset_y)
+            udata = attributes.get('data', None)
+
+            if fname == fname_cache:
+                bmap = bmp_cache
+                w = w_cache
+                h = h_cache
+            else:
+                fname_cache = fname
+#                img = QPixmap(fname)
+                bmp_cache = bmap = img = QPixmap(fname)
+#                bmp_cache = bmap = img.ConvertToBitmap()
+                size = img.size()
+                h = h_cache = size.height()
+                w = w_cache = size.width()
+
+            # check values that can be wrong
+            placement = placement.lower()
+            if placement not in self.valid_placements:
+                msg = ("Image placement value is invalid, got '%s'"
+                       % str(placement))
+                raise Exception(msg)
+
+            # convert various colour formats to internal (r, g, b, a)
+            colour = self.colour_to_internal(colour)
+
+            draw_data.append((float(lon), float(lat), bmap, w, h, placement,
+                              offset_x, offset_y, radius, colour, udata))
+
+        return self.AddLayer(self.DrawImageLayer, draw_data, map_rel,
+                             visible=visible, show_levels=show_levels,
+                             selectable=selectable, name=name,
+                             type=self.TypeImage)
+
+    def AddTextLayer(self, text, map_rel=True, visible=True, show_levels=None,
+                     selectable=False, name='<text_layer>', **kwargs):
+        """Add a text layer to the map or view.
+
+        text         list of sequence of (lon, lat, text[, dict]) coordinates
+                     (optional 'dict' contains point-specific attributes)
+        map_rel      points drawn relative to map if True, else view relative
+        visible      True if the layer is to be immediately visible
+        show_levels  list of levels at which layer is auto-shown
+        selectable   True if select operates on this layer
+        name         name of this layer
+        kwargs       a dictionary of changeable text attributes
+                         (placement, radius, fontname, fontsize, colour, data)
+                     these supply any data missing in 'data'
+        """
+
+        # merge global and layer defaults
+        if map_rel:
+            default_placement = kwargs.get('placement', self.DefaultTextPlacement)
+            default_radius = kwargs.get('radius', self.DefaultTextRadius)
+            default_fontname = kwargs.get('fontname', self.DefaultTextFontname)
+            default_fontsize = kwargs.get('fontsize', self.DefaultTextFontSize)
+            default_colour = self.get_i18n_kw(kwargs, ('colour', 'color'),
+                                              self.DefaultTextColour)
+            default_textcolour = self.get_i18n_kw(kwargs,
+                                                  ('textcolour', 'textcolor'),
+                                                  self.DefaultTextTextColour)
+            default_offset_x = kwargs.get('offset_x', self.DefaultTextOffsetX)
+            default_offset_y = kwargs.get('offset_y', self.DefaultTextOffsetY)
+            default_data = kwargs.get('data', self.DefaultTextData)
+        else:
+            default_placement = kwargs.get('placement', self.DefaultTextViewPlacement)
+            default_radius = kwargs.get('radius', self.DefaultTextViewRadius)
+            default_fontname = kwargs.get('fontname', self.DefaultTextViewFontname)
+            default_fontsize = kwargs.get('fontsize', self.DefaultTextViewFontSize)
+            default_colour = self.get_i18n_kw(kwargs, ('colour', 'color'),
+                                              self.DefaultTextViewColour)
+            default_textcolour = self.get_i18n_kw(kwargs,
+                                                  ('textcolour', 'textcolor'),
+                                                  self.DefaultTextViewTextColour)
+            default_offset_x = kwargs.get('offset_x', self.DefaultTextViewOffsetX)
+            default_offset_y = kwargs.get('offset_y', self.DefaultTextViewOffsetY)
+            default_data = kwargs.get('data', self.DefaultTextData)
+
+        # create data iterable ready for drawing
+        draw_data = []
+        for t in text:
+            if len(t) == 4:
+                (lon, lat, tdata, attributes) = t
+            elif len(t) == 3:
+                (lon, lat, tdata) = t
+                attributes = {}
+            else:
+                msg = ('Text data must be iterable of tuples: '
+                       '(lon, lat, text, [dict])\n'
+                       'Got: %s' % str(t))
+                raise Exception(msg)
+
+            # plug in any required defaults
+            placement = attributes.get('placement', default_placement)
+            radius = attributes.get('radius', default_radius)
+            fontname = attributes.get('fontname', default_fontname)
+            fontsize = attributes.get('fontsize', default_fontsize)
+            colour = self.get_i18n_kw(attributes, ('colour', 'color'),
+                                      default_colour)
+            textcolour = self.get_i18n_kw(attributes,
+                                          ('textcolour', 'textcolor'),
+                                          default_textcolour)
+            offset_x = attributes.get('offset_x', default_offset_x)
+            offset_y = attributes.get('offset_y', default_offset_y)
+            udata = attributes.get('data', default_data)
+
+            # check values that can be wrong
+            placement = placement.lower()
+            if placement not in self.valid_placements:
+                msg = ("Text placement value is invalid, got '%s'"
+                       % str(placement))
+                raise Exception(msg)
+
+            # convert various colour formats to internal (r, g, b, a)
+            colour = self.colour_to_internal(colour)
+
+            draw_data.append((float(lon), float(lat), tdata, placement.lower(),
+                              radius, colour, textcolour, fontname, fontsize,
+                              offset_x, offset_y, udata))
+
+        return self.AddLayer(self.DrawTextLayer, draw_data, map_rel,
+                             visible=visible, show_levels=show_levels,
+                             selectable=selectable, name=name,
+                             type=self.TypeText)
+
+    def AddPolygonLayer(self, data, map_rel=True, visible=True,
+                        show_levels=None, selectable=False,
+                        name='<polygon_layer>', **kwargs):
+        """Add a layer of polygon data to the map.
+
+        data         iterable of polygon tuples:
+                         (<iter>[, attributes])
+                     where <iter> is another iterable of (x, y) tuples and
+                     attributes is a dictionary of polygon attributes:
+                         placement   a placement string (view-relative only)
+                         width       width of polygon edge lines
+                         colour      colour of edge lines
+                         close       if True closes polygon
+                         filled      polygon is filled (implies closed)
+                         fillcolour  fill colour
+                         offset_x    X offset
+                         offset_y    Y offset
+                         data        polygon user data object
+        map_rel      points drawn relative to map if True, else view relative
+        visible      True if the layer is to be immediately visible
+        show_levels  list of levels at which layer is auto-shown (or None)
+        selectable   True if select operates on this layer
+        name         name of this layer
+        kwargs       extra keyword args, layer-specific:
+                         placement   placement string (view-rel only)
+                         width       width of polygons in pixels
+                         colour      colour of polygon edge lines
+                         close       True if polygon is to be closed
+                         filled      if True, fills polygon
+                         fillcolour  fill colour
+                         offset_x    X offset
+                         offset_y    Y offset
+                         data        polygon user data object
+        """
+
+        # merge global and layer defaults
+        if map_rel:
+            default_placement = kwargs.get('placement',
+                                           self.DefaultPolygonPlacement)
+            default_width = kwargs.get('width', self.DefaultPolygonWidth)
+            default_colour = self.get_i18n_kw(kwargs, ('colour', 'color'),
+                                              self.DefaultPolygonColour)
+            default_close = kwargs.get('closed', self.DefaultPolygonClose)
+            default_filled = kwargs.get('filled', self.DefaultPolygonFilled)
+            default_fillcolour = self.get_i18n_kw(kwargs,
+                                                  ('fillcolour', 'fillcolor'),
+                                                  self.DefaultPolygonFillcolour)
+            default_offset_x = kwargs.get('offset_x', self.DefaultPolygonOffsetX)
+            default_offset_y = kwargs.get('offset_y', self.DefaultPolygonOffsetY)
+            default_data = kwargs.get('data', self.DefaultPolygonData)
+        else:
+            default_placement = kwargs.get('placement',
+                                           self.DefaultPolygonViewPlacement)
+            default_width = kwargs.get('width', self.DefaultPolygonViewWidth)
+            default_colour = self.get_i18n_kw(kwargs, ('colour', 'color'),
+                                              self.DefaultPolygonViewColour)
+            default_close = kwargs.get('closed', self.DefaultPolygonViewClose)
+            default_filled = kwargs.get('filled', self.DefaultPolygonViewFilled)
+            default_fillcolour = self.get_i18n_kw(kwargs,
+                                                  ('fillcolour', 'fillcolor'),
+                                                  self.DefaultPolygonViewFillcolour)
+            default_offset_x = kwargs.get('offset_x', self.DefaultPolygonViewOffsetX)
+            default_offset_y = kwargs.get('offset_y', self.DefaultPolygonViewOffsetY)
+            default_data = kwargs.get('data', self.DefaultPolygonViewData)
+
+        # create draw_data iterable
+        draw_data = []
+        for d in data:
+            if len(d) == 2:
+                (p, attributes) = d
+            elif len(d) == 1:
+                p = d
+                attributes = {}
+            else:
+                msg = ('Polygon data must be iterable of tuples: '
+                       '(polygon, [attributes])\n'
+                       'Got: %s' % str(d))
+                raise Exception(msg)
+
+            # get polygon attributes
+            placement = attributes.get('placement', default_placement)
+            width = attributes.get('width', default_width)
+            colour = self.get_i18n_kw(attributes, ('colour', 'color'),
+                                      default_colour)
+            close = attributes.get('closed', default_close)
+            filled = attributes.get('filled', default_filled)
+            if filled:
+                close = True
+            fillcolour = self.get_i18n_kw(attributes,
+                                          ('fillcolour', 'fillcolor'),
+                                          default_fillcolour)
+            offset_x = attributes.get('offset_x', default_offset_x)
+            offset_y = attributes.get('offset_y', default_offset_y)
+            udata = attributes.get('data', default_data)
+
+            # if polygon is to be filled, ensure closed
+            if close:
+                p = list(p)     # must get a *copy*
+                p.append(p[0])
+
+            # check values that can be wrong
+            placement = placement.lower()
+            if placement not in self.valid_placements:
+                msg = ("Polygon placement value is invalid, got '%s'"
+                       % str(placement))
+                raise Exception(msg)
+
+            # convert various colour formats to internal (r, g, b, a)
+            colour = self.colour_to_internal(colour)
+            fillcolour = self.colour_to_internal(fillcolour)
+
+            draw_data.append((p, placement, width, colour, close,
+                              filled, fillcolour, offset_x, offset_y, udata))
+
+        return self.AddLayer(self.DrawPolygonLayer, draw_data, map_rel,
+                             visible=visible, show_levels=show_levels,
+                             selectable=selectable, name=name,
+                             type=self.TypePolygon)
+
+    def AddPolylineLayer(self, data, map_rel=True, visible=True,
+                        show_levels=None, selectable=False,
+                        name='<polyline>', **kwargs):
+        """Add a layer of polyline data to the map.
+
+        data         iterable of polyline tuples:
+                         (<iter>[, attributes])
+                     where <iter> is another iterable of (x, y) tuples and
+                     attributes is a dictionary of polyline attributes:
+                         placement   a placement string (view-relative only)
+                         width       width of polyline edge lines
+                         colour      colour of edge lines
+                         offset_x    X offset
+                         offset_y    Y offset
+                         data        polyline user data object
+        map_rel      points drawn relative to map if True, else view relative
+        visible      True if the layer is to be immediately visible
+        show_levels  list of levels at which layer is auto-shown (or None)
+        selectable   True if select operates on this layer
+        name         name of this layer
+        kwargs       extra keyword args, layer-specific:
+                         placement   placement string (view-rel only)
+                         width       width of polyline in pixels
+                         colour      colour of polyline edge lines
+                         offset_x    X offset
+                         offset_y    Y offset
+                         data        polygon user data object
+        """
+
+        # merge global and layer defaults
+        if map_rel:
+            default_placement = kwargs.get('placement',
+                                           self.DefaultPolygonPlacement)
+            default_width = kwargs.get('width', self.DefaultPolygonWidth)
+            default_colour = self.get_i18n_kw(kwargs, ('colour', 'color'),
+                                              self.DefaultPolygonColour)
+            default_offset_x = kwargs.get('offset_x', self.DefaultPolygonOffsetX)
+            default_offset_y = kwargs.get('offset_y', self.DefaultPolygonOffsetY)
+            default_data = kwargs.get('data', self.DefaultPolygonData)
+        else:
+            default_placement = kwargs.get('placement',
+                                           self.DefaultPolygonViewPlacement)
+            default_width = kwargs.get('width', self.DefaultPolygonViewWidth)
+            default_colour = self.get_i18n_kw(kwargs, ('colour', 'color'),
+                                              self.DefaultPolygonViewColour)
+            default_offset_x = kwargs.get('offset_x', self.DefaultPolygonViewOffsetX)
+            default_offset_y = kwargs.get('offset_y', self.DefaultPolygonViewOffsetY)
+            default_data = kwargs.get('data', self.DefaultPolygonViewData)
+
+        # create draw_data iterable
+        draw_data = []
+        for d in data:
+            if len(d) == 2:
+                (p, attributes) = d
+            elif len(d) == 1:
+                p = d
+                attributes = {}
+            else:
+                msg = ('Polyline data must be iterable of tuples: '
+                       '(polyline, [attributes])\n'
+                       'Got: %s' % str(d))
+                raise Exception(msg)
+
+            # get polygon attributes
+            placement = attributes.get('placement', default_placement)
+            width = attributes.get('width', default_width)
+            colour = self.get_i18n_kw(attributes, ('colour', 'color'),
+                                      default_colour)
+            offset_x = attributes.get('offset_x', default_offset_x)
+            offset_y = attributes.get('offset_y', default_offset_y)
+            udata = attributes.get('data', default_data)
+
+            # check values that can be wrong
+            placement = placement.lower()
+            if placement not in self.valid_placements:
+                msg = ("Polyline placement value is invalid, got '%s'"
+                       % str(placement))
+                raise Exception(msg)
+
+            # convert various colour formats to internal (r, g, b, a)
+            colour = self.colour_to_internal(colour)
+
+            draw_data.append((p, placement, width, colour,
+                              offset_x, offset_y, udata))
+
+        return self.AddLayer(self.DrawPolylineLayer, draw_data, map_rel,
+                             visible=visible, show_levels=show_levels,
+                             selectable=selectable, name=name,
+                             type=self.TypePolyline)
+
+    def colour_to_internal(self, colour):
+        """Convert a colour in one of various forms to an internal format.
+
+        colour  either a HEX string ('#RRGGBBAA') or a tuple (r, g, b, a)
+
+        Returns internal tuple form:  (r, g, b, c)
+        """
+
+        if isinstance(colour, str):
+            # expect '#RRGGBBAA' form
+            if len(colour) != 9 or colour[0] != '#':
+                msg = f"Colour value ({colour}) is not in the form '#RRGGBBAA'"
+                raise Exception(msg)
+            r = int(colour[1:3], 16)
+            g = int(colour[3:5], 16)
+            b = int(colour[5:7], 16)
+            a = int(colour[7:9], 16)
+            return (r, g, b, a)
+        else:
+            # we assume a list or tuple
+            if len(colour) != 4:
+                msg = f"Colour value ({colour}) is not in the form '(r, g, b, a)'"
+                raise Exception(msg)
+            result = []
+            for v in colour:
+                try:
+                    v = int(v)
+                except ValueError:
+                    msg = f"Colour value ({colour}) is not in the form '(r, g, b, a)'"
+                    raise Exception(msg)
+                if v < 0 or v > 255:
+                    msg = f"Colour value ({colour}) is not in the form '(r, g, b, a)'"
+                    raise Exception(msg)
+                result.append(v)
+            return tuple(result)
