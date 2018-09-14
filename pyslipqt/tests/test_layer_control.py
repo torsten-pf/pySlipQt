@@ -15,14 +15,7 @@ class LayerControlExample(QWidget):
 
     def __init__(self):
         super().__init__()
-        self.initUI()
 
-        # connect the widget to '.changed' event handler
-        self.lc_group.change_add.connect(self.layer_add)
-        self.lc_group.change_show.connect(self.layer_show)
-        self.lc_group.change_select.connect(self.layer_select)
-
-    def initUI(self):
         self.lc_group = LayerControl(self, title='Group title longer', selectable=True, tooltip="tooltip")
 
         hbox = QHBoxLayout()
@@ -30,8 +23,12 @@ class LayerControlExample(QWidget):
         self.setLayout(hbox)
 
         self.setWindowTitle('LayerControl widget')
-#            self.setFixedSize(400, 125)
         self.show()
+
+        # connect the widget to '.changed' event handler
+        self.lc_group.change_add.connect(self.layer_add)
+        self.lc_group.change_show.connect(self.layer_show)
+        self.lc_group.change_select.connect(self.layer_select)
 
     def layer_add(self, add):
         print(f'Layer ADD={add}')
