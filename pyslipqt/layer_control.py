@@ -26,6 +26,7 @@ Events:
     .change_select   the "select" checkbox was toggled
 """
 
+from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import QWidget, QCheckBox, QGroupBox, QVBoxLayout, QHBoxLayout, QSpacerItem, QSizePolicy
 
@@ -37,6 +38,22 @@ class LayerControl(QWidget):
     change_show = pyqtSignal(bool)      # signal raised when user toggles "show" checkbox
     change_select = pyqtSignal(bool)    # signal raised when user toggles "select" checkbox
 
+    # size of the widget
+    WidgetWidth = 80
+    AddXOffset = 0
+    AddYOffset = 5
+    AddWidth = 10
+    AddHeight = 10
+    ShowXOffset = 35
+    ShowYOffset = AddYOffset
+    ShowWidth = 10
+    ShowHeight = 10
+    SelectXOffset = 60
+    SelectYOffset = AddYOffset
+    SelectWidth = 10
+    SelectHeight = 10
+
+
     def __init__(self, parent, title, selectable=False, tooltip=None):
         """Initialise a LayerControl instance.
 
@@ -47,77 +64,60 @@ class LayerControl(QWidget):
         """
 
         QWidget.__init__(self)
+        self.setContentsMargins(0,0,0,0)
+        self.setStyleSheet("font-style: normal; font-size: 10pt;background-color: rgb(232, 255, 255);");
 
         self.selectable = selectable
 
-        # set the style for some sub-widgets
-#        style = ('margin-top: 5px; ')
-
-#        rostyle = ('background-color: rgb(232,232,232); '
-#                   'border:1px solid rgb(128, 128, 128); '
-#                   'border-radius: 3px; '
-#                   'margin-top: 5px; ')
-
-#        hboxstyle = ('background-color: rgb(232, 255, 255); '
-#                     'border:1px solid rgb(128, 128, 128); '
-#                     'border-radius: 3px; ')
-
         groupbox_style = ('QGroupBox {'
-#                          '    border: 1px solid rgb(128, 128, 128); '
-#                          '    border-radius: 3px;'
-                          '    background-color: rgb(232,255,255); '
+                          '    border: 1px solid rgb(128, 128, 128); '
+                          '    border-radius: 3px;'
+                          '    background-color: rgb(232, 255, 255); '
                           '}'
                           'QGroupBox:title {'
                           '    subcontrol-origin: margin;'
                           '    subcontrol-position: top left;'
                           '    padding-left: 0px;'
-                          '    padding-right: 5px;'
-                          '    padding-top: 1px;' # was -5
-                          '    border-top: none;'
+                          '    padding-right: 0px;'
+                          '    padding-top: 0px;'
+                          '    padding-bottom: 0px;'
+                          '    font-weight: bold;'
+#                          '    border-top: none;'
                           '}'
                          )
 
         # define the widgets we are going to use
         self.cb_add = QCheckBox('Add layer', self)
+        self.cb_add.setGeometry(QtCore.QRect(self.AddXOffset, self.AddYOffset,
+                                             self.AddWidth, self.AddHeight)) #(x, y, width, height)
 
         self.cb_show = QCheckBox('Show', self)
+        self.cb_show.setGeometry(QtCore.QRect(self.ShowXOffset, self.ShowYOffset,
+                                              self.ShowWidth, self.ShowHeight)) #(x, y, width, height)
         self.cb_show.setEnabled(False)
 
         if selectable:
             self.cb_select = QCheckBox('Select', self)
+            self.cb_select.setGeometry(QtCore.QRect(self.SelectXOffset, self.SelectYOffset,
+                                                    self.SelectWidth, self.SelectHeight)) #(x, y, width, height)
             self.cb_select.setEnabled(False)
 
         # start the layout
-        layout = QVBoxLayout()
-#        layout.setContentsMargins(3, 0, 3, 0)
-#        layout.setSpacing(0)
+        layout = QHBoxLayout()
 
         groupbox = QGroupBox(title)
         groupbox.setStyleSheet(groupbox_style)
 
         layout.addWidget(groupbox)
 
-        vbox = QVBoxLayout()
-#        vbox.setContentsMargins(3, 0, 3, 0)
-#        vbox.setSpacing(0)
-
         hbox = QHBoxLayout()
-#        hbox.setContentsMargins(3, 0, 3, 0)
-#        hbox.setSpacing(10)
         hbox.addWidget(self.cb_add)
-#        hbox.addStretch()
-        vbox.addLayout(hbox)
-
-        hbox = QHBoxLayout()
-#        hbox.setContentsMargins(3, 0, 3, 0)
-#        hbox.setSpacing(10)
-        hbox.addSpacing(50)
         hbox.addWidget(self.cb_show)
         if selectable:
             hbox.addWidget(self.cb_select)
-        vbox.addLayout(hbox)
+#        hbox.addLayout(hbox)
 
-        groupbox.setLayout(vbox)
+        groupbox.setLayout(hbox)
 
         self.setLayout(layout)
 

@@ -180,7 +180,21 @@ class PySlipQtDemo(QWidget):
 
         # build the GUI
         grid = QGridLayout()
-        grid.setContentsMargins(2,2,2,2)
+        grid.setColumnStretch(0, 1)
+        grid.setColumnStretch(1, 0)
+        grid.setColumnStretch(2, 0)
+        grid.setSpacing(0)
+        grid.setContentsMargins(0, 0, 0, 0)
+#        grid.horizontalSpacing = 0
+#        grid.verticalSpacing = 0
+#        grid.setVerticalSpacing(0)
+#        grid.setHorizontalSpacing(0)
+        print(dir(grid))
+#        help(grid)
+#        grid.setSpacing(0)
+#        grid.setMargin(0)
+
+#        grid.setContentsMargins(0,0,0,0)
         self.setLayout(grid)
 
         self.pyslipqt = pyslipqt.PySlipQt(self, tile_src=self.tile_source, start_level=0)
@@ -255,12 +269,12 @@ class PySlipQtDemo(QWidget):
 
         # put level and position into grid at top right
         self.map_level = DisplayText(title='Map level', label='Level:', tooltip=None, width=50)
-        grid.addWidget(self.map_level, grid_row, 1, 1, 1)
+        grid.addWidget(self.map_level, grid_row, 1)
         self.mouse_position = DisplayText(title='Cursor position',
                                           label='Lon/Lat:',
                                           tooltip='Shows the mouse longitude and latitude on the map',
                                           width=50)
-        grid.addWidget(self.map_level, grid_row, 2, 2, 2)
+        grid.addWidget(self.mouse_position, grid_row, 2)
         grid_row += 1
 
         # controls for map-relative points layer
@@ -1926,7 +1940,6 @@ class PySlipQtDemo(QWidget):
         size = cr_img.size()
         CR_Height = size.height()
         CR_Width = size.width()
-        print(f'CR_Height={CR_Height}, CR_Width={CR_Width}')
 
         # force pyslipqt initialisation
         self.pyslipqt.resizeEvent()

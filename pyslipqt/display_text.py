@@ -31,77 +31,80 @@ from PyQt5.QtWidgets import QWidget, QPushButton, QHBoxLayout, QVBoxLayout
 from PyQt5.QtWidgets import QLabel, QSpinBox, QGroupBox, QCheckBox, QSpacerItem
 from PyQt5.QtCore import pyqtSignal
 
-from rotextctrl import ROTextCtrl
-
 
 class DisplayText(QWidget):
 
     # size of the widget
-    WidgetWidth = 85
-    WidgetHeight = 55
+    WidgetWidth = 80
+    WidgetHeight = 30
+    LabelXOffset = 5
+    LabelYOffset = 5
+    LabelHeight = 24
+    LabelWidth = 40
+    TextXOffset = 40
+    TextYOffset = LabelYOffset
+    TextHeight = LabelHeight
+    TextWidth = 35
 
     def __init__(self, title='', label='', text='', tooltip=None, width=None):
         QWidget.__init__(self)
+        self.setContentsMargins(0,0,0,0)
+#        self.setStyleSheet("font-style: normal;font-size: 10pt;font-weight: bold;");
+        self.setStyleSheet("font-style: normal; font-size: 10pt;background-color: rgb(232, 255, 255);");
 
         # set the style for some sub-widgets
-        style = ('margin-top: 5px; ')
+        label_style = 'margin-top: 10px; '
 
-        rostyle = ('background-color: rgb(232,232,232); '
-                   'border:1px solid rgb(128, 128, 128); '
-                   'border-radius: 3px; '
-                   'margin-top: 5px; ')
+        text_style = ('background-color: rgb(232, 232, 232);'
+                      'border:1px solid rgb(128, 128, 128);'
+                      'border-radius: 3px;'
+                      'margin-top: 10px;')
 
         groupbox_style = ('QGroupBox {'
-#                          '    border: 1px solid rgb(128, 128, 128); '
-#                          '    border-radius: 3px;'
-                          '    background-color: rgb(232,255,255); '
+                          '    border: 1px solid rgb(128, 128, 128);'
+                          '    border-radius: 3px;'
+                          '    background-color: rgb(232, 255, 255);'
                           '}'
                           'QGroupBox:title {'
                           '    subcontrol-origin: margin;'
                           '    subcontrol-position: top left;'
                           '    padding-left: 0px;'
-                          '    padding-right: 5px;'
-                          '    padding-top: 1px;' # was -5
-                          '    border-top: none;'
+                          '    padding-right: 0px;'
+                          '    padding-top: 0px;'
+                          '    padding-bottom: 0px;'
+                          '    font-weight: bold;'
+#                          '    border-top: none;'
                           '}'
                          )
 
-#        groupbox_style = ('QGroupBox {'
-#                          '    border: 1px solid rgb(128, 128, 128); '
-#                          '    border-radius: 3px;'
-#                          '}'
-#                          'QGroupBox:title {'
-#                          '    subcontrol-origin: margin;'
-#                          '    subcontrol-position: top left;'
-#                          '    padding-left: 0px;'
-#                          '    padding-right: 5px;'
-#                          '    padding-top: -7px;'
-#                          '    border-top: none;'
-#                          '}'
-#                         )
-
         # define the widgets we are going to use
         lbl_label = QLabel(label, self)
-        lbl_label.setFixedHeight(self.WidgetHeight // 2)
-        lbl_label.setFixedWidth(self.WidgetWidth // 2)
+        lbl_label.setFixedHeight(self.LabelHeight)
+        lbl_label.setFixedWidth(self.LabelWidth)
         lbl_label.setAlignment(Qt.AlignRight|Qt.AlignCenter)
-        lbl_label.setStyleSheet(style)
+        lbl_label.setStyleSheet(label_style)
+        lbl_label.setGeometry(QtCore.QRect(self.LabelXOffset, self.LabelYOffset,
+                                           self.LabelWidth, self.LabelHeight)) #(x, y, width, height)
 
         self.lbl_text = QLabel(text, self)
-        self.lbl_text.setFixedHeight(self.WidgetHeight // 2)
-        if width:
-            self.lbl_text.setFixedWidth(width)
-        else:
-            self.lbl_text.setFixedWidth(self.WidgetWidth // 2)
-        lbl_label.setGeometry(QtCore.QRect(self.WidgetWidth // 2, 0, self.WidgetWidth // 2, self.WidgetHeight // 2)) #(x, y, width, height)
+#        self.lbl_text.setFixedHeight(self.LabelHeight)
+#        if width:
+#            self.lbl_text.setFixedWidth(width)
+#        else:
+#            self.lbl_text.setFixedWidth(self.TextWidth)
+        self.lbl_text.setGeometry(QtCore.QRect(self.TextXOffset, self.TextYOffset,
+                                               self.TextWidth, self.TextHeight)) #(x, y, width, height)
         self.lbl_text.setAlignment(Qt.AlignLeft) # |Qt.AlignCenter)
-        self.lbl_text.setStyleSheet(rostyle)
+        self.lbl_text.setStyleSheet(text_style)
     
         # start the layout
         layout = QVBoxLayout()
+        print(dir(layout))
+        layout.setContentsMargins(0,0,0,0)
 
         groupbox = QGroupBox(title)
         groupbox.setStyleSheet(groupbox_style)
+        groupbox.setContentsMargins(0,0,0,0)
 
         layout.addWidget(groupbox)
 

@@ -100,7 +100,8 @@ class PySlipQt(QWidget):
     # default point attributes - map relative
     DefaultPointPlacement = 'cc'
     DefaultPointRadius = 3
-    DefaultPointColour = Qt.red
+#    DefaultPointColour = Qt.red
+    DefaultPointColour = 'red'
     DefaultPointOffsetX = 0
     DefaultPointOffsetY = 0
     DefaultPointData = None
@@ -108,7 +109,8 @@ class PySlipQt(QWidget):
     # default point attributes - view relative
     DefaultPointViewPlacement = 'cc'
     DefaultPointViewRadius = 3
-    DefaultPointViewColour = Qt.red
+#    DefaultPointViewColour = Qt.red
+    DefaultPointViewColour = 'red'
     DefaultPointViewOffsetX = 0
     DefaultPointViewOffsetY = 0
     DefaultPointViewData = None
@@ -116,7 +118,8 @@ class PySlipQt(QWidget):
     # default image attributes - map relative
     DefaultImagePlacement = 'nw'
     DefaultImageRadius = 0
-    DefaultImageColour = Qt.black
+#    DefaultImageColour = Qt.black
+    DefaultImageColour = 'black'
     DefaultImageOffsetX = 0
     DefaultImageOffsetY = 0
     DefaultImageData = None
@@ -124,7 +127,8 @@ class PySlipQt(QWidget):
     # default image attributes - view relative
     DefaultImageViewPlacement = 'nw'
     DefaultImageViewRadius = 0
-    DefaultImageViewColour = Qt.black
+#    DefaultImageViewColour = Qt.black
+    DefaultImageViewColour = 'black'
     DefaultImageViewOffsetX = 0
     DefaultImageViewOffsetY = 0
     DefaultImageViewData = None
@@ -132,8 +136,10 @@ class PySlipQt(QWidget):
     # default text attributes - map relative
     DefaultTextPlacement = 'nw'
     DefaultTextRadius = 2
-    DefaultTextColour = Qt.black
-    DefaultTextTextColour = Qt.black
+#    DefaultTextColour = Qt.black
+    DefaultTextColour = 'black'
+#    DefaultTextTextColour = Qt.black
+    DefaultTextTextColour = 'black'
     DefaultTextOffsetX = 5
     DefaultTextOffsetY = 1
     DefaultTextFontname = 'Arial'
@@ -143,8 +149,10 @@ class PySlipQt(QWidget):
     # default text attributes - view relative
     DefaultTextViewPlacement = 'nw'
     DefaultTextViewRadius = 0
-    DefaultTextViewColour = Qt.black
-    DefaultTextViewTextColour = Qt.black
+#    DefaultTextViewColour = Qt.black
+    DefaultTextViewColour = 'black'
+#    DefaultTextViewTextColour = Qt.black
+    DefaultTextViewTextColour = 'black'
     DefaultTextViewOffsetX = 0
     DefaultTextViewOffsetY = 0
     DefaultTextViewFontname = 'Arial'
@@ -154,7 +162,8 @@ class PySlipQt(QWidget):
     # default polygon attributes - map view
     DefaultPolygonPlacement = 'cc'
     DefaultPolygonWidth = 1
-    DefaultPolygonColour = Qt.red
+#    DefaultPolygonColour = Qt.red
+    DefaultPolygonColour = 'red'
     DefaultPolygonClose = False
     DefaultPolygonFilled = False
     DefaultPolygonFillcolour = 'blue'
@@ -165,7 +174,8 @@ class PySlipQt(QWidget):
     # default polygon attributes - view relative
     DefaultPolygonViewPlacement = 'nw'
     DefaultPolygonViewWidth = 1
-    DefaultPolygonViewColour = Qt.red
+#    DefaultPolygonViewColour = Qt.red
+    DefaultPolygonViewColour = 'red'
     DefaultPolygonViewClose = False
     DefaultPolygonViewFilled = False
     DefaultPolygonViewFillcolour = 'blue'
@@ -176,7 +186,8 @@ class PySlipQt(QWidget):
     # default polyline attributes - map view
     DefaultPolylinePlacement = 'cc'
     DefaultPolylineWidth = 1
-    DefaultPolylineColour = Qt.red
+#    DefaultPolylineColour = Qt.red
+    DefaultPolylineColour = 'red'
     DefaultPolylineOffsetX = 0
     DefaultPolylineOffsetY = 0
     DefaultPolylineData = None
@@ -184,7 +195,8 @@ class PySlipQt(QWidget):
     # default polyline attributes - view relative
     DefaultPolylineViewPlacement = 'cc'
     DefaultPolylineViewWidth = 1
-    DefaultPolylineViewColour = Qt.red
+#    DefaultPolylineViewColour = Qt.red
+    DefaultPolylineViewColour = 'red'
     DefaultPolylineViewOffsetX = 0
     DefaultPolylineViewOffsetY = 0
     DefaultPolylineViewData = None
