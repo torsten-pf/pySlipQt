@@ -162,7 +162,6 @@ PackBorder = 0
 ###############################################################################
 
 class PySlipQtDemo(QWidget):
-#class PySlipQtDemo(QMainWindow):
     def __init__(self):
         super().__init__()
 
@@ -183,18 +182,7 @@ class PySlipQtDemo(QWidget):
         grid.setColumnStretch(0, 1)
         grid.setColumnStretch(1, 0)
         grid.setColumnStretch(2, 0)
-        grid.setSpacing(0)
         grid.setContentsMargins(0, 0, 0, 0)
-#        grid.horizontalSpacing = 0
-#        grid.verticalSpacing = 0
-#        grid.setVerticalSpacing(0)
-#        grid.setHorizontalSpacing(0)
-        print(dir(grid))
-#        help(grid)
-#        grid.setSpacing(0)
-#        grid.setMargin(0)
-
-#        grid.setContentsMargins(0,0,0,0)
         self.setLayout(grid)
 
         self.pyslipqt = pyslipqt.PySlipQt(self, tile_src=self.tile_source, start_level=0)
@@ -205,9 +193,6 @@ class PySlipQtDemo(QWidget):
 
         # do initialisation stuff - all the application stuff
         self.init()
-
-        # finally, set up application window position
-#        self.Centre()
 
         # create select event dispatch directory
         self.demo_select_dispatch = {}
@@ -268,13 +253,12 @@ class PySlipQtDemo(QWidget):
         grid_row = 0
 
         # put level and position into grid at top right
-        self.map_level = DisplayText(title='Map level', label='Level:', tooltip=None, width=50)
-        grid.addWidget(self.map_level, grid_row, 1)
+        self.map_level = DisplayText(title='Map level', label='Level:', tooltip=None)
+        grid.addWidget(self.map_level, grid_row, 1, 1, 1)
         self.mouse_position = DisplayText(title='Cursor position',
                                           label='Lon/Lat:',
-                                          tooltip='Shows the mouse longitude and latitude on the map',
-                                          width=50)
-        grid.addWidget(self.mouse_position, grid_row, 2)
+                                          tooltip='Shows the mouse longitude and latitude on the map')
+        grid.addWidget(self.mouse_position, grid_row, 2, 1, 1)
         grid_row += 1
 
         # controls for map-relative points layer
@@ -282,7 +266,7 @@ class PySlipQtDemo(QWidget):
         point.change_add.connect(self.pointOnOff)   # tie to event handler(s)
         point.change_show.connect(self.pointShowOnOff)
         point.change_select.connect(self.pointSelectOnOff)
-        grid.addWidget(point, grid_row, 1, 1, 2)
+        grid.addWidget(point, grid_row, 1, 1, 3)
         grid_row += 1
 
         # controls for view-relative points layer
@@ -290,7 +274,7 @@ class PySlipQtDemo(QWidget):
         point_v.change_add.connect(self.pointViewOnOff)   # tie to event handler(s)
         point_v.change_show.connect(self.pointViewShowOnOff)
         point_v.change_select.connect(self.pointViewSelectOnOff)
-        grid.addWidget(point_v, grid_row, 1, 1, 2)
+        grid.addWidget(point_v, grid_row, 1, 1, 3)
         grid_row += 1
 
         # controls for map-relative image layer
@@ -298,7 +282,7 @@ class PySlipQtDemo(QWidget):
         image.change_add.connect(self.imageOnOff)   # tie to event handler(s)
         image.change_show.connect(self.imageShowOnOff)
         image.change_select.connect(self.imageSelectOnOff)
-        grid.addWidget(image, grid_row, 1, 1, 2)
+        grid.addWidget(image, grid_row, 1, 1, 3)
         grid_row += 1
 
         # controls for map-relative image layer
@@ -306,7 +290,7 @@ class PySlipQtDemo(QWidget):
         image_v.change_add.connect(self.imageViewOnOff)   # tie to event handler(s)
         image_v.change_show.connect(self.imageViewShowOnOff)
         image_v.change_select.connect(self.imageViewSelectOnOff)
-        grid.addWidget(image_v, grid_row, 1, 1, 2)
+        grid.addWidget(image_v, grid_row, 1, 1, 3)
         grid_row += 1
 
         # controls for map-relative text layer
@@ -314,7 +298,7 @@ class PySlipQtDemo(QWidget):
         text.change_add.connect(self.textOnOff)     # tie to event handler(s)
         text.change_show.connect(self.textShowOnOff)
         text.change_select.connect(self.textSelectOnOff)
-        grid.addWidget(text, grid_row, 1, 1, 2)
+        grid.addWidget(text, grid_row, 1, 1, 3)
         grid_row += 1
 
         # controls for view-relative text layer
@@ -322,7 +306,7 @@ class PySlipQtDemo(QWidget):
         text_v.change_add.connect(self.textViewOnOff)    # tie to event handler(s)
         text_v.change_show.connect(self.textViewShowOnOff)
         text_v.change_select.connect(self.textViewSelectOnOff)
-        grid.addWidget(text_v, grid_row, 1, 1, 2)
+        grid.addWidget(text_v, grid_row, 1, 1, 3)
         grid_row += 1
 
         # controls for map-relative polygon layer
@@ -330,7 +314,7 @@ class PySlipQtDemo(QWidget):
         poly.change_add.connect(self.polyOnOff)     # tie to event handler(s)
         poly.change_show.connect(self.polyShowOnOff)
         poly.change_select.connect(self.polySelectOnOff)
-        grid.addWidget(poly, grid_row, 1, 1, 2)
+        grid.addWidget(poly, grid_row, 1, 1, 3)
         grid_row += 1
 
         # controls for view-relative polygon layer
@@ -338,7 +322,7 @@ class PySlipQtDemo(QWidget):
         poly_v.change_add.connect(self.polyViewOnOff)    # tie to event handler(s)
         poly_v.change_show.connect(self.polyViewShowOnOff)
         poly_v.change_select.connect(self.polyViewSelectOnOff)
-        grid.addWidget(poly_v, grid_row, 1, 1, 2)
+        grid.addWidget(poly_v, grid_row, 1, 1, 3)
         grid_row += 1
 
         # controls for map-relative polyline layer
@@ -346,7 +330,7 @@ class PySlipQtDemo(QWidget):
         poll.change_add.connect(self.polylineOnOff)     # tie to event handler(s)
         poll.change_show.connect(self.polylineShowOnOff)
         poll.change_select.connect(self.polylineSelectOnOff)
-        grid.addWidget(poll, grid_row, 1, 1, 2)
+        grid.addWidget(poll, grid_row, 1, 1, 3)
         grid_row += 1
 
         # controls for view-relative polyline layer
@@ -354,7 +338,7 @@ class PySlipQtDemo(QWidget):
         poll_v.change_add.connect(self.polylineViewOnOff)    # tie to event handler(s)
         poll_v.change_show.connect(self.polylineViewShowOnOff)
         poll_v.change_select.connect(self.polylineViewSelectOnOff)
-        grid.addWidget(poll_v, grid_row, 1, 1, 2)
+        grid.addWidget(poll_v, grid_row, 1, 1, 3)
         grid_row += 1
 
     def onTilesetSelect(self, event):
