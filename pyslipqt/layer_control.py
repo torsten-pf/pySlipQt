@@ -26,6 +26,7 @@ Events:
     .change_select   the "select" checkbox was toggled
 """
 
+import platform
 from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import (QWidget, QCheckBox, QGroupBox, QVBoxLayout,
@@ -33,24 +34,24 @@ from PyQt5.QtWidgets import (QWidget, QCheckBox, QGroupBox, QVBoxLayout,
 
 class LayerControl(QWidget):
 
-#    # set platform dependant values
-#    if platform.system() == 'Linux':
-#        pass
-#    elif platform.system() == 'Darwin':
-#        pass
-#    elif platform.system() == 'Windows':
-#        pass
-#    else:
-#        raise Exception('Unrecognized platform: %s' % platform.system())
+    # set platform dependant values
+    if platform.system() == 'Linux':
+        pass
+    elif platform.system() == 'Darwin':
+        pass
+    elif platform.system() == 'Windows':
+        pass
+    else:
+        raise Exception('Unrecognized platform: %s' % platform.system())
 
     # signals raised by this widget
     change_add = pyqtSignal(bool)       # signal raised when user toggles "add" checkbox
     change_show = pyqtSignal(bool)      # signal raised when user toggles "show" checkbox
     change_select = pyqtSignal(bool)    # signal raised when user toggles "select" checkbox
 
-    # size of the widget
-    WidgetWidth = 160
-    WidgetHeight = 80
+#    # size of the widget
+#    WidgetWidth = 160
+#    WidgetHeight = 80
 
 
     def __init__(self, parent, title, selectable=False, tooltip=None):
@@ -71,13 +72,16 @@ class LayerControl(QWidget):
 
         # start layout
         layout = QGridLayout()
+        layout.setContentsMargins(5, 5, 3, 5)
 
         groupbox = QGroupBox(title)
+        groupbox.setContentsMargins(3, 3, 3, 3)
         groupbox.setCheckable(True)
         groupbox.setChecked(False)
         layout.addWidget(groupbox, 0, 0)
 
         hbox = QHBoxLayout()
+        hbox.setContentsMargins(0, 0, 0, 0)
         groupbox.setLayout(hbox)
 
         hbox.addWidget(self.cb_show)

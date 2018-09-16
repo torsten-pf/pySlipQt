@@ -19,6 +19,7 @@ class LayerControlExample(QWidget):
         self.lc_group = LayerControl(self, title='Group title longer', selectable=True, tooltip="tooltip")
 
         hbox = QHBoxLayout()
+        hbox.setContentsMargins(0, 0, 0, 0)
         hbox.addWidget(self.lc_group)
         self.setLayout(hbox)
 

@@ -39,8 +39,8 @@ TestPySlipQtName = 'PySlipQt Test'
 TestPySlipQtVersion = '0.1'
 
 # width and height of top-level widget
-TestWidth = 500
-TestHeight = 300
+TestWidth = 800
+TestHeight = 600
 
 
 class TestPySlipQt(QWidget):
@@ -54,37 +54,33 @@ class TestPySlipQt(QWidget):
         self.x_coord = 0
         self.y_coord = 0
 
-        self.spin_l = QSpinBox(self)
-        lab_l = QLabel('Level:', self)
-        lab_l.setAlignment(Qt.AlignRight)
-
-        self.spin_l.valueChanged.connect(self.change_l)
-
         self.tile_src = tiles.Tiles(tiles_dir=tiles_dir)
-
-        #               __init__(self, parent, tile_src, start_level=0, **kwargs)
-#        self.canvas = pyslipqt.PySlipQt(self, self.tile_src, start_level=0, kwargs={'background': (255, 0, 0, 255)})
-        self.canvas = pyslipqt.PySlipQt(self, self.tile_src, 0)
-#        self.canvas.setStyleSheet('background-color: rgb(255, 0, 0);')
         self.min_level = min(self.tile_src.levels)
         self.max_level = max(self.tile_src.levels)
         (self.num_tiles_x, self.num_tiles_y, _, _) = self.tile_src.GetInfo(self.l_coord)
 
+        self.spin_l = QSpinBox(self)
+        self.spin_l.valueChanged.connect(self.change_l)
+        self.spin_l.setMinimum(self.min_level)
+        self.spin_l.setMaximum(self.max_level)
+
+        lab_l = QLabel('Level:', self)
+        lab_l.setAlignment(Qt.AlignRight)
+
+#        self.canvas = pyslipqt.PySlipQt(self, self.tile_src, start_level=0, kwargs={'background': (255, 0, 0, 255)})
+        self.canvas = pyslipqt.PySlipQt(self, self.tile_src, 0)
+        self.canvas.use_level(0)
+
         grid = QGridLayout()
         self.setLayout(grid)
-        grid.setContentsMargins(2,2,2,2)
+        grid.setContentsMargins(0,0,0,0)
 
         grid.addWidget(self.canvas, 0, 0, 8, 1)
 
         grid.addWidget(lab_l, 0, 1)
         grid.addWidget(self.spin_l, 0, 2)
 
-        self.spin_l.setMinimum(self.min_level)
-        self.spin_l.setMaximum(self.max_level)
-
-        self.canvas.use_level(0)
-
-        self.setGeometry(300, 300, TestWidth, TestHeight)
+        self.setGeometry(200, 200, TestWidth, TestHeight)
         self.setWindowTitle('%s %s' % (TestPySlipQtName, TestPySlipQtVersion))
         self.show()
 

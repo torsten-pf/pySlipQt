@@ -179,17 +179,18 @@ class PySlipQtDemo(QWidget):
 
         # build the GUI
         grid = QGridLayout()
-        grid.setColumnStretch(0, 1)
-        grid.setColumnStretch(1, 0)
-        grid.setColumnStretch(2, 0)
-        grid.setContentsMargins(0, 0, 0, 0)
         self.setLayout(grid)
 
-        self.pyslipqt = pyslipqt.PySlipQt(self, tile_src=self.tile_source, start_level=0)
-        grid.addWidget(self.pyslipqt, 0, 0, 8, 1)
+        grid.setColumnStretch(0, 1)
+#        grid.setColumnStretch(1, 0)
+#        grid.setColumnStretch(2, 0)
+        grid.setContentsMargins(2, 2, 2, 2)
 
         # build the 'controls' part of GUI
-        all_display = self.make_gui_controls(grid)
+        num_rows = self.make_gui_controls(grid)
+
+        self.pyslipqt = pyslipqt.PySlipQt(self, tile_src=self.tile_source, start_level=0)
+        grid.addWidget(self.pyslipqt, 0, 0, num_rows, 1)
 
         # do initialisation stuff - all the application stuff
         self.init()
@@ -246,7 +247,7 @@ class PySlipQtDemo(QWidget):
 
         grid  reference to grid that we populate
 
-        Returns reference to containing sizer object.
+        Returns the number of rows add ed to the 'grid' layout.
         """
 
         # the 'grid_row' variable is row to add into
@@ -340,6 +341,8 @@ class PySlipQtDemo(QWidget):
         poll_v.change_select.connect(self.polylineViewSelectOnOff)
         grid.addWidget(poll_v, grid_row, 1, 1, 3)
         grid_row += 1
+
+        return grid_row
 
     def onTilesetSelect(self, event):
         """User selected a tileset from the menu.

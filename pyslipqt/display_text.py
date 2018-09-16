@@ -3,7 +3,7 @@
 """
 A PyQt5 custom widget used by pySlipQt.
 
-Used to display text.  The layout and components:
+Used to display text.  The grid and components:
 
     +-----------------------------------------+
     |  <title>                                |
@@ -16,7 +16,7 @@ Used to display text.  The layout and components:
 
 The constructor:
 
-    dt = DisplayText(parent, title='', label='', tooltip=None, width=None)
+    dt = DisplayText(parent, title='', label='', tooltip=None)
 
 Methods:
 
@@ -25,12 +25,13 @@ Methods:
 
 """
 
+#import platform
 from PyQt5.QtWidgets import *
-import sys
+from PyQt5.QtCore import Qt
 
 class DisplayText(QWidget):
 
-#    # set platform dependant values
+#    # set platform dependent values, if any
 #    if platform.system() == 'Linux':
 #        pass
 #    elif platform.system() == 'Darwin':
@@ -48,25 +49,26 @@ class DisplayText(QWidget):
     def __init__(self, title, label, tooltip=None):
         QWidget.__init__(self)
 
-        # create all widgets
+        # create both labels required for display
         lbl_label = QLabel(label)
+        lbl_label.setAlignment(Qt.AlignRight)
         self.lbl_text = QLabel()
         self.lbl_text.setStyleSheet(self.text_style)
 
-        # start layout
-        layout = QGridLayout()
+        # start grid
+        grid = QGridLayout()
+        grid.columnStretch(1)
+#        grid.setSpacing(0)
+        grid.setContentsMargins(5, 5, 3, 5)
 
         groupbox = QGroupBox(title)
-        layout.addWidget(groupbox)
+        groupbox.setContentsMargins(3, 3, 3, 3)
+        grid.addWidget(groupbox)
 
-        hbox = QHBoxLayout()
-        groupbox.setLayout(hbox)
+        grid.addWidget(lbl_label, 0, 0)
+        grid.addWidget(self.lbl_text, 0, 1)
 
-        hbox.addWidget(lbl_label)
-        hbox.addWidget(self.lbl_text)
-        hbox.addStretch()
-
-        self.setLayout(layout)
+        self.setLayout(grid)
 
         if tooltip:
             self.setToolTip(tooltip)

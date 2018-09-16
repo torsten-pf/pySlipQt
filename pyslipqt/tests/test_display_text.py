@@ -19,6 +19,8 @@ class DisplayTextExample(QWidget):
         self.dt_group = DisplayText(title='Group title longer', label='Label:')
 
         hbox = QHBoxLayout()
+        hbox.setSpacing(5)
+        hbox.setContentsMargins(3, 3, 3, 3)
         hbox.addWidget(self.dt_group)
         self.setLayout(hbox)
 
