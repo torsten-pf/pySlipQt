@@ -7,10 +7,9 @@ Some semantics:
           (view may be smaller than map, or larger)
 """
 
-from PyQt5.QtCore import Qt, QTimer, QPoint
+from PyQt5.QtCore import Qt, QTimer, QPoint, QPointF
 from PyQt5.QtWidgets import QLabel, QSizePolicy, QWidget
-from PyQt5.QtGui import QPainter, QColor, QPixmap, QPen
-
+from PyQt5.QtGui import QPainter, QColor, QPixmap, QPen, QFont, QFontMetrics
 
 # if we don't have log.py, don't crash
 try:
@@ -142,7 +141,7 @@ class PySlipQt(QWidget):
     DefaultTextTextColour = 'black'
     DefaultTextOffsetX = 5
     DefaultTextOffsetY = 1
-    DefaultTextFontname = 'Arial'
+    DefaultTextFontname = 'Helvetica'
     DefaultTextFontSize = 10
     DefaultTextData = None
 
@@ -155,7 +154,7 @@ class PySlipQt(QWidget):
     DefaultTextViewTextColour = 'black'
     DefaultTextViewOffsetX = 0
     DefaultTextViewOffsetY = 0
-    DefaultTextViewFontname = 'Arial'
+    DefaultTextViewFontname = 'Helvetica'
     DefaultTextViewFontSize = 10
     DefaultTextViewData = None
 
@@ -852,7 +851,7 @@ class PySlipQt(QWidget):
         map_rel  points relative to map if True, else relative to view
         """
 
-        # get correct pex function
+        # get correct pex function - this handles map or view
         pex = self.PexPointView
         if map_rel:
             pex = self.PexPoint
@@ -864,9 +863,7 @@ class PySlipQt(QWidget):
             (pt, ex) = pex(place, (x,y), x_off, y_off, radius)
             if ex and radius:  # don't draw if not on screen or zero radius
                 if cache_colour != colour:
-                    log(f'DrawPointLayer: x={x}, y={y}, place={place}, radius={radius}, colour={colour}')
                     qcolour = QColor(*colour)
-                    log(f'DrawPointLayer: qcolour={qcolour}')
                     pen = QPen(qcolour, radius, Qt.SolidLine)
                     dc.setPen(pen)
                     dc.setBrush(qcolour)
@@ -888,15 +885,20 @@ class PySlipQt(QWidget):
         if map_rel:
             pex = self.PexExtent
 
-        # draw the images
-        cache_colour = None     # speed up drawing mostly unchanging colours
+        # draw the images - speed up drawing mostly unchanging colours
+        cache_colour = None
 
         for (lon, lat, bmap, w, h, place,
                  x_off, y_off, radius, colour, idata) in images:
+            log(f'DrawImageLayer: lon={lon}, lat={lat}, w={w}, h={h}, radius={radius}, colour={colour}')
             (pt, ex) = pex(place, (lon, lat), x_off, y_off, w, h)
+            log(f'DrawImageLayer: pt={pt}, ex={ex}')
             if ex:
                 (ix, _, iy, _) = ex
-#                dc.DrawBitmap(bmap, ix, iy, False)
+                ix = int(ix)
+                iy = int(iy)
+                log(f'DrawImageLayer: drawing image at ix={ix}, iy={iy}, bmap={bmap}')
+                log(f'DrawImageLayer: self.view_width={self.view_width}, self.view_height={self.view_height}')
                 dc.drawPixmap(QPoint(ix, iy), bmap)
 
             if pt and radius:
@@ -907,6 +909,7 @@ class PySlipQt(QWidget):
                     paint.setBrush(pen)
                     cache_colour = colour
                 (px, py) = pt
+                log(f'DrawImageLayer: drawing circle at px={px}, py={py}')
                 dc.drawEllipse(QPoint(px, py), radius, radius)
 
     def DrawTextLayer(self, dc, text, map_rel):
@@ -924,39 +927,53 @@ class PySlipQt(QWidget):
         if map_rel:
             pex = self.PexExtent
 
-        # draw text on map/view
-        cache_textcolour = None # speed up mostly unchanging data
+        # set some caching to speed up mostly unchanging data
+        cache_textcolour = None
         cache_font = None
         cache_colour = None
 
+        # draw text on map/view
         for (lon, lat, tdata, place, radius, colour,
                 textcolour, fontname, fontsize, x_off, y_off, data) in text:
 
+            log(f'DrawTextLayer: xyzzy: lon={lon}, lat={lat}, tdata={tdata}, radius={radius}')
+
             # set font characteristics so we calculate text width/height
             if cache_textcolour != textcolour:
-                dc.SetTextForeground(textcolour)
+                qcolour = QColor(*textcolour)
+                pen = QPen(qcolour, radius, Qt.SolidLine)
+                dc.setPen(pen)
                 cache_textcolour = textcolour
 
             if cache_font != (fontname, fontsize):
-                font = wx.Font(fontsize, wx.SWISS, wx.NORMAL, wx.NORMAL,
-                               False, fontname)
-                dc.SetFont(font)
+                font = QFont(fontname, fontsize)
+                dc.setFont(font)
                 cache_font = (fontname, fontsize)
+                font_metrics = QFontMetrics(font)
 
-            (w, h, _, _) = dc.GetFullTextExtent(tdata)
+            qrect = font_metrics.boundingRect(tdata)
+            w = qrect.width()
+            h = qrect.height()
+            log(f'DrawTextLayer: tdata={tdata}, w={w}, h={h}')
 
             # get point + extent information (each can be None if off-view)
             (pt, ex) = pex(place, (lon, lat), x_off, y_off, w, h)
-            if ex:
+            log(f'DrawTextLayer: lon={lon}, lat={lat} -> pt={pt}, ex={ex}')
+            if ex:              # don't draw text if off screen
                 (lx, _, ty, _) = ex
-                dc.DrawText(tdata, lx, ty)
+                dc.drawText(QPointF(lx, ty), tdata)
+                log(f'DrawTextLayer: drawing "{tdata}" at view ({lx},{ty})')
 
-            if pt and radius:
+            if pt and radius:   # don't draw point if off screen or zero radius
                 (x, y) = pt
                 if cache_colour != colour:
-                    dc.SetPen(wx.Pen(colour))
-                    dc.SetBrush(wx.Brush(colour))
-                dc.DrawCircle(x, y, radius)
+                    qcolour = QColor(*colour)
+                    pen = QPen(qcolour, radius, Qt.SolidLine)
+                    dc.setPen(pen)
+                    dc.setBrush(qcolour)
+                    cache_colour = colour
+                dc.drawEllipse(QPoint(x, y), radius, radius)
+                log(f'DrawTextLayer: drawing point at view ({x},{y}), radius {radius}')
 
     def DrawPolygonLayer(self, dc, data, map_rel):
         """Draw a polygon layer.
@@ -1065,21 +1082,21 @@ class PySlipQt(QWidget):
         geo  tuple (xgeo, ygeo)
 
         Return a tuple (xview, yview) in view coordinates.
-        Assume point is in view.
+        Assumes point is in view.
         """
+
+        log(f'Geo2View: input geo={geo}')
 
         # convert the Geo position to tile coordinates
         (tx, ty) = self.tile_src.Geo2Tile(geo)
-
-        log(f'Geo2View: geo={geo}, tx={tx}, ty={ty}')
+        log(f'Geo2View: after .Geo2Tile(geo), tx={tx}, ty={ty}')
+        log(f'Geo2View: .tile_size_x={self.tile_src.tile_size_x}, .key_tile_xoffset={self.key_tile_xoffset}, .key_tile_left={self.key_tile_left}')
 
         # using the key_tile_* variables convert to view coordinates
         xview = ((tx - self.key_tile_left) * self.tile_src.tile_size_x) - self.key_tile_xoffset
-        log(f'Geo2View: .key_tile_left={self.key_tile_left}, tx-.key_tile_left={tx - self.key_tile_left}')
-        log(f'Geo2View: .tile_size_x={self.tile_src.tile_size_x}, .key_tile_xoffset={self.key_tile_xoffset}')
-        log(f'Geo2View: xview={xview}')
         yview = ((ty - self.key_tile_top) * self.tile_src.tile_size_y) - self.key_tile_yoffset
 
+        log(f'Geo2View: returning xview={xview}')
         return (xview, yview)
 #        return ((tx * self.tile_src.tile_size_x) - self.view_offset_x,
 #                (ty * self.tile_src.tile_size_y) - self.view_offset_y)
@@ -1199,13 +1216,19 @@ class PySlipQt(QWidget):
         An extent object can be either an image object or a text object.
         """
 
+        log(f'PexExtent: place={place}, geo={geo}, x_off={x_off}, y_off={y_off}, w={w}, h={h}')
+
         # get point view coords
         point = self.Geo2View(geo)
         (px, py) = point
 
+        log(f'PexExtent: Geo2View({geo}) -> point={point}')
+
         # extent = (left, right, top, bottom) in view coords
         extent = self.ViewExtent(place, point, w, h, x_off, y_off)
         (elx, erx, ety, eby) = extent
+
+        log(f'PexExtent: ViewExtent({place}, {point}, {w}, {h}, {x_off}, {y_off}) -> extent={extent}')
 
         # decide if point and extent are off-view
         if px < 0 or px > self.view_width or py < 0 or py > self.view_height:
@@ -1215,6 +1238,7 @@ class PySlipQt(QWidget):
             # no extent if ALL of extent is off-view
             extent = None
 
+        log(f'PexExtent: returning ({point}, {extent})')
         return (point, extent)
 
     def PexExtentView(self, place, view, x_off, y_off, w, h):
@@ -1777,9 +1801,8 @@ class PySlipQt(QWidget):
                 raise Exception(msg)
 
             # convert various colour formats to internal (r, g, b, a)
-            log(f'AddImageLayer: colour={colour}')
-
             colour = self.colour_to_internal(colour)
+            log(f'AddImageLayer: colour={colour}')
 
             draw_data.append((float(lon), float(lat), bmap, w, h, placement,
                               offset_x, offset_y, radius, colour, udata))
@@ -1870,6 +1893,9 @@ class PySlipQt(QWidget):
 
             # convert various colour formats to internal (r, g, b, a)
             colour = self.colour_to_internal(colour)
+            log(f'AddTextLayer: colour={colour}')
+            textcolour = self.colour_to_internal(textcolour)
+            log(f'AddTextLayer: textcolour={textcolour}')
 
             draw_data.append((float(lon), float(lat), tdata, placement.lower(),
                               radius, colour, textcolour, fontname, fontsize,
@@ -2105,7 +2131,6 @@ class PySlipQt(QWidget):
                 # assume it's a colour *name*
                 c = QColor(colour)
                 result = (c.red(), c.blue(), c.green(), c.alpha())
-#                msg = f"Colour value ({colour}) is not in the form '#RRGGBBAA'"
 #                raise Exception(msg)
             else:
                 # we try for a colour like '#RRGGBBAA'
