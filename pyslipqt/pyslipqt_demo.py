@@ -41,7 +41,8 @@ except ImportError:
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QLabel,
                              QSpinBox, QVBoxLayout, QVBoxLayout, QAction,
-                             QHBoxLayout, QVBoxLayout, QGridLayout)
+                             QHBoxLayout, QVBoxLayout, QGridLayout,
+                             QErrorMessage)
 
 import log
 import gmt_local_tiles as tiles
@@ -687,6 +688,8 @@ class PySlipQtDemo(QWidget):
                                             placement='nw',   # check placement
                                             name='<pt_layer>')
         else:
+            self.not_yet()
+            return
             self.pyslipqt.DeleteLayer(self.point_layer)
             self.point_layer = None
             if self.sel_point_layer:
@@ -696,6 +699,9 @@ class PySlipQtDemo(QWidget):
 
     def pointShowOnOff(self, event):
         """Handle ShowOnOff event for point layer control."""
+
+        self.not_yet()
+        return
 
         if event:
             self.pyslipqt.ShowLayer(self.point_layer)
@@ -708,6 +714,9 @@ class PySlipQtDemo(QWidget):
 
     def pointSelectOnOff(self, event):
         """Handle SelectOnOff event for point layer control."""
+
+        self.not_yet()
+        return
 
         layer = self.point_layer
         if event:
@@ -796,6 +805,8 @@ class PySlipQtDemo(QWidget):
                                             visible=True,
                                             name='<point_view_layer>')
         else:
+            self.not_yet()
+            return
             self.pyslipqt.DeleteLayer(self.point_view_layer)
             self.point_view_layer = None
             if self.sel_point_view_layer:
@@ -805,6 +816,9 @@ class PySlipQtDemo(QWidget):
 
     def pointViewShowOnOff(self, event):
         """Handle ShowOnOff event for point view layer control."""
+
+        self.not_yet()
+        return
 
         if event:
             self.pyslipqt.ShowLayer(self.point_view_layer)
@@ -817,6 +831,9 @@ class PySlipQtDemo(QWidget):
 
     def pointViewSelectOnOff(self, event):
         """Handle SelectOnOff event for point view layer control."""
+
+        self.not_yet()
+        return
 
         layer = self.point_view_layer
         if event:
@@ -996,6 +1013,8 @@ class PySlipQtDemo(QWidget):
                                             visible=True,
                                             name='<image_view_layer>')
         else:
+            self.not_yet()
+            return
             self.pyslipqt.DeleteLayer(self.image_view_layer)
             self.image_view_layer = None
             if self.sel_image_view_layer:
@@ -1007,6 +1026,9 @@ class PySlipQtDemo(QWidget):
 
     def imageViewShowOnOff(self, event):
         """Handle ShowOnOff event for image layer control."""
+
+        self.not_yet()
+        return
 
         if event:
             self.pyslipqt.ShowLayer(self.image_view_layer)
@@ -1023,6 +1045,9 @@ class PySlipQtDemo(QWidget):
 
     def imageViewSelectOnOff(self, event):
         """Handle SelectOnOff event for image layer control."""
+
+        self.not_yet()
+        return
 
         layer = self.image_view_layer
         if event:
@@ -1133,6 +1158,9 @@ class PySlipQtDemo(QWidget):
                                            show_levels=MRTextShowLevels,
                                            placement='ne')
         else:
+            self.not_yet()
+            return
+
             self.pyslipqt.DeleteLayer(self.text_layer)
             self.text_layer = None
             if self.sel_text_layer:
@@ -1142,6 +1170,9 @@ class PySlipQtDemo(QWidget):
 
     def textShowOnOff(self, event):
         """Handle ShowOnOff event for text layer control."""
+
+        self.not_yet()
+        return
 
         if event:
             self.pyslipqt.ShowLayer(self.text_layer)
@@ -1154,6 +1185,9 @@ class PySlipQtDemo(QWidget):
 
     def textSelectOnOff(self, event):
         """Handle SelectOnOff event for text layer control."""
+
+        self.not_yet()
+        return
 
         layer = self.text_layer
         if event:
@@ -1216,6 +1250,9 @@ class PySlipQtDemo(QWidget):
     def textViewOnOff(self, event):
         """Handle OnOff event for view-relative text layer control."""
 
+        self.not_yet()
+        return
+
         if event:
             self.text_view_layer = \
                 self.pyslipqt.AddTextLayer(TextViewData, map_rel=False,
@@ -1236,6 +1273,9 @@ class PySlipQtDemo(QWidget):
     def textViewShowOnOff(self, event):
         """Handle ShowOnOff event for view text layer control."""
 
+        self.not_yet()
+        return
+
         if event:
             self.pyslipqt.ShowLayer(self.text_view_layer)
             if self.sel_text_view_layer:
@@ -1247,6 +1287,9 @@ class PySlipQtDemo(QWidget):
 
     def textViewSelectOnOff(self, event):
         """Handle SelectOnOff event for view text layer control."""
+
+        self.not_yet()
+        return
 
         layer = self.text_view_layer
         if event:
@@ -1301,6 +1344,9 @@ class PySlipQtDemo(QWidget):
     def polyOnOff(self, event):
         """Handle OnOff event for map-relative polygon layer control."""
 
+        self.not_yet()
+        return
+
         if event:
             self.poly_layer = \
                 self.pyslipqt.AddPolygonLayer(PolyData, map_rel=True,
@@ -1319,6 +1365,9 @@ class PySlipQtDemo(QWidget):
     def polyShowOnOff(self, event):
         """Handle ShowOnOff event for polygon layer control."""
 
+        self.not_yet()
+        return
+
         if event:
             self.pyslipqt.ShowLayer(self.poly_layer)
             if self.sel_poly_layer:
@@ -1330,6 +1379,9 @@ class PySlipQtDemo(QWidget):
 
     def polySelectOnOff(self, event):
         """Handle SelectOnOff event for polygon layer control."""
+
+        self.not_yet()
+        return
 
         layer = self.poly_layer
         if event:
@@ -1391,6 +1443,9 @@ class PySlipQtDemo(QWidget):
     def polyViewOnOff(self, event):
         """Handle OnOff event for map-relative polygon layer control."""
 
+        self.not_yet()
+        return
+
         if event:
             self.poly_view_layer = \
                 self.pyslipqt.AddPolygonLayer(PolyViewData, map_rel=False,
@@ -1409,6 +1464,9 @@ class PySlipQtDemo(QWidget):
     def polyViewShowOnOff(self, event):
         """Handle ShowOnOff event for polygon layer control."""
 
+        self.not_yet()
+        return
+
         if event:
             self.pyslipqt.ShowLayer(self.poly_view_layer)
             if self.sel_poly_view_layer:
@@ -1420,6 +1478,9 @@ class PySlipQtDemo(QWidget):
 
     def polyViewSelectOnOff(self, event):
         """Handle SelectOnOff event for polygon layer control."""
+
+        self.not_yet()
+        return
 
         layer = self.poly_view_layer
         if event:
@@ -1477,6 +1538,9 @@ class PySlipQtDemo(QWidget):
     def polylineOnOff(self, event):
         """Handle OnOff event for map-relative polyline layer control."""
 
+        self.not_yet()
+        return
+
         if event:
             self.polyline_layer = \
                 self.pyslipqt.AddPolylineLayer(PolylineData, map_rel=True,
@@ -1498,6 +1562,9 @@ class PySlipQtDemo(QWidget):
     def polylineShowOnOff(self, event):
         """Handle ShowOnOff event for polycwlinegon layer control."""
 
+        self.not_yet()
+        return
+
         if event:
             self.pyslipqt.ShowLayer(self.polyline_layer)
             if self.sel_polyline_layer:
@@ -1513,6 +1580,9 @@ class PySlipQtDemo(QWidget):
 
     def polylineSelectOnOff(self, event):
         """Handle SelectOnOff event for polyline layer control."""
+
+        self.not_yet()
+        return
 
         layer = self.polyline_layer
         if event:
@@ -1587,6 +1657,9 @@ class PySlipQtDemo(QWidget):
     def polylineViewOnOff(self, event):
         """Handle OnOff event for map-relative polyline layer control."""
 
+        self.not_yet()
+        return
+
         if event:
             self.polyline_view_layer = \
                 self.pyslipqt.AddPolylineLayer(PolylineViewData, map_rel=False,
@@ -1608,6 +1681,9 @@ class PySlipQtDemo(QWidget):
     def polylineViewShowOnOff(self, event):
         """Handle ShowOnOff event for polyline layer control."""
 
+        self.not_yet()
+        return
+
         if event:
             self.pyslipqt.ShowLayer(self.polyline_view_layer)
             if self.sel_polyline_view_layer:
@@ -1623,6 +1699,9 @@ class PySlipQtDemo(QWidget):
 
     def polylineViewSelectOnOff(self, event):
         """Handle SelectOnOff event for polyline layer control."""
+
+        self.not_yet()
+        return
 
         layer = self.polyline_view_layer
         if event:
@@ -1992,6 +2071,44 @@ class PySlipQtDemo(QWidget):
         """Remove handler for select in layer 'id'."""
 
         del self.demo_select_dispatch[id]
+
+    ######
+    # Warning and information dialogs
+    ######
+    def info(self, msg):
+        """Display an information message, log and graphically."""
+
+        log_msg = '# ' + msg
+        length = len(log_msg)
+        prefix = '#### Information '
+        banner = prefix + '#'*(80 - len(log_msg) - len(prefix))
+        log(banner)
+        log(log_msg)
+        log(banner)
+
+        info_dialog = QErrorMessage(self)
+        info_dialog.showMessage(msg)
+
+
+    def warn(self, msg):
+        """Display a warning message, log and graphically."""
+
+        log_msg = '# ' + msg
+        length = len(log_msg)
+        prefix = '#### Warning '
+        banner = prefix + '#'*(80 - len(log_msg) - len(prefix))
+        log(banner)
+        log(log_msg)
+        log(banner)
+
+        warn_dialog = QErrorMessage(self)
+        warn_dialog.showMessage(msg)
+
+    def not_yet(self):
+        """Show a dialog for stuff not yet implemented."""
+
+        self.info("Not yet implemented.")
+
 
 ###############################################################################
 
