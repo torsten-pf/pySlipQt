@@ -800,6 +800,10 @@ class PySlipQt(QWidget):
 
         return id
 
+    ######
+    # Layer manipulation routines.
+    ######
+
     def AddLayer(self, painter, data, map_rel, visible, show_levels,
                  selectable, name, type):
         """Add a generic layer to the system.
@@ -837,6 +841,79 @@ class PySlipQt(QWidget):
             self.update()
 
         return id
+
+    def ShowLayer(self, id):
+        """Show a layer.
+
+        id  the layer id
+        """
+
+        self.layer_mapping[id].visible = True
+        self.update()
+
+    def HideLayer(self, id):
+        """Hide a layer.
+
+        id  the layer id
+        """
+
+        self.layer_mapping[id].visible = False
+        self.update()
+
+    def DeleteLayer(self, id):
+        """Delete a layer.
+
+        id  the layer id
+        """
+
+        # just in case we got None
+        if id:
+            # see if what we are about to remove might be visible
+            layer = self.layer_mapping[id]
+            visible = layer.visible
+
+            del layer
+            self.layer_z_order.remove(id)
+
+            # if layer was visible, refresh display
+            if visible:
+                self.update()
+
+    def SetLayerShowLevels(self, id, show_levels=None):
+        """Update the show_levels list for a layer.
+
+        id           ID of the layer we are going to update
+        show_levels  new layer show list
+
+        If 'show_levels' is None reset the displayable levels to
+        all levels in the current tileset.
+        """
+
+        # if we actually got an 'id' change the .show_levels value
+        if id:
+            layer = self.layer_mapping[id]
+
+            # if not given a 'show_levels' show all levels available
+            if not show_levels:
+                show_levels = range(self.tiles_min_level,
+                                    self.tiles_max_level+1)[:]
+
+            layer.show_levels = show_levels
+
+            # always update the display, there may be a change
+            self.update()
+
+    def SetLayerSelectable(self, id, selectable=False):
+        """Update the .selectable attribute for a layer.
+
+        id          ID of the layer we are going to update
+        selectable  new .selectable attribute value (True or False)
+        """
+
+        # just in case id is None
+        if id:
+            layer = self.layer_mapping[id]
+            layer.selectable = selectable
 
     ######
     # Layer drawing routines

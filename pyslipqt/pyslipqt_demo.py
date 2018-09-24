@@ -678,6 +678,7 @@ class PySlipQtDemo(QWidget):
         """Handle OnOff event for point layer control."""
 
         if event:
+            # event is True, so we are adding the maprel point layer
             self.point_layer = \
                 self.pyslipqt.AddPointLayer(PointData, map_rel=True,
                                             colour=PointDataColour, radius=3,
@@ -688,8 +689,9 @@ class PySlipQtDemo(QWidget):
                                             placement='nw',   # check placement
                                             name='<pt_layer>')
         else:
-            self.not_yet()
-            return
+            # event is False, so we are removing the maprel point layer
+#            self.not_yet()
+#            return
             self.pyslipqt.DeleteLayer(self.point_layer)
             self.point_layer = None
             if self.sel_point_layer:
