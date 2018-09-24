@@ -690,8 +690,6 @@ class PySlipQtDemo(QWidget):
                                             name='<pt_layer>')
         else:
             # event is False, so we are removing the maprel point layer
-#            self.not_yet()
-#            return
             self.pyslipqt.DeleteLayer(self.point_layer)
             self.point_layer = None
             if self.sel_point_layer:
@@ -702,14 +700,13 @@ class PySlipQtDemo(QWidget):
     def pointShowOnOff(self, event):
         """Handle ShowOnOff event for point layer control."""
 
-        self.not_yet()
-        return
-
         if event:
+            # if True, user selected "Show"
             self.pyslipqt.ShowLayer(self.point_layer)
             if self.sel_point_layer:
                 self.pyslipqt.ShowLayer(self.sel_point_layer)
         else:
+            # if False, user unselected "SHow"
             self.pyslipqt.HideLayer(self.point_layer)
             if self.sel_point_layer:
                 self.pyslipqt.HideLayer(self.sel_point_layer)
@@ -717,14 +714,13 @@ class PySlipQtDemo(QWidget):
     def pointSelectOnOff(self, event):
         """Handle SelectOnOff event for point layer control."""
 
-        self.not_yet()
-        return
-
         layer = self.point_layer
         if event:
+            # if True, user selected "Selectable"
             self.add_select_handler(layer, self.pointSelect)
             self.pyslipqt.SetLayerSelectable(layer, True)
         else:
+            # if True, user unselected "Selectable"
             self.del_select_handler(layer)
             self.pyslipqt.SetLayerSelectable(layer, False)
 
@@ -807,8 +803,6 @@ class PySlipQtDemo(QWidget):
                                             visible=True,
                                             name='<point_view_layer>')
         else:
-            self.not_yet()
-            return
             self.pyslipqt.DeleteLayer(self.point_view_layer)
             self.point_view_layer = None
             if self.sel_point_view_layer:
@@ -818,9 +812,6 @@ class PySlipQtDemo(QWidget):
 
     def pointViewShowOnOff(self, event):
         """Handle ShowOnOff event for point view layer control."""
-
-        self.not_yet()
-        return
 
         if event:
             self.pyslipqt.ShowLayer(self.point_view_layer)
@@ -833,9 +824,6 @@ class PySlipQtDemo(QWidget):
 
     def pointViewSelectOnOff(self, event):
         """Handle SelectOnOff event for point view layer control."""
-
-        self.not_yet()
-        return
 
         layer = self.point_view_layer
         if event:
@@ -1015,8 +1003,8 @@ class PySlipQtDemo(QWidget):
                                             visible=True,
                                             name='<image_view_layer>')
         else:
-            self.not_yet()
-            return
+#            self.not_yet()
+#            return
             self.pyslipqt.DeleteLayer(self.image_view_layer)
             self.image_view_layer = None
             if self.sel_image_view_layer:
@@ -1029,8 +1017,8 @@ class PySlipQtDemo(QWidget):
     def imageViewShowOnOff(self, event):
         """Handle ShowOnOff event for image layer control."""
 
-        self.not_yet()
-        return
+#        self.not_yet()
+#        return
 
         if event:
             self.pyslipqt.ShowLayer(self.image_view_layer)
@@ -1048,8 +1036,8 @@ class PySlipQtDemo(QWidget):
     def imageViewSelectOnOff(self, event):
         """Handle SelectOnOff event for image layer control."""
 
-        self.not_yet()
-        return
+#        self.not_yet()
+#        return
 
         layer = self.image_view_layer
         if event:
