@@ -513,9 +513,10 @@ class PySlipQt(QWidget):
     def paintEvent(self, event):
         """Draw the base map and then the layers on top."""
 
+        log('paintEvent: begin ######################################################')
         log(f'paintEvent: self.key_tile_left={self.key_tile_left}, self.key_tile_xoffset={self.key_tile_xoffset}')
-        log(f'self.view_width={self.view_width}, self.view_height={self.view_height}')
-        log(f'tile_width={self.tile_width}, tile_height={self.tile_height}')
+        log(f'paintEvent: self.view_width={self.view_width}, self.view_height={self.view_height}')
+        log(f'paintEvent: tile_width={self.tile_width}, tile_height={self.tile_height}')
 
         ######
         # The "key" tile position is maintained by other code, we just
@@ -527,7 +528,7 @@ class PySlipQt(QWidget):
         x_coord = self.key_tile_left
         x_pix_start = self.key_tile_xoffset
         while x_pix_start < self.view_width:
-            log(f'loop: x_pix_start={x_pix_start}, self.view_width={self.view_width}')
+            log(f'paintEvent: loop: x_pix_start={x_pix_start}, self.view_width={self.view_width}')
             col_list.append(x_coord)
             if not self.wrap_x and x_coord >= self.num_tiles_x-1:
                 break
@@ -544,7 +545,7 @@ class PySlipQt(QWidget):
             y_coord = (y_coord + 1) % self.num_tiles_y
             y_pix_start += self.tile_height
 
-        log(f'col_list={col_list}, row_list={row_list}')
+        log(f'paintEvent: col_list={col_list}, row_list={row_list}')
 
         ######
         # Ready to update the view
@@ -559,13 +560,11 @@ class PySlipQt(QWidget):
         for x in col_list:
             y_pix = self.key_tile_yoffset
             for y in row_list:
-#                QPainter.drawPixmap(painter, x_pix, y_pix,
-#                                    self.tile_src.GetTile(x, y))
                 painter.drawPixmap(x_pix, y_pix,
                                     self.tile_src.GetTile(x, y))
-                log(f'drawing tile ({x}, {y}) at {x_pix}, {y_pix}')
-                log(f'tile extends right to {x_pix+self.tile_width}')
-                log(f'tile extends down to {y_pix+self.tile_height}')
+                log(f'paintEvent: drawing tile ({x}, {y}) at {x_pix}, {y_pix}')
+                log(f'paintEvent: tile extends right to {x_pix+self.tile_width}')
+                log(f'paintEvent: tile extends down to {y_pix+self.tile_height}')
 
                 y_pix += self.tile_height
             x_pix += self.tile_width
@@ -576,8 +575,7 @@ class PySlipQt(QWidget):
             if l.visible and self.level in l.show_levels:
                 l.painter(painter, l.data, map_rel=l.map_rel)
 
-
-        log('paintEvent: end')
+        log('paintEvent: end ########################################################')
         painter.end()
 
     def tile_frac_to_parts(self, t_frac, length):
@@ -953,9 +951,11 @@ class PySlipQt(QWidget):
 
         dc       the active device context to draw on
         images   a sequence of image tuple sequences
-                   (x,y,bmap,w,h,placement,offset_x,offset_y,idata)
+                   (x,y,pmap,w,h,placement,offset_x,offset_y,idata)
         map_rel  points relative to map if True, else relative to view
         """
+
+        log(f'DrawImageLayer: begin #########################################')
 
         # get correct pex function
         pex = self.PexExtentView
@@ -965,7 +965,7 @@ class PySlipQt(QWidget):
         # draw the images - speed up drawing mostly unchanging colours
         cache_colour = None
 
-        for (lon, lat, bmap, w, h, place,
+        for (lon, lat, pmap, w, h, place,
                  x_off, y_off, radius, colour, idata) in images:
             log(f'DrawImageLayer: lon={lon}, lat={lat}, w={w}, h={h}, radius={radius}, colour={colour}')
             (pt, ex) = pex(place, (lon, lat), x_off, y_off, w, h)
@@ -974,9 +974,13 @@ class PySlipQt(QWidget):
                 (ix, _, iy, _) = ex
                 ix = int(ix)
                 iy = int(iy)
-                log(f'DrawImageLayer: drawing image at ix={ix}, iy={iy}, bmap={bmap}')
+                log(f'DrawImageLayer: drawing image at ix={ix}, iy={iy}, pmap={pmap}')
                 log(f'DrawImageLayer: self.view_width={self.view_width}, self.view_height={self.view_height}')
-                dc.drawPixmap(QPoint(ix, iy), bmap)
+                size = pmap.size()
+                log(f'DrawImageLayer: image width={size.width()}, height={size.height()}')
+                dc.drawPixmap(QPoint(ix, iy), pmap)
+            else:
+                log('DrawImageLayer: image off-map')
 
             if pt and radius:
                 if cache_colour != colour:
@@ -988,6 +992,10 @@ class PySlipQt(QWidget):
                 (px, py) = pt
                 log(f'DrawImageLayer: drawing circle at px={px}, py={py}')
                 dc.drawEllipse(QPoint(px, py), radius, radius)
+            else:
+                log('DrawImageLayer: image has no point')
+
+        log(f'DrawImageLayer: end ###########################################')
 
     def DrawTextLayer(self, dc, text, map_rel):
         """Draw a text Layer on the view.
@@ -1813,6 +1821,8 @@ class PySlipQt(QWidget):
         where the image is displayed relative to the hotspot.
         """
 
+        log('AddImageLayer: begin vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv')
+
         # merge global and layer defaults
         if map_rel:
             default_placement = kwargs.get('placement', self.DefaultImagePlacement)
@@ -1832,7 +1842,7 @@ class PySlipQt(QWidget):
         # define cache variables for the image informtion
         # used to minimise file access - just caches previous file informtion
         fname_cache = None
-        bmp_cache = None
+        pmap_cache = None
         w_cache = None
         h_cache = None
 
@@ -1858,17 +1868,16 @@ class PySlipQt(QWidget):
             udata = attributes.get('data', None)
 
             if fname == fname_cache:
-                bmap = bmp_cache
+                pmap = pmap_cache
                 w = w_cache
                 h = h_cache
             else:
                 fname_cache = fname
-#                img = QPixmap(fname)
-                bmp_cache = bmap = img = QPixmap(fname)
-#                bmp_cache = bmap = img.ConvertToBitmap()
-                size = img.size()
+                pmap_cache = pmap = QPixmap(fname)
+                size = pmap.size()
                 h = h_cache = size.height()
                 w = w_cache = size.width()
+                log(f'AddImageLayer: using image {fname}, pmap={pmap}, width={w}, height={h}')
 
             # check values that can be wrong
             placement = placement.lower()
@@ -1878,16 +1887,19 @@ class PySlipQt(QWidget):
                 raise Exception(msg)
 
             # convert various colour formats to internal (r, g, b, a)
+            log(f'AddImageLayer: before: colour={colour}')
             colour = self.colour_to_internal(colour)
-            log(f'AddImageLayer: colour={colour}')
+            log(f'AddImageLayer: after: colour={colour}')
 
-            draw_data.append((float(lon), float(lat), bmap, w, h, placement,
+            draw_data.append((float(lon), float(lat), pmap, w, h, placement,
                               offset_x, offset_y, radius, colour, udata))
 
         return self.AddLayer(self.DrawImageLayer, draw_data, map_rel,
                              visible=visible, show_levels=show_levels,
                              selectable=selectable, name=name,
                              type=self.TypeImage)
+
+        log('AddImageLayer: end ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^')
 
     def AddTextLayer(self, text, map_rel=True, visible=True, show_levels=None,
                      selectable=False, name='<text_layer>', **kwargs):

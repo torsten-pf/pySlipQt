@@ -110,18 +110,18 @@ DefaultPolylineMapDelta = 40
 DefaultPolylineViewDelta = 40
 
 # image used for shipwrecks, glassy buttons, etc
-ShipImg = 'graphics/shipwreck.png'
+ShipImg = 'examples/graphics/shipwreck.png'
 
-GlassyImg2 = 'graphics/glassy_button_2.png'
-SelGlassyImg2 = 'graphics/selected_glassy_button_2.png'
-GlassyImg3 = 'graphics/glassy_button_3.png'
-SelGlassyImg3 = 'graphics/selected_glassy_button_3.png'
-GlassyImg4 = 'graphics/glassy_button_4.png'
-SelGlassyImg4 = 'graphics/selected_glassy_button_4.png'
-GlassyImg5 = 'graphics/glassy_button_5.png'
-SelGlassyImg5 = 'graphics/selected_glassy_button_5.png'
-GlassyImg6 = 'graphics/glassy_button_6.png'
-SelGlassyImg6 = 'graphics/selected_glassy_button_6.png'
+GlassyImg2 = 'examples/graphics/glassy_button_2.png'
+SelGlassyImg2 = 'examples/graphics/selected_glassy_button_2.png'
+GlassyImg3 = 'examples/graphics/glassy_button_3.png'
+SelGlassyImg3 = 'examples/graphics/selected_glassy_button_3.png'
+GlassyImg4 = 'examples/graphics/glassy_button_4.png'
+SelGlassyImg4 = 'examples/graphics/selected_glassy_button_4.png'
+GlassyImg5 = 'examples/graphics/glassy_button_5.png'
+SelGlassyImg5 = 'examples/graphics/selected_glassy_button_5.png'
+GlassyImg6 = 'examples/graphics/glassy_button_6.png'
+SelGlassyImg6 = 'examples/graphics/selected_glassy_button_6.png'
 
 # image used for shipwrecks
 CompassRoseGraphic = 'examples/graphics/compass_rose.png'
@@ -1148,9 +1148,6 @@ class PySlipQtDemo(QWidget):
                                            show_levels=MRTextShowLevels,
                                            placement='ne')
         else:
-            self.not_yet()
-            return
-
             self.pyslipqt.DeleteLayer(self.text_layer)
             self.text_layer = None
             if self.sel_text_layer:
@@ -1160,9 +1157,6 @@ class PySlipQtDemo(QWidget):
 
     def textShowOnOff(self, event):
         """Handle ShowOnOff event for text layer control."""
-
-        self.not_yet()
-        return
 
         if event:
             self.pyslipqt.ShowLayer(self.text_layer)
@@ -1175,9 +1169,6 @@ class PySlipQtDemo(QWidget):
 
     def textSelectOnOff(self, event):
         """Handle SelectOnOff event for text layer control."""
-
-        self.not_yet()
-        return
 
         layer = self.text_layer
         if event:
@@ -1240,9 +1231,6 @@ class PySlipQtDemo(QWidget):
     def textViewOnOff(self, event):
         """Handle OnOff event for view-relative text layer control."""
 
-        self.not_yet()
-        return
-
         if event:
             self.text_view_layer = \
                 self.pyslipqt.AddTextLayer(TextViewData, map_rel=False,
@@ -1263,9 +1251,6 @@ class PySlipQtDemo(QWidget):
     def textViewShowOnOff(self, event):
         """Handle ShowOnOff event for view text layer control."""
 
-        self.not_yet()
-        return
-
         if event:
             self.pyslipqt.ShowLayer(self.text_view_layer)
             if self.sel_text_view_layer:
@@ -1277,9 +1262,6 @@ class PySlipQtDemo(QWidget):
 
     def textViewSelectOnOff(self, event):
         """Handle SelectOnOff event for view text layer control."""
-
-        self.not_yet()
-        return
 
         layer = self.text_view_layer
         if event:
@@ -1334,9 +1316,6 @@ class PySlipQtDemo(QWidget):
     def polyOnOff(self, event):
         """Handle OnOff event for map-relative polygon layer control."""
 
-        self.not_yet()
-        return
-
         if event:
             self.poly_layer = \
                 self.pyslipqt.AddPolygonLayer(PolyData, map_rel=True,
@@ -1355,9 +1334,6 @@ class PySlipQtDemo(QWidget):
     def polyShowOnOff(self, event):
         """Handle ShowOnOff event for polygon layer control."""
 
-        self.not_yet()
-        return
-
         if event:
             self.pyslipqt.ShowLayer(self.poly_layer)
             if self.sel_poly_layer:
@@ -1369,9 +1345,6 @@ class PySlipQtDemo(QWidget):
 
     def polySelectOnOff(self, event):
         """Handle SelectOnOff event for polygon layer control."""
-
-        self.not_yet()
-        return
 
         layer = self.poly_layer
         if event:
