@@ -1085,12 +1085,19 @@ class PySlipQt(QWidget):
             (poly, extent) = pex(place, p, x_off, y_off)
             if poly:
                 if cache_colour_width != (colour, width):
-                    dc.SetPen(wx.Pen(colour, width=width))
+                    pen = QPen(colour, width, Qt.SolidLine)
                     cache_colour = (colour, width)
+
+#                    pen = QPen(colour, radius, Qt.SolidLine)
+#                    painter.setPen(pen)
+#                    paint.setBrush(pen)
+
+                if not filled:
+                    colour = (0, 0, 0, 0)
 
                 if filled:
                     if cache_fillcolour != fillcolour:
-                        dc.SetBrush(wx.Brush(fillcolour))
+                        paint.setBrush(pen)
                         cache_fillcolour = fillcolour
                 else:
                     dc.SetBrush(wx.TRANSPARENT_BRUSH)
