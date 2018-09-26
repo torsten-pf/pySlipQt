@@ -1083,7 +1083,7 @@ class PySlipQt(QWidget):
         cache_colour_width = None         # speed up mostly unchanging data
         cache_fillcolour = (0, 0, 0, 0)
 
-        dc.setBrush(QBrush(QColor(cache_fillcolour)))   # initial brush is transparent
+        dc.setBrush(QBrush(QColor(*cache_fillcolour))) # initial brush is transparent
 
         for (p, place, width, colour, closed,
                  filled, fillcolour, x_off, y_off, udata) in data:
