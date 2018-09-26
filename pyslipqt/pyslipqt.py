@@ -1119,17 +1119,20 @@ class PySlipQt(QWidget):
         if map_rel:
             pex = self.PexPolygon
 
+        # brush is always transparent
+        dc.SetBrush(QBrush(QColor(0, 0, 0, 255)))
+
         # draw polyline(s)
         cache_colour_width = None       # speed up mostly unchanging data
 
         for (p, place, width, colour, x_off, y_off, udata) in data:
             (poly, extent) = pex(place, p, x_off, y_off)
             if poly:
-                if cache_colour_width != (colour, width):
-                    dc.SetPen(wx.Pen(colour, width=width))
+                if (colour, width) != cache_colour_width:
+                    dc.SetPen(QPen(QColor(*colour), width, Qt.SolidLine))
                     cache_colour_width = (colour, width)
-                dc.SetBrush(wx.TRANSPARENT_BRUSH)
-                dc.DrawLines(poly)
+                qpoly = [QPoint(*p) for p in poly]
+                dc.DrawLines(QPolygon(poly))
 
     def ViewExtent(self, place, view, w, h, x_off, y_off, dcw=0, dch=0):
         """Get view extent of area.

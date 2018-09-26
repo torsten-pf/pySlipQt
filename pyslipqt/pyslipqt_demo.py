@@ -1406,9 +1406,6 @@ class PySlipQtDemo(QWidget):
     def polyViewOnOff(self, event):
         """Handle OnOff event for map-relative polygon layer control."""
 
-        self.not_yet()
-        return
-
         if event:
             self.poly_view_layer = \
                 self.pyslipqt.AddPolygonLayer(PolyViewData, map_rel=False,
@@ -1427,9 +1424,6 @@ class PySlipQtDemo(QWidget):
     def polyViewShowOnOff(self, event):
         """Handle ShowOnOff event for polygon layer control."""
 
-        self.not_yet()
-        return
-
         if event:
             self.pyslipqt.ShowLayer(self.poly_view_layer)
             if self.sel_poly_view_layer:
@@ -1441,9 +1435,6 @@ class PySlipQtDemo(QWidget):
 
     def polyViewSelectOnOff(self, event):
         """Handle SelectOnOff event for polygon layer control."""
-
-        self.not_yet()
-        return
 
         layer = self.poly_view_layer
         if event:
