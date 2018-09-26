@@ -10,6 +10,7 @@ Some semantics:
 from PyQt5.QtCore import Qt, QTimer, QPoint, QPointF
 from PyQt5.QtWidgets import QLabel, QSizePolicy, QWidget
 from PyQt5.QtGui import QPainter, QColor, QPixmap, QPen, QFont, QFontMetrics
+from PyQt5.QtGui import QPolygon, QBrush
 
 # if we don't have log.py, don't crash
 try:
@@ -1071,41 +1072,37 @@ class PySlipQt(QWidget):
         map_rel  points relative to map if True, else relative to view
         """
 
+        log('DrawPolygonLayer: entered')
+
         # get the correct pex function for mode (map/view)
         pex = self.PexPolygonView
         if map_rel:
             pex = self.PexPolygon
 
         # draw polygons
-        cache_colour_width = None     # speed up mostly unchanging data
+        cache_colour_width = None         # speed up mostly unchanging data
         cache_fillcolour = None
 
         for (p, place, width, colour, closed,
                  filled, fillcolour, x_off, y_off, udata) in data:
             (poly, extent) = pex(place, p, x_off, y_off)
+            log(f'DrawPolygonLayer: after pex, poly={poly}, extent={extent}')
             if poly:
-                if cache_colour_width != (colour, width):
-                    pen = QPen(colour, width, Qt.SolidLine)
+                if (colour, width) != cache_colour_width:
+                    dc.setPen(QPen(QColor(*colour), width, Qt.SolidLine))
                     cache_colour = (colour, width)
 
-#                    pen = QPen(colour, radius, Qt.SolidLine)
-#                    painter.setPen(pen)
-#                    paint.setBrush(pen)
+                if filled and fillcolour != cache_fillcolour:
+                    dc.setBrush(QBrush(QColor(*fillcolour), Qt.SolidPattern))
+                    cache_fillcolour = fillcolour
 
-                if not filled:
-                    colour = (0, 0, 0, 0)
+                log(f'DrawPolygonLayer: poly={poly}')
 
-                if filled:
-                    if cache_fillcolour != fillcolour:
-                        paint.setBrush(pen)
-                        cache_fillcolour = fillcolour
-                else:
-                    dc.SetBrush(wx.TRANSPARENT_BRUSH)
+                qpoly = [QPoint(*p) for p in poly]
 
-                if closed:
-                    dc.DrawPolygon(poly)
-                else:
-                    dc.DrawLines(poly)
+                log(f'DrawPolygonLayer: poly={poly}')
+
+                dc.drawPolygon(QPolygon(qpoly))
 
     def DrawPolylineLayer(self, dc, data, map_rel):
         """Draw a polyline layer.
@@ -1372,39 +1369,39 @@ class PySlipQt(QWidget):
         return (point, extent)
 
     def PexPolygon(self, place, poly, x_off, y_off):
-        """Given a polygon/line obj (geo coords) get point/extent in view coords.
+        """Given a polygon/line obj (geo coords) get points/extent in view coords.
 
         place         placement string
         poly          list of point position tuples (xgeo, ygeo)
         x_off, y_off  X and Y offsets
 
-        Return a tuple of point and extent origins (point, extent) where 'point'
-        is a list of (px, py) and extent is (elx, erx, ety, eby) (both in view
-        coords).  Return None for either or both if off-view.
+        Return a tuple of point and extent (point, extent) where 'point' is a
+        list of (px, py) and extent is (elx, erx, ety, eby) (both in view coords).
+        Return None for either or both if off-view.
         """
 
         # get polygon/line points in perturbed view coordinates
-        view = []
+        view_points = []
         for geo in poly:
             (xview, yview) = self.Geo2View(geo)
             point = self.point_placement(place, xview, yview, x_off, y_off)
-            view.append(point)
+            view_points.append(point)
 
         # get extent - max/min x and y
         # extent = (left, right, top, bottom) in view coords
-        elx = min(view, key=lambda x: x[0])[0]
-        erx = max(view, key=lambda x: x[0])[0]
-        ety = min(view, key=lambda x: x[1])[1]
-        eby = max(view, key=lambda x: x[1])[1]
+        elx = min(view_points, key=lambda x: x[0])[0]
+        erx = max(view_points, key=lambda x: x[0])[0]
+        ety = min(view_points, key=lambda x: x[1])[1]
+        eby = max(view_points, key=lambda x: x[1])[1]
         extent = (elx, erx, ety, eby)
 
         # decide if polygon or extent are off-view
         res_pt = None
         res_ex = None
-        for (px, py) in view:
+        for (px, py) in view_points:
             if ((px >= 0 and px < self.view_width)
                     and (py >= 0 and py < self.view_height)):
-                res_pt = view
+                res_pt = view_points
                 res_ex = extent
                 break
 
@@ -2008,8 +2005,8 @@ class PySlipQt(QWidget):
         """Add a layer of polygon data to the map.
 
         data         iterable of polygon tuples:
-                         (<iter>[, attributes])
-                     where <iter> is another iterable of (x, y) tuples and
+                         (points[, attributes])
+                     where points is another iterable of (x, y) tuples and
                      attributes is a dictionary of polygon attributes:
                          placement   a placement string (view-relative only)
                          width       width of polygon edge lines
@@ -2036,6 +2033,8 @@ class PySlipQt(QWidget):
                          offset_y    Y offset
                          data        polygon user data object
         """
+
+        log('AddPolygonLayer: entered')
 
         # merge global and layer defaults
         if map_rel:
@@ -2077,7 +2076,7 @@ class PySlipQt(QWidget):
                 attributes = {}
             else:
                 msg = ('Polygon data must be iterable of tuples: '
-                       '(polygon, [attributes])\n'
+                       '(points, [attributes])\n'
                        'Got: %s' % str(d))
                 raise Exception(msg)
 
@@ -2110,9 +2109,12 @@ class PySlipQt(QWidget):
                 raise Exception(msg)
 
             # convert various colour formats to internal (r, g, b, a)
+            log(f'AddPolygonLayer: before colour={colour}, fillcolour={fillcolour}')
             colour = self.colour_to_internal(colour)
             fillcolour = self.colour_to_internal(fillcolour)
+            log(f'AddPolygonLayer:  after colour={colour}, fillcolour={fillcolour}')
 
+            # append this polygon to the layer data
             draw_data.append((p, placement, width, colour, close,
                               filled, fillcolour, offset_x, offset_y, udata))
 
