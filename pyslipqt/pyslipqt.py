@@ -1081,7 +1081,9 @@ class PySlipQt(QWidget):
 
         # draw polygons
         cache_colour_width = None         # speed up mostly unchanging data
-        cache_fillcolour = None
+        cache_fillcolour = (0, 0, 0, 0)
+
+        dc.setBrush(QBrush(QColor(cache_fillcolour)))   # initial brush is transparent
 
         for (p, place, width, colour, closed,
                  filled, fillcolour, x_off, y_off, udata) in data:
@@ -1092,7 +1094,7 @@ class PySlipQt(QWidget):
                     dc.setPen(QPen(QColor(*colour), width, Qt.SolidLine))
                     cache_colour = (colour, width)
 
-                if filled and fillcolour != cache_fillcolour:
+                if filled and (fillcolour != cache_fillcolour):
                     dc.setBrush(QBrush(QColor(*fillcolour), Qt.SolidPattern))
                     cache_fillcolour = fillcolour
 
@@ -1114,13 +1116,15 @@ class PySlipQt(QWidget):
         map_rel  points relative to map if True, else relative to view
         """
 
+        log('DrawPolylineLayer: entered')
+
         # get the correct pex function for mode (map/view)
         pex = self.PexPolygonView
         if map_rel:
             pex = self.PexPolygon
 
         # brush is always transparent
-        dc.SetBrush(QBrush(QColor(0, 0, 0, 255)))
+        dc.setBrush(QBrush(QColor(0, 0, 0, 0)))
 
         # draw polyline(s)
         cache_colour_width = None       # speed up mostly unchanging data
@@ -1128,11 +1132,12 @@ class PySlipQt(QWidget):
         for (p, place, width, colour, x_off, y_off, udata) in data:
             (poly, extent) = pex(place, p, x_off, y_off)
             if poly:
-                if (colour, width) != cache_colour_width:
-                    dc.SetPen(QPen(QColor(*colour), width, Qt.SolidLine))
+                if cache_colour_width != (colour, width):
+                    dc.setPen(QPen(QColor(*colour), width, Qt.SolidLine))
                     cache_colour_width = (colour, width)
                 qpoly = [QPoint(*p) for p in poly]
-                dc.DrawLines(QPolygon(poly))
+                log(f'DrawPolylineLayer: qpoly={qpoly}')
+                dc.drawPolyline(QPolygon(qpoly))
 
     def ViewExtent(self, place, view, w, h, x_off, y_off, dcw=0, dch=0):
         """Get view extent of area.
@@ -2132,8 +2137,8 @@ class PySlipQt(QWidget):
         """Add a layer of polyline data to the map.
 
         data         iterable of polyline tuples:
-                         (<iter>[, attributes])
-                     where <iter> is another iterable of (x, y) tuples and
+                         (points[, attributes])
+                     where points is another iterable of (x, y) tuples and
                      attributes is a dictionary of polyline attributes:
                          placement   a placement string (view-relative only)
                          width       width of polyline edge lines

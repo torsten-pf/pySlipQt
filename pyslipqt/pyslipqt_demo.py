@@ -1492,9 +1492,6 @@ class PySlipQtDemo(QWidget):
     def polylineOnOff(self, event):
         """Handle OnOff event for map-relative polyline layer control."""
 
-        self.not_yet()
-        return
-
         if event:
             self.polyline_layer = \
                 self.pyslipqt.AddPolylineLayer(PolylineData, map_rel=True,
@@ -1516,9 +1513,6 @@ class PySlipQtDemo(QWidget):
     def polylineShowOnOff(self, event):
         """Handle ShowOnOff event for polycwlinegon layer control."""
 
-        self.not_yet()
-        return
-
         if event:
             self.pyslipqt.ShowLayer(self.polyline_layer)
             if self.sel_polyline_layer:
@@ -1534,9 +1528,6 @@ class PySlipQtDemo(QWidget):
 
     def polylineSelectOnOff(self, event):
         """Handle SelectOnOff event for polyline layer control."""
-
-        self.not_yet()
-        return
 
         layer = self.polyline_layer
         if event:
