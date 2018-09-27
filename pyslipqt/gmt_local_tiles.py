@@ -51,10 +51,14 @@ TileURLPath = None
 TileLevels = range(5)
 
 # maximum pending requests for each tile server
+# unused with local tiles
 MaxServerRequests = None
 
 # set maximum number of in-memory tiles for each level
 MaxLRU = 10000
+
+# path to the INFO file for GMT tiles
+TileInfoFilename = "tile.info"
 
 ################################################################################
 # Class for GMT local tiles.   Builds on tiles.BaseTiles.
@@ -62,8 +66,6 @@ MaxLRU = 10000
 
 class Tiles(tiles.BaseTiles):
     """An object to source GMT tiles for pySlipQt."""
-
-    TileInfoFilename = "tile.info"
 
     # size of these tiles
     TileWidth = 256
@@ -85,12 +87,11 @@ class Tiles(tiles.BaseTiles):
                                     max_lru=MaxLRU, tiles_dir=tiles_dir)
 
         # we *can* wrap tiles in X direction, but not Y
-#        self.wrap_x = True
-        self.wrap_x = False
+        self.wrap_x = True
         self.wrap_y = False
 
         # override the tiles.py extent here, the GMT tileset is different
-        self.extent=(-65.0, 295.0, -66.66, 66.66)
+        self.extent = (-65.0, 295.0, -66.66, 66.66)
 
         # get tile information into instance
         self.level = min(TileLevels)
@@ -112,8 +113,7 @@ class Tiles(tiles.BaseTiles):
             return None
 
         # see if we can open the tile info file.
-        info_file = os.path.join(self.tiles_dir, '%d' % level,
-                                 self.TileInfoFilename)
+        info_file = os.path.join(self.tiles_dir, '%d' % level, TileInfoFilename)
         try:
             with open(info_file, 'rb') as fd:
                 info = pickle.load(fd)
@@ -130,11 +130,10 @@ class Tiles(tiles.BaseTiles):
 
         Returns (xtile, ytile).
 
-        Note that we assume the point *is* on the map!
-
         This is an easy transformation as geo coordinates are Cartesian.
         """
 
+        # unpack the 'geo' tuple
         (xgeo, ygeo) = geo
 
         # get extent information
