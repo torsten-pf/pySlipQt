@@ -63,6 +63,10 @@ MaxServerRequests = 2
 # set maximum number of in-memory tiles for each level
 MaxLRU = 10000
 
+# where earlier-cached tiles will be
+# this can be overridden in the __init__ method
+TilesDir = './osm_tiles'
+
 
 ################################################################################
 # Class for these tiles.   Builds on tiles.BaseTiles.
@@ -74,10 +78,6 @@ class Tiles(tiles.Tiles):
     # size of tiles
     TileWidth = 256
     TileHeight = 256
-
-    # where earlier-cached tiles will be
-    # this can be overridden in the __init__ method
-    TilesDir = './osm_tiles'
 
     def __init__(self, tiles_dir=TilesDir, http_proxy=None):
         """Override the base class for these tiles.
