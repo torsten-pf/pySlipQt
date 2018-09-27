@@ -1944,7 +1944,7 @@ class PySlipQtDemo(QWidget):
         CR_Width = size.width()
 
         # force pyslipqt initialisation
-        self.pyslipqt.resizeEvent()
+        self.pyslipqt.resizeEvent()    # THIS SHOULD NOT BE NECESSARY IN USER CODE!
 
         # set initial view position
         self.map_level.set_text('%d' % InitViewLevel)
