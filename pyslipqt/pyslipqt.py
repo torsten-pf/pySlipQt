@@ -84,12 +84,6 @@ class _Layer(object):
 #class PySlipQt(QLabel):
 class PySlipQt(QWidget):
 
-    # widget default background colour
-    Background_R = 192
-    Background_G = 192
-    Background_B = 192
-    Background = f'rgb({Background_R}, {Background_G}, {Background_B})'
-
     # list of valid placement values
     valid_placements = ['cc', 'nw', 'cn', 'ne', 'ce',
                         'se', 'cs', 'sw', 'cw', None, False, '']
@@ -225,14 +219,14 @@ class PySlipQt(QWidget):
         self.min_level = min(tile_src.levels)   # min level displayed
         self.tile_width = tile_src.tile_size_x  # width of tile in pixels
         self.tile_height = tile_src.tile_size_y # height of tile in pixels
-        self.num_tiles_x = tile_src.num_tiles_x # number of unwrapped tiles in X direction
-        self.num_tiles_y = tile_src.num_tiles_y # number of unwrapped tiles in Y direction
+        self.num_tiles_x = tile_src.num_tiles_x # number of map tiles in X direction
+        self.num_tiles_y = tile_src.num_tiles_y # number of map tiles in Y direction
         self.wrap_x = tile_src.wrap_x           # True if tiles wrap in X direction
         self.wrap_y = tile_src.wrap_y           # True if tiles wrap in Y direction
 
         self.next_layer_id = 1                  # source of unique layer IDs
-        self.tiles_max_level = max(tile_src.levels) # maximum level in current tile source
-        self.tiles_min_level = min(tile_src.levels) # minimum level in current tile source
+        self.tiles_max_level = max(tile_src.levels) # maximum level in tile source
+        self.tiles_min_level = min(tile_src.levels) # minimum level in tile source
 
         # define position and tile coords of the "key" tile
         self.key_tile_left = 0      # tile coordinates of key tile
@@ -240,16 +234,18 @@ class PySlipQt(QWidget):
         self.key_tile_xoffset = 0   # view coordinates of key tile wrt view
         self.key_tile_yoffset = 0
 
+        # state variables holding mouse buttons state
         self.left_mbutton_down = False
         self.mid_mbutton_down = False
         self.right_mbutton_down = False
 
+        # when dragging, remember the initial start point
         self.start_drag_x = None
         self.start_drag_y = None
 
         # layer state cariables
-        self.layer_mapping = {}                 # maps layer ID to layer data
-        self.layer_z_order = []                 # layer Z order, contains layer IDs
+        self.layer_mapping = {}         # maps layer ID to layer data
+        self.layer_z_order = []         # layer Z order, contains layer IDs
 
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.setMinimumSize(self.tile_width, self.tile_height)
@@ -327,8 +323,8 @@ class PySlipQt(QWidget):
                 delta_x = self.start_drag_x - x
                 delta_y = self.start_drag_y - y
                 log(f'mouseMoveEvent: delta_x={delta_x}, delta_y={delta_y}')
-                self.normalize_view_drag(delta_x, delta_y)  # normalize the "key" tile
-                self.update()                               # force a repaint
+                self.normalize_key_after_drag(delta_x, delta_y) # normalize the "key" tile
+                self.update()                                   # force a repaint
 
             self.start_drag_x = x
             self.start_drag_y = y
@@ -337,11 +333,15 @@ class PySlipQt(QWidget):
     #
     ######
 
-    def normalize_view_drag(self, delta_x=None, delta_y=None):
+    def normalize_key_after_drag(self, delta_x=None, delta_y=None):
         """After drag, set "key" tile correctly.
 
         delta_x  the X amount dragged (pixels), None if not dragged in X
         delta_y  the Y amount dragged (pixels), None if not dragged in Y
+
+        The 'key' tile was corect, but we've moved the map in the X and Y
+        directions.  Normalize the 'key' tile taking into account whether
+        we are wrapping X or Y directions.
         """
 
         if self.wrap_x:
@@ -359,7 +359,6 @@ class PySlipQt(QWidget):
                 self.key_tile_xoffset += self.tile_width
             self.key_tile_left = (self.key_tile_left + self.num_tiles_x) % self.num_tiles_x
         else:
-            log(f'DRAG: before, self.key_tile_left={self.key_tile_left}, self.key_tile_xoffset={self.key_tile_xoffset}')
             # if view > map, don't drag, ensure centred
             if self.map_width < self.view_width:
                 self.key_tile_xoffset = (self.view_width - self.map_width) // 2
@@ -384,13 +383,10 @@ class PySlipQt(QWidget):
 
                 if delta_x < 0:
                     # was dragged to the right, don't allow left edge to show
-                    log(f'DRAG RIGHT: self.key_tile_left={self.key_tile_left}, self.key_tile_xoffset={self.key_tile_xoffset}')
                     if self.key_tile_left > old_left:
                         self.key_tile_left = 0
                         self.key_tile_xoffset = 0
-                    log(f'AFTER RIGHT: self.key_tile_left={self.key_tile_left}, self.key_tile_xoffset={self.key_tile_xoffset}')
                 else:
-                    log(f'DRAG LR: .key_tile_left={self.key_tile_left}, .key_tile_xoffset={self.key_tile_xoffset}')
                     # if dragged too far, reset key tile data
                     if self.key_tile_left > self.max_key_left:
                         self.key_tile_left = self.max_key_left
@@ -431,7 +427,6 @@ class PySlipQt(QWidget):
                         self.key_tile_top = 0
                         self.key_tile_yoffset = 0
                 else:
-                    log(f'DRAG UD: .key_tile_top={self.key_tile_top}, .key_tile_yoffset={self.key_tile_yoffset}')
                     # if dragged too far, reset key tile data
                     if self.key_tile_top > self.max_key_top:
                         self.key_tile_top = self.max_key_top
@@ -473,10 +468,9 @@ class PySlipQt(QWidget):
 
         log(f'resizeEvent: event={event}, width={self.view_width}, height={self.view_height}')
 
-        # recalculate the "top left" tile stuff
+        # recalculate the "key" tile stuff
         self.recalc_wrap_limits()
-
-        self.normalize_view_drag(0, 0)
+        self.normalize_key_after_drag(0, 0)
 
     def use_level(self, level):
         """Use new map level.
