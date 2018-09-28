@@ -15,11 +15,11 @@ The -v option makes the process verbose.
 This program attempts to use more than one core, if available.
 
 You *must* have installed the GMT package (and data files)
-[http://gmt.soest.hawaii.edu/]
+[https://github.com/GenericMappingTools/gmt]
 as well as the GEBCO data file if you want oceanfloor topo
 [http://www.gebco.net/].
 
-Note: this requires python 2.6 or greater, but NOT python 3.x.
+Note: this requires python 3.x+.
 """
 
 import sys
