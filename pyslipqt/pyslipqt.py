@@ -278,6 +278,12 @@ class PySlipQt(QWidget):
             self.right_mbutton_down = True
         else:
             log('mousePressEvent: unknown button')
+
+        # DEBUG - calculate geo coords of view (0,0)
+        for x in (0, ):
+            for y in (0, ):
+                result = self.geo_to_view((x, y))
+                log(f'mousePressEvent: result={result} given for ({x},{y})')
          
     def mouseReleaseEvent(self, event):
         b = event.button()
@@ -1137,20 +1143,26 @@ class PySlipQt(QWidget):
         """
 
         log(f'geo_to_view: input geo={geo}')
+        log(f'__init__: .tile_size_x={self.tile_src.tile_size_x}, .key_tile_xoffset={self.key_tile_xoffset}, .key_tile_left={self.key_tile_left}')
 
         # convert the Geo position to tile coordinates
         (tx, ty) = self.tile_src.Geo2Tile(geo)
+
         log(f'geo_to_view: after .Geo2Tile(geo), tx={tx}, ty={ty}')
-        log(f'geo_to_view: .tile_size_x={self.tile_src.tile_size_x}, .key_tile_xoffset={self.key_tile_xoffset}, .key_tile_left={self.key_tile_left}')
+
+        # convert key tile _left and _offset values to tile coordinates
+        key_x = self.key_tile_left + self.key_tile_xoffset/self.tile_src.tile_size_x
+        key_y = self.key_tile_top + self.key_tile_yoffset/self.tile_src.tile_size_y
+
+        log(f'key i tile coords, key_x={key_x}, key_y={key_y}')
 
         # using the key_tile_* variables convert to view coordinates
         xview = ((tx - self.key_tile_left) * self.tile_src.tile_size_x) - self.key_tile_xoffset
         yview = ((ty - self.key_tile_top) * self.tile_src.tile_size_y) - self.key_tile_yoffset
 
         log(f'geo_to_view: returning xview={xview}')
+
         return (xview, yview)
-#        return ((tx * self.tile_src.tile_size_x) - self.view_offset_x,
-#                (ty * self.tile_src.tile_size_y) - self.view_offset_y)
 
     def geo_to_view_masked(self, geo):
         """Convert a geo (lon+lat) position to view pixel coords.

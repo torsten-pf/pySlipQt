@@ -133,20 +133,29 @@ class Tiles(tiles.BaseTiles):
         This is an easy transformation as geo coordinates are Cartesian.
         """
 
+        log(f'Geo2Tile: geo={geo}')
+
         # unpack the 'geo' tuple
         (xgeo, ygeo) = geo
 
         # get extent information
         (min_xgeo, max_xgeo, min_ygeo, max_ygeo) = self.extent
 
+        log(f'Geo2Tile: min_xgeo={min_xgeo}, max_xgeo={max_xgeo}, min_ygeo={min_ygeo}, max_ygeo={max_ygeo}')
+
         # get 'geo-like' coords with origin at top-left
         x = xgeo - min_xgeo
         y = max_ygeo - ygeo
 
-        tdeg_x = self.tile_size_x / self.ppd_x
-        tdeg_y = self.tile_size_y / self.ppd_y
+        log(f'Geo2Tile: x={x}, y={y}')
+        log(f'Geo2Tile: self.ppd_x={self.ppd_x}')
 
-        return (x/tdeg_x, y/tdeg_y)
+        tiles_x = x * self.ppd_x / self.tile_size_x
+        tiles_y = y * self.ppd_y / self.tile_size_y
+
+        log(f'Geo2Tile: returning X={tiles_x}, Y={tiles_y}')
+
+        return (tiles_x, tiles_y)
 
     def Tile2Geo(self, tile):
         """Convert tile fractional coordinates to geo for level in use.
