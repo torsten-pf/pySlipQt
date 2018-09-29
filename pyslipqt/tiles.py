@@ -226,6 +226,14 @@ class BaseTiles(object):
 
         return (self.num_tiles_x, self.num_tiles_y, None, None)
 
+    def GetExtent(self):
+        """Get geo limits of the map tiles.
+        
+        Returns a tuple: (min_geo_x, max_geo_x, min_geo_y, max_geo_y)
+        """
+
+        return self.extent
+
     def tile_on_disk(self, level, x, y):
         """Return True if tile at (level, x, y) is on-disk."""
 
