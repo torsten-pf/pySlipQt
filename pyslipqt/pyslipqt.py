@@ -10,7 +10,7 @@ Some semantics:
 from PyQt5.QtCore import Qt, QTimer, QPoint, QPointF, QObject, pyqtSignal
 from PyQt5.QtWidgets import QLabel, QSizePolicy, QWidget
 from PyQt5.QtGui import QPainter, QColor, QPixmap, QPen, QFont, QFontMetrics
-from PyQt5.QtGui import QPolygon, QBrush
+from PyQt5.QtGui import QPolygon, QBrush, QCursor
 
 # if we don't have log.py, don't crash
 try:
@@ -88,7 +88,7 @@ class PySlipQt(QWidget):
     class Events(QObject):
         EVT_PYSLIPQT_LEVEL = pyqtSignal(int, int)
         EVT_PYSLIPQT_POSITION = pyqtSignal(int, object, tuple)
-        EVT_PYSLIPQT_SELECT = pyqtSignal()
+        EVT_PYSLIPQT_SELECT = pyqtSignal(int, tuple, tuple, object, tuple, list, list)
         EVT_PYSLIPQT_BOXSELECT = pyqtSignal()
         EVT_PYSLIPQT_POLYSELECT = pyqtSignal()
         EVT_PYSLIPQT_POLYBOXSELECT = pyqtSignal()
@@ -255,6 +255,9 @@ class PySlipQt(QWidget):
         self.mid_mbutton_down = False
         self.right_mbutton_down = False
 
+        # keyboard state variables
+        self.shift_down = False
+
         # when dragging, remember the initial start point
         self.start_drag_x = None
         self.start_drag_y = None
@@ -262,6 +265,9 @@ class PySlipQt(QWidget):
         # layer state cariables
         self.layer_mapping = {}         # maps layer ID to layer data
         self.layer_z_order = []         # layer Z order, contains layer IDs
+
+        # some cursors
+        self.default_cursor = QCursor(Qt.CrossCursor)
 
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.setMinimumSize(self.tile_width, self.tile_height)
@@ -271,6 +277,8 @@ class PySlipQt(QWidget):
         self.events = PySlipQt.Events()
 
         self.setMouseTracking(True)
+
+        self.setCursor(self.default_cursor)
 
         # do a "resize" after this function
         QTimer.singleShot(10, self.resizeEvent)
@@ -302,6 +310,9 @@ class PySlipQt(QWidget):
                 log(f'mousePressEvent: result={result} given for ({x},{y})')
          
     def mouseReleaseEvent(self, event):
+        # cursor back to normal
+        self.setCursor(self.default_cursor)
+
         b = event.button()
         if b == Qt.NoButton:
             log('mouseReleaseEvent: button=Qt.NoButton')
@@ -357,11 +368,11 @@ class PySlipQt(QWidget):
     def keyPressEvent(self, event):
         """Capture a keyboard event."""
 
-        log(f'key press event={event.key()}')
+        log(f'keyPressEvent: pressed key={event.key()}')
 
     def keyReleaseEvent(self, event):
 
-        log(f'key release event={event.key()}')
+        log(f'keyReleaseEvent: released key={event.key()}')
 
     def wheelEvent(self, event):
         """Handle a mouse wheel rotation."""
@@ -386,6 +397,12 @@ class PySlipQt(QWidget):
         # recalculate the "key" tile stuff
         self.recalc_wrap_limits()
         self.normalize_key_after_drag(0, 0)
+
+    def enterEvent(self, event):
+        log('enterEvent')
+
+    def leaveEvent(self, event):
+        log('leaveEvent')
 
     def paintEvent(self, event):
         """Draw the base map and then the layers on top."""
@@ -1230,23 +1247,21 @@ class PySlipQt(QWidget):
         """
 
         (xview, yview) = view
+        (min_xgeo, max_xgeo, min_ygeo, max_ygeo) = self.tile_src.GetExtent()
 
-        log(f'view_to_geo: view={view}')
-        log(f'view_to_geo: .key_tile_xoffset={self.key_tile_xoffset}, .key_tile_yoffset={self.key_tile_yoffset}')
-        log(f'view_to_geo: .key_tile_left={self.key_tile_left}, .key_tile_top={self.key_tile_top}')
 
         x_from_key = xview - self.key_tile_xoffset
         y_from_key = yview - self.key_tile_yoffset
 
-        if x_from_key < 0 or y_from_key < 0:
-            return None
-
         xtile = self.key_tile_left + x_from_key/self.tile_width
         ytile = self.key_tile_top + y_from_key/self.tile_height
 
-        log(f'view_to_geo: returning xtile={xtile}, ytile={ytile}')
+        (xgeo, ygeo) = self.tile_src.Tile2Geo((xtile, ytile))
 
-        return self.tile_src.Tile2Geo((xtile, ytile))
+        if (min_xgeo <= xgeo <= max_xgeo) and (min_ygeo <= ygeo <= max_ygeo):
+            return (xtile, ytile)
+
+        return None
 
 ######
 # PEX - Point & EXtension.

@@ -207,9 +207,14 @@ class PySlipQtDemo(QWidget):
         # finally, bind events to handlers
         self.pyslipqt.events.EVT_PYSLIPQT_LEVEL.connect(self.level_change_event)
         self.pyslipqt.events.EVT_PYSLIPQT_POSITION.connect(self.mouse_posn_event)
+        self.pyslipqt.events.EVT_PYSLIPQT_SELECT.connect(self.select_event)
+
+#        def hovered():
+#            self.labelOnlineHelp.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
+#        self.labelOnlineHelp.linkHovered.connect(hovered)
 
 #        self.panel = wx.Panel(self, wx.ID_ANY)
-#        self.panel.SetBackgroundColour(wx.WHITE)
+#        self.panel.SetBackgroundColour(wx.WHITEself.select_event80)
 #        self.panel.ClearBackground()
 
 #        # create tileset menuitems
@@ -1720,20 +1725,33 @@ class PySlipQtDemo(QWidget):
         log(f'level_change_event: got level change, etype={etype}, level={level}')
         self.map_level.set_text(str(level))
 
-    def mouse_posn_event(self, etype, map_posn, view_posn):
+    def mouse_posn_event(self, etype, mposn, vposn):
         """Handle a "mouse position" event from the pySlipQt widget.
         
-        etype     the type of event
-        map_posn  the new mouse position on the map (xgeo, ygeo)
-        view_posn the new mouse position on the view (x, y)
+        etype  the type of event
+        mposn  the new mouse position on the map (xgeo, ygeo)
+        vposn  the new mouse position on the view (x, y)
         """
 
-        log(f'mouse_posn_event: mouse position, etype={etype}, map_posn={map_posn}, view_posn={view_posn}')
-        if map_posn:
-            (lon, lat) = map_posn
+        if mposn:
+            (lon, lat) = mposn
             self.mouse_position.set_text(f'{lon:.2f}/{lat:.2f}')
         else:
             self.mouse_position.set_text('')
+
+    def select_event(self, etype, mposn, vposn, layer_id, selection, data, relsel):
+        """Handle a single select click.
+
+        etype      the event type number
+        mposn      select point tuple in map (geo) coordinates: (xgeo, ygeo)
+        vposn      select point tuple in view coordinates: (xview, yview)
+        layer_id   the ID of the layer containing the selected object (or None)
+        selection  a tuple (x,y,attrib) defining the position of the object selected (or [] if no selection)
+        data       the user-supplied data object for the selected object (or [] if no selection)
+        relsel     relative selection point inside a single selected image (or [] if no selection)
+        """
+
+        log(f'select_event: mposn={mposn}, vposn={vposn}, layer_id={layer_id}, selection={selection}, data={data}, relsel={relsel}')
 
     ######
     # Small utility routines
