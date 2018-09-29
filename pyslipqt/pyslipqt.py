@@ -89,7 +89,7 @@ class PySlipQt(QWidget):
                         'se', 'cs', 'sw', 'cw', None, False, '']
 
     # panel background colour
-    BackgroundColour = '#808080'
+#    BackgroundColour = '#808080'
 
     # default point attributes - map relative
     DefaultPointPlacement = 'cc'
@@ -199,7 +199,7 @@ class PySlipQt(QWidget):
         super().__init__(parent, **kwargs)    # inherit all parent object setup
 
         # set default widget background colour
-        self.setStyleSheet(f'background-color: {PySlipQt.Background};')
+#        self.setStyleSheet(f'background-color: {PySlipQt.BackgroundColour};')
 
         # remember the tile source object
         self.tile_src = tile_src
@@ -211,9 +211,6 @@ class PySlipQt(QWidget):
         self.view_width = 0     # width/height of the view
         self.view_height = 0    # changes when the widget changes size
 
-        self.map_width = 0      # width/height of the virtual map (not wrapped)
-        self.map_height = 0     # in pixels (changes when zoom level changes)
-
         # set tile and levels stuff
         self.max_level = max(tile_src.levels)   # max level displayed
         self.min_level = min(tile_src.levels)   # min level displayed
@@ -224,7 +221,14 @@ class PySlipQt(QWidget):
         self.wrap_x = tile_src.wrap_x           # True if tiles wrap in X direction
         self.wrap_y = tile_src.wrap_y           # True if tiles wrap in Y direction
 
+        self.map_width = self.num_tiles_x * self.tile_width     # virtual map width
+        self.map_height = self.num_tiles_y * self.tile_height   # virtual map height
+        log(f'__init__: self.map_width={self.map_width}, self.map_height={self.map_height}')
+#        self.map_width = 0
+#        self.map_height = 0
+
         self.next_layer_id = 1                  # source of unique layer IDs
+
         self.tiles_max_level = max(tile_src.levels) # maximum level in tile source
         self.tiles_min_level = min(tile_src.levels) # minimum level in tile source
 
@@ -329,116 +333,6 @@ class PySlipQt(QWidget):
             self.start_drag_x = x
             self.start_drag_y = y
 
-    ######
-    #
-    ######
-
-    def normalize_key_after_drag(self, delta_x=None, delta_y=None):
-        """After drag, set "key" tile correctly.
-
-        delta_x  the X amount dragged (pixels), None if not dragged in X
-        delta_y  the Y amount dragged (pixels), None if not dragged in Y
-
-        The 'key' tile was corect, but we've moved the map in the X and Y
-        directions.  Normalize the 'key' tile taking into account whether
-        we are wrapping X or Y directions.
-        """
-
-        if self.wrap_x:
-            # wrapping in X direction, move 'key' tile
-            self.key_tile_xoffset -= delta_x
-            while self.key_tile_xoffset > 0:
-                # 'key' tile too far right
-                self.key_tile_left -= 1
-                self.key_tile_xoffset -= self.tile_width
-            self.key_tile_left %= self.num_tiles_x
-    
-            while self.key_tile_xoffset <= -self.tile_width:
-                # 'key' tile too far left
-                self.key_tile_left += 1
-                self.key_tile_xoffset += self.tile_width
-            self.key_tile_left = (self.key_tile_left + self.num_tiles_x) % self.num_tiles_x
-        else:
-            # if view > map, don't drag, ensure centred
-            if self.map_width < self.view_width:
-                self.key_tile_xoffset = (self.view_width - self.map_width) // 2
-            else:
-                # remember old 'key' tile left value
-                old_left = self.key_tile_left
-
-                # map > view, allow drag, but don't go past the edge
-                self.key_tile_xoffset -= delta_x
-
-                while self.key_tile_xoffset > 0:
-                    # 'key' tile too far right
-                    self.key_tile_left -= 1
-                    self.key_tile_xoffset -= self.tile_width
-                self.key_tile_left %= self.num_tiles_x
-        
-                while self.key_tile_xoffset <= -self.tile_width:
-                    # 'key' tile too far left
-                    self.key_tile_left += 1
-                    self.key_tile_xoffset += self.tile_width
-                self.key_tile_left = (self.key_tile_left + self.num_tiles_x) % self.num_tiles_x
-
-                if delta_x < 0:
-                    # was dragged to the right, don't allow left edge to show
-                    if self.key_tile_left > old_left:
-                        self.key_tile_left = 0
-                        self.key_tile_xoffset = 0
-                else:
-                    # if dragged too far, reset key tile data
-                    if self.key_tile_left > self.max_key_left:
-                        self.key_tile_left = self.max_key_left
-                        self.key_tile_xoffset = self.max_key_xoffset
-                    elif self.key_tile_left == self.max_key_left:
-                        if self.key_tile_xoffset < self.max_key_xoffset:
-                            self.key_tile_xoffset = self.max_key_xoffset
-
-        if self.wrap_y:
-            # wrapping in Y direction, move 'key' tile
-            self.key_tile_yoffset -= delta_y
-        else:
-            # if view > map, don't drag, ensure centred
-            if self.map_height < self.view_height:
-                self.key_tile_yoffset = (self.view_height - self.map_height) // 2
-            else:
-                # remember old 'key' tile left value
-                old_top = self.key_tile_top
-
-                # map > view, allow drag, but don't go past the edge
-                self.key_tile_yoffset -= delta_y
-
-                while self.key_tile_yoffset > 0:
-                    # 'key' tile too far right
-                    self.key_tile_top -= 1
-                    self.key_tile_yoffset -= self.tile_height
-                self.key_tile_top %= self.num_tiles_y
-        
-                while self.key_tile_yoffset <= -self.tile_height:
-                    # 'key' tile too far left
-                    self.key_tile_top += 1
-                    self.key_tile_yoffset += self.tile_height
-                self.key_tile_top = (self.key_tile_top + self.num_tiles_y) % self.num_tiles_y
-
-                if delta_y < 0:
-                    # was dragged to the top, don't allow bottom edge to show
-                    if self.key_tile_top > old_top:
-                        self.key_tile_top = 0
-                        self.key_tile_yoffset = 0
-                else:
-                    # if dragged too far, reset key tile data
-                    if self.key_tile_top > self.max_key_top:
-                        self.key_tile_top = self.max_key_top
-                        self.key_tile_yoffset = self.max_key_yoffset
-                    elif self.key_tile_top == self.max_key_top:
-                        if self.key_tile_yoffset < self.max_key_yoffset:
-                            self.key_tile_yoffset = self.max_key_yoffset
-
-    ######
-    #
-    ######
-
     def keyPressEvent(self, event):
         """Capture a keyboard event."""
 
@@ -472,44 +366,16 @@ class PySlipQt(QWidget):
         self.recalc_wrap_limits()
         self.normalize_key_after_drag(0, 0)
 
-    def use_level(self, level):
-        """Use new map level.
-
-        level  the new level to use
-
-        This code will try to maintain the centre of the view at the same
-        GEO coordinates, if possible.  The "key" tile is updated.
-
-        Returns True if level change is OK, else False.
-        """
-
-        return self.zoom_level(level)
-
-    def recalc_wrap_limits(self):
-        """Recalculate the maximum "key" tile information.
-        
-        Called if widget changes level or resized.
-        .map_width, .map_height, .view_width and .view_height have been set.
-        """
-
-        # figure out the maximum 'key' tile coordinates
-        tiles_in_view = self.view_width // self.tile_width
-        left_margin = self.view_width - tiles_in_view*self.tile_width
-        self.max_key_xoffset = -(self.tile_width - left_margin)
-        self.max_key_left = self.num_tiles_x - tiles_in_view - 1
-
-        tiles_in_view = self.view_height // self.tile_height
-        margin = self.view_height - tiles_in_view*self.tile_height
-        self.max_key_yoffset = -(self.tile_height - margin)
-        self.max_key_top = self.num_tiles_y - tiles_in_view - 1
-
     def paintEvent(self, event):
         """Draw the base map and then the layers on top."""
 
         log('paintEvent: begin ######################################################')
         log(f'paintEvent: self.key_tile_left={self.key_tile_left}, self.key_tile_xoffset={self.key_tile_xoffset}')
-        log(f'paintEvent: self.view_width={self.view_width}, self.view_height={self.view_height}')
+        log(f'paintEvent: .view_width={self.view_width}, .view_height={self.view_height}')
+        log(f'paintEvent: .map_width={self.map_width}, .map_height={self.map_height}')
         log(f'paintEvent: tile_width={self.tile_width}, tile_height={self.tile_height}')
+        log(f'paintEvent: .key_tile_left={self.key_tile_left}, .key_tile_xoffset={self.key_tile_xoffset}')
+        log(f'paintEvent: .key_tile_top={self.key_tile_top}, .key_tile_yoffset={self.key_tile_yoffset}')
 
         ######
         # The "key" tile position is maintained by other code, we just
@@ -532,6 +398,7 @@ class PySlipQt(QWidget):
         y_coord = self.key_tile_top
         y_pix_start = self.key_tile_yoffset
         while y_pix_start < self.view_height:
+            log(f'paintEvent: loop: y_pix_start={y_pix_start}, .view_height={self.view_height}')
             row_list.append(y_coord)
             if not self.wrap_y and y_coord >= self.num_tiles_y-1:
                 break
@@ -570,6 +437,163 @@ class PySlipQt(QWidget):
 
         log('paintEvent: end ########################################################')
         painter.end()
+
+    ######
+    #
+    ######
+
+    def normalize_key_after_drag(self, delta_x=None, delta_y=None):
+        """After drag, set "key" tile correctly.
+
+        delta_x  the X amount dragged (pixels), None if not dragged in X
+        delta_y  the Y amount dragged (pixels), None if not dragged in Y
+
+        The 'key' tile was corect, but we've moved the map in the X and Y
+        directions.  Normalize the 'key' tile taking into account whether
+        we are wrapping X or Y directions.
+
+        Dragging left gets a positive delta_x, up gets a positive delta_y.
+        """
+
+        if self.wrap_x:
+            # wrapping in X direction, move 'key' tile in X
+            self.key_tile_xoffset -= delta_x
+
+            # normalize .key_tile_left value
+            while self.key_tile_xoffset > 0:
+                # 'key' tile too far right, move one left
+                self.key_tile_left -= 1
+                self.key_tile_xoffset -= self.tile_width
+    
+            while self.key_tile_xoffset <= -self.tile_width:
+                # 'key' tile too far left, move one right
+                self.key_tile_left += 1
+                self.key_tile_xoffset += self.tile_width
+            self.key_tile_left = (self.key_tile_left + self.num_tiles_x) % self.num_tiles_x
+        else:
+            # not wrapping in X direction
+            if self.map_width <= self.view_width:
+                # if map <= view, don't drag, ensure centred
+                self.key_tile_xoffset = (self.view_width - self.map_width) // 2
+            else:
+                # maybe drag, but don't expose background on left or right sides
+                # remember old 'key' tile left value
+                old_left = self.key_tile_left
+
+                # move key tile by amount of X drag
+                self.key_tile_xoffset -= delta_x
+
+                while self.key_tile_xoffset > 0:
+                    # 'key' tile too far right
+                    self.key_tile_left -= 1
+                    self.key_tile_xoffset -= self.tile_width
+        
+                while self.key_tile_xoffset <= -self.tile_width:
+                    # 'key' tile too far left
+                    self.key_tile_left += 1
+                    self.key_tile_xoffset += self.tile_width
+                self.key_tile_left = (self.key_tile_left + self.num_tiles_x) % self.num_tiles_x
+
+                if delta_x < 0:
+                    # was dragged to the right, don't allow left edge to show
+                    if self.key_tile_left > old_left:
+                        self.key_tile_left = 0
+                        self.key_tile_xoffset = 0
+                else:
+                    # if dragged too far, reset key tile data
+                    if self.key_tile_left > self.max_key_left:
+                        self.key_tile_left = self.max_key_left
+                        self.key_tile_xoffset = self.max_key_xoffset
+                    elif self.key_tile_left == self.max_key_left:
+                        if self.key_tile_xoffset < self.max_key_xoffset:
+                            self.key_tile_xoffset = self.max_key_xoffset
+
+        if self.wrap_y:
+            # wrapping in Y direction, move 'key' tile
+            self.key_tile_yoffset -= delta_y
+
+            # normalize .key_tile_top value
+            while self.key_tile_yoffset > 0:
+                # 'key' tile too far right, move one left
+                self.key_tile_top -= 1
+                self.key_tile_yoffset -= self.tile_height
+    
+            while self.key_tile_yoffset <= -self.tile_height:
+                # 'key' tile too far left, move one right
+                self.key_tile_top += 1
+                self.key_tile_yoffset += self.tile_height
+            self.key_tile_top = (self.key_tile_top + self.num_tiles_y) % self.num_tiles_y
+        else:
+            # not wrapping in the Y direction
+            if self.map_height <= self.view_height:
+                # if map <= view, don't drag, ensure centred
+                self.key_tile_yoffset = (self.view_height - self.map_height) // 2
+            else:
+                # remember old 'key' tile left value
+                old_top = self.key_tile_top
+
+                # map > view, allow drag, but don't go past the edge
+                self.key_tile_yoffset -= delta_y
+
+                while self.key_tile_yoffset > 0:
+                    # 'key' tile too far right
+                    self.key_tile_top -= 1
+                    self.key_tile_yoffset -= self.tile_height
+        
+                while self.key_tile_yoffset <= -self.tile_height:
+                    # 'key' tile too far left
+                    self.key_tile_top += 1
+                    self.key_tile_yoffset += self.tile_height
+                self.key_tile_top = (self.key_tile_top + self.num_tiles_y) % self.num_tiles_y
+
+                if delta_y < 0:
+                    # was dragged to the top, don't allow bottom edge to show
+                    if self.key_tile_top > old_top:
+                        self.key_tile_top = 0
+                        self.key_tile_yoffset = 0
+                else:
+                    # if dragged too far, reset key tile data
+                    if self.key_tile_top > self.max_key_top:
+                        self.key_tile_top = self.max_key_top
+                        self.key_tile_yoffset = self.max_key_yoffset
+                    elif self.key_tile_top == self.max_key_top:
+                        if self.key_tile_yoffset < self.max_key_yoffset:
+                            self.key_tile_yoffset = self.max_key_yoffset
+
+    ######
+    #
+    ######
+
+    def use_level(self, level):
+        """Use new map level.
+
+        level  the new level to use
+
+        This code will try to maintain the centre of the view at the same
+        GEO coordinates, if possible.  The "key" tile is updated.
+
+        Returns True if level change is OK, else False.
+        """
+
+        return self.zoom_level(level)
+
+    def recalc_wrap_limits(self):
+        """Recalculate the maximum "key" tile information.
+        
+        Called if widget changes level or resized.
+        .map_width, .map_height, .view_width and .view_height have been set.
+        """
+
+        # figure out the maximum 'key' tile coordinates
+        tiles_in_view = self.view_width // self.tile_width
+        left_margin = self.view_width - tiles_in_view*self.tile_width
+        self.max_key_xoffset = -(self.tile_width - left_margin)
+        self.max_key_left = self.num_tiles_x - tiles_in_view - 1
+
+        tiles_in_view = self.view_height // self.tile_height
+        margin = self.view_height - tiles_in_view*self.tile_height
+        self.max_key_yoffset = -(self.tile_height - margin)
+        self.max_key_top = self.num_tiles_y - tiles_in_view - 1
 
     def tile_frac_to_parts(self, t_frac, length):
         """Split a tile coordinate into integer and fractional parts.
