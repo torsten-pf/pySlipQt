@@ -41,19 +41,25 @@ class DisplayText(QWidget):
 #    else:
 #        raise Exception('Unrecognized platform: %s' % platform.system())
 
-    text_style = ('background-color: rgb(240, 240, 240);'
+#    text_style = ('background-color: rgb(240, 240, 240);'
+#                  'border:1px solid rgb(128, 128, 128);'
+#                  'border-radius: 3px;'
+#                 )
+    text_style = ('background-color: rgb(255, 255, 255);'
                   'border:1px solid rgb(128, 128, 128);'
                   'border-radius: 3px;'
                  )
 
-    def __init__(self, title, label, tooltip=None):
+    def __init__(self, title, label, tooltip=None, text_width=None):
         QWidget.__init__(self)
 
         # create both labels required for display
         lbl_label = QLabel(label)
-        lbl_label.setAlignment(Qt.AlignRight)
+#        lbl_label.setAlignment(Qt.AlignRight)
         self.lbl_text = QLabel()
         self.lbl_text.setStyleSheet(self.text_style)
+        if text_width:
+            self.lbl_text.setFixedWidth(text_width)
 
         # start grid
         grid = QGridLayout()

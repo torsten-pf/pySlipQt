@@ -206,6 +206,7 @@ class PySlipQtDemo(QWidget):
 
         # finally, bind events to handlers
         self.pyslipqt.events.EVT_PYSLIPQT_LEVEL.connect(self.level_change_event)
+        self.pyslipqt.events.EVT_PYSLIPQT_POSITION.connect(self.mouse_posn_event)
 
 #        self.panel = wx.Panel(self, wx.ID_ANY)
 #        self.panel.SetBackgroundColour(wx.WHITE)
@@ -258,11 +259,12 @@ class PySlipQtDemo(QWidget):
         grid_row = 0
 
         # put level and position into grid at top right
-        self.map_level = DisplayText(title='Map level', label='Level:', tooltip=None)
+        self.map_level = DisplayText(title='Map level', label='Level:',
+                                     tooltip=None, text_width=30)
         grid.addWidget(self.map_level, grid_row, 1, 1, 1)
         self.mouse_position = DisplayText(title='Cursor position',
-                                          label='Lon/Lat:',
-                                          tooltip='Shows the mouse longitude and latitude on the map')
+                                          label='Lon/Lat:', text_width=100,
+                                          tooltip='Shows the mouse longitude and latitude on the map',)
         grid.addWidget(self.mouse_position, grid_row, 2, 1, 1)
         grid_row += 1
 
@@ -1006,8 +1008,6 @@ class PySlipQtDemo(QWidget):
                                             visible=True,
                                             name='<image_view_layer>')
         else:
-#            self.not_yet()
-#            return
             self.pyslipqt.DeleteLayer(self.image_view_layer)
             self.image_view_layer = None
             if self.sel_image_view_layer:
@@ -1019,9 +1019,6 @@ class PySlipQtDemo(QWidget):
 
     def imageViewShowOnOff(self, event):
         """Handle ShowOnOff event for image layer control."""
-
-#        self.not_yet()
-#        return
 
         if event:
             self.pyslipqt.ShowLayer(self.image_view_layer)
@@ -1038,9 +1035,6 @@ class PySlipQtDemo(QWidget):
 
     def imageViewSelectOnOff(self, event):
         """Handle SelectOnOff event for image layer control."""
-
-#        self.not_yet()
-#        return
 
         layer = self.image_view_layer
         if event:
@@ -1716,14 +1710,30 @@ class PySlipQtDemo(QWidget):
         return True
 
 
-    def level_change_event(self, level):
-        """Handle a "level change" event fro the pySlipQt widget.
+    def level_change_event(self, etype, level):
+        """Handle a "level change" event from the pySlipQt widget.
         
+        etype  the type of event
         level  the new map level
         """
 
-        log(f'level_change_event: got level change, level={level}')
+        log(f'level_change_event: got level change, etype={etype}, level={level}')
         self.map_level.set_text(str(level))
+
+    def mouse_posn_event(self, etype, map_posn, view_posn):
+        """Handle a "mouse position" event from the pySlipQt widget.
+        
+        etype     the type of event
+        map_posn  the new mouse position on the map (xgeo, ygeo)
+        view_posn the new mouse position on the view (x, y)
+        """
+
+        log(f'mouse_posn_event: mouse position, etype={etype}, map_posn={map_posn}, view_posn={view_posn}')
+        if map_posn:
+            (lon, lat) = map_posn
+            self.mouse_position.set_text(f'{lon:.2f}/{lat:.2f}')
+        else:
+            self.mouse_position.set_text('')
 
     ######
     # Small utility routines
@@ -2049,12 +2059,6 @@ class PySlipQtDemo(QWidget):
 
         warn_dialog = QErrorMessage(self)
         warn_dialog.showMessage(msg)
-
-    def not_yet(self):
-        """Show a dialog for stuff not yet implemented."""
-
-        self.info("Not yet implemented.")
-
 
 ###############################################################################
 

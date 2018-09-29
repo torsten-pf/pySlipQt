@@ -82,17 +82,22 @@ class _Layer(object):
 ######
 
 
-#class PySlipQt(QLabel):
 class PySlipQt(QWidget):
 
     # events the widget will emit
     class Events(QObject):
-        EVT_PYSLIPQT_LEVEL = pyqtSignal(int)
-        EVT_PYSLIPQT_POSITION = pyqtSignal()
+        EVT_PYSLIPQT_LEVEL = pyqtSignal(int, int)
+        EVT_PYSLIPQT_POSITION = pyqtSignal(int, object, tuple)
         EVT_PYSLIPQT_SELECT = pyqtSignal()
         EVT_PYSLIPQT_BOXSELECT = pyqtSignal()
         EVT_PYSLIPQT_POLYSELECT = pyqtSignal()
         EVT_PYSLIPQT_POLYBOXSELECT = pyqtSignal()
+
+    # event numbers
+    (EVT_PYSLIPQT_LEVEL, EVT_PYSLIPQT_POSITION,
+     EVT_PYSLIPQT_SELECT, EVT_PYSLIPQT_BOXSELECT,
+     EVT_PYSLIPQT_POLYSELECT, EVT_PYSLIPQT_POLYBOXSELECT) = range(6)
+
     
     # list of valid placement values
     valid_placements = ['cc', 'nw', 'cn', 'ne', 'ce',
@@ -265,6 +270,8 @@ class PySlipQt(QWidget):
 
         self.events = PySlipQt.Events()
 
+        self.setMouseTracking(True)
+
         # do a "resize" after this function
         QTimer.singleShot(10, self.resizeEvent)
 
@@ -330,12 +337,17 @@ class PySlipQt(QWidget):
 
         x = event.x()
         y = event.y()
+        mouse_view = (x, y)
+
+        log(f'mouseMoveEvent: x={x}, y={y}')
+
+        mouse_map = self.view_to_geo(mouse_view)
+        self.events.EVT_PYSLIPQT_POSITION.emit(PySlipQt.EVT_PYSLIPQT_POSITION, mouse_map, mouse_view)
 
         if self.left_mbutton_down:
             if self.start_drag_x:       # if we are already dragging
                 delta_x = self.start_drag_x - x
                 delta_y = self.start_drag_y - y
-                log(f'mouseMoveEvent: delta_x={delta_x}, delta_y={delta_y}')
                 self.normalize_key_after_drag(delta_x, delta_y) # normalize the "key" tile
                 self.update()                                   # force a repaint
 
@@ -1208,6 +1220,34 @@ class PySlipQt(QWidget):
 
         return None
 
+    def view_to_geo(self, view):
+        """Convert a view coords position to a geo coords position.
+
+        view  tuple of view coords (xview, yview)
+
+        Returns a tuple of geo coords (xgeo, ygeo) if the cursor is over map
+        tiles, else returns None.
+        """
+
+        (xview, yview) = view
+
+        log(f'view_to_geo: view={view}')
+        log(f'view_to_geo: .key_tile_xoffset={self.key_tile_xoffset}, .key_tile_yoffset={self.key_tile_yoffset}')
+        log(f'view_to_geo: .key_tile_left={self.key_tile_left}, .key_tile_top={self.key_tile_top}')
+
+        x_from_key = xview - self.key_tile_xoffset
+        y_from_key = yview - self.key_tile_yoffset
+
+        if x_from_key < 0 or y_from_key < 0:
+            return None
+
+        xtile = self.key_tile_left + x_from_key/self.tile_width
+        ytile = self.key_tile_top + y_from_key/self.tile_height
+
+        log(f'view_to_geo: returning xtile={xtile}, ytile={ytile}')
+
+        return self.tile_src.Tile2Geo((xtile, ytile))
+
 ######
 # PEX - Point & EXtension.
 #
@@ -1583,7 +1623,7 @@ class PySlipQt(QWidget):
 
             log(f'zoom_level: after, key tile data:\n{self.dump_key_data()}')
             log(f'zoom_level: emitting EVT_PYSLIPQT_LEVEL with level={level}')
-            self.events.EVT_PYSLIPQT_LEVEL.emit(level)
+            self.events.EVT_PYSLIPQT_LEVEL.emit(PySlipQt.EVT_PYSLIPQT_LEVEL, level)
 
         return result
 
