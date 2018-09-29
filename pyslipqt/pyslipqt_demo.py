@@ -66,7 +66,7 @@ DemoHeight = 600
 MinTileLevel = 0
 
 # initial view level and position
-InitViewLevel = 4
+InitViewLevel = 0
 
 # this will eventually be selectable within the app
 # a selection of cities, position from WikiPedia, etc
@@ -203,6 +203,9 @@ class PySlipQtDemo(QWidget):
         self.setGeometry(300, 300, DemoWidth, DemoHeight)
         self.setWindowTitle('%s %s' % (DemoName, DemoVersion))
         self.show()
+
+        # finally, bind events to handlers
+        self.pyslipqt.events.EVT_PYSLIPQT_LEVEL.connect(self.level_change_event)
 
 #        self.panel = wx.Panel(self, wx.ID_ANY)
 #        self.panel.SetBackgroundColour(wx.WHITE)
@@ -1712,6 +1715,16 @@ class PySlipQtDemo(QWidget):
 
         return True
 
+
+    def level_change_event(self, level):
+        """Handle a "level change" event fro the pySlipQt widget.
+        
+        level  the new map level
+        """
+
+        log(f'level_change_event: got level change, level={level}')
+        self.map_level.set_text(str(level))
+
     ######
     # Small utility routines
     ######
@@ -1943,12 +1956,9 @@ class PySlipQtDemo(QWidget):
         CR_Height = size.height()
         CR_Width = size.width()
 
-        # force pyslipqt initialisation
-        self.pyslipqt.resizeEvent()    # THIS SHOULD NOT BE NECESSARY IN USER CODE!
-
         # set initial view position
+        log(f'InitViewLevel={InitViewLevel}')
         self.map_level.set_text('%d' % InitViewLevel)
-#        wx.CallAfter(self.final_setup, InitViewLevel, InitViewPosition)
 
     def final_setup(self, level, position):
         """Perform final setup.

@@ -7,7 +7,7 @@ Some semantics:
           (view may be smaller than map, or larger)
 """
 
-from PyQt5.QtCore import Qt, QTimer, QPoint, QPointF
+from PyQt5.QtCore import Qt, QTimer, QPoint, QPointF, QObject, pyqtSignal
 from PyQt5.QtWidgets import QLabel, QSizePolicy, QWidget
 from PyQt5.QtGui import QPainter, QColor, QPixmap, QPen, QFont, QFontMetrics
 from PyQt5.QtGui import QPolygon, QBrush
@@ -81,9 +81,19 @@ class _Layer(object):
 # The pySlipQt widget.
 ######
 
+
 #class PySlipQt(QLabel):
 class PySlipQt(QWidget):
 
+    # events the widget will emit
+    class Events(QObject):
+        EVT_PYSLIPQT_LEVEL = pyqtSignal(int)
+        EVT_PYSLIPQT_POSITION = pyqtSignal()
+        EVT_PYSLIPQT_SELECT = pyqtSignal()
+        EVT_PYSLIPQT_BOXSELECT = pyqtSignal()
+        EVT_PYSLIPQT_POLYSELECT = pyqtSignal()
+        EVT_PYSLIPQT_POLYBOXSELECT = pyqtSignal()
+    
     # list of valid placement values
     valid_placements = ['cc', 'nw', 'cn', 'ne', 'ce',
                         'se', 'cs', 'sw', 'cw', None, False, '']
@@ -223,9 +233,6 @@ class PySlipQt(QWidget):
 
         self.map_width = self.num_tiles_x * self.tile_width     # virtual map width
         self.map_height = self.num_tiles_y * self.tile_height   # virtual map height
-        log(f'__init__: self.map_width={self.map_width}, self.map_height={self.map_height}')
-#        self.map_width = 0
-#        self.map_height = 0
 
         self.next_layer_id = 1                  # source of unique layer IDs
 
@@ -256,7 +263,9 @@ class PySlipQt(QWidget):
 
         tile_src.setCallback(self.update)
 
-        # do a "resize" after this function, does recalc_wrap_limits()
+        self.events = PySlipQt.Events()
+
+        # do a "resize" after this function
         QTimer.singleShot(10, self.resizeEvent)
 
     ######
@@ -1561,25 +1570,6 @@ class PySlipQt(QWidget):
             (self.key_tile_left, self.key_tile_xoffset,
                     self.key_tile_top, self.key_tile_yoffset) = new_key
 
-#            # get centre tile details and move to key
-##            xtile = self.key_tile_left
-#            xoffset = self.key_tile_xoffset
-#            while xoffset > 0:
-#                log(f'canon X: xoffset={xoffset}, xtile={xtile}')
-#                if xtile == 0:
-#                    break
-#                xtile -= 1
-#                xoffset -= self.tile_width
-#
-#            ytile = self.key_tile_top
-#            yoffset = self.key_tile_yoffset
-#            while yoffset > 0:
-#                log(f'canon Y: yoffset={yoffset}, ytile={ytile}')
-#                if ytile == 0:
-#                    break
-#                ytile -= 1
-#                yoffset -= self.tile_height
-
             # move to new level
             self.level = level
             (self.num_tiles_x, self.num_tiles_y, _, _) = self.tile_src.GetInfo(level)
@@ -1587,31 +1577,13 @@ class PySlipQt(QWidget):
             self.map_height = self.num_tiles_y * self.tile_height
             log(f'self.map_width={self.map_width}, self.map_height={self.map_height}')
 
-#        self.key_tile_left = 0      # tile coordinates of key tile
-#        self.key_tile_top = 0
-#        self.key_tile_xoffset = 0   # view coordinates of key tile wrt view
-#        self.key_tile_yoffset = 0
-
-#            # calculate the key tile data
-#            while xtile > 0:
-#                xtile -= self.tile_width
-#                xoffset -= 1
-#            log(f'X normalized to xtile={xtile}, xoffset={xoffset}')
-#            while ytile > 0:
-#                ytile -= self.tile_height
-#                yoffset -= 1
-#            log(f'Y normalized to ytile={ytile}, yoffset={yoffset}')
-#
-#            self.key_tile_left = xtile
-#            self.key_tile_top = ytile
-#            self.key_tile_xoffset = xoffset
-#            self.key_tile_yoffset = yoffset
-
             self.recalc_wrap_limits()
-
+            self.normalize_key_after_drag(0, 0)
             self.update()       # redraw the map
 
-        log(f'zoom_level:  after, key tile data:\n{self.dump_key_data()}')
+            log(f'zoom_level: after, key tile data:\n{self.dump_key_data()}')
+            log(f'zoom_level: emitting EVT_PYSLIPQT_LEVEL with level={level}')
+            self.events.EVT_PYSLIPQT_LEVEL.emit(level)
 
         return result
 
