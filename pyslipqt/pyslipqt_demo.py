@@ -693,7 +693,7 @@ class PySlipQtDemo(QWidget):
                 self.pyslipqt.AddPointLayer(PointData, map_rel=True,
                                             colour=PointDataColour, radius=3,
                                             # offset points to exercise placement
-                                            offset_x=25, offset_y=25, visible=True,
+                                            offset_x=0, offset_y=0, visible=True,
                                             show_levels=MRPointShowLevels,
                                             delta=DefaultPointMapDelta,
                                             placement='nw',   # check placement
