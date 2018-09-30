@@ -103,9 +103,6 @@ class PySlipQt(QWidget):
     valid_placements = ['cc', 'nw', 'cn', 'ne', 'ce',
                         'se', 'cs', 'sw', 'cw', None, False, '']
 
-    # panel background colour
-#    BackgroundColour = '#808080'
-
     # default point attributes - map relative
     DefaultPointPlacement = 'cc'
     DefaultPointRadius = 3
@@ -212,9 +209,6 @@ class PySlipQt(QWidget):
         """
 
         super().__init__(parent, **kwargs)    # inherit all parent object setup
-
-        # set default widget background colour
-#        self.setStyleSheet(f'background-color: {PySlipQt.BackgroundColour};')
 
         # remember the tile source object
         self.tile_src = tile_src
@@ -969,10 +963,9 @@ class PySlipQt(QWidget):
                     dc.setPen(pen)
                     dc.setBrush(qcolour)
                     cache_pcolour = pcolour
-                (x, _, y, _) = ex
-                dc.drawEllipse(QPoint(x, y), radius, radius)
-                log(f'draw_point_layer: drawing point at ({x},{y}')
-                # TODO: should draw point at POINT POSITION, not extent edgse!!
+                (pt_x, pt_y) = pt
+                dc.drawEllipse(QPoint(pt_x, pt_y), radius, radius)
+                log(f'draw_point_layer: drawing point at ({pt_x},{pt_y}')
 
         log(f'draw_point_layer: end ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^')
 
@@ -998,22 +991,21 @@ class PySlipQt(QWidget):
         # draw the images
         for (lon, lat, pmap, w, h, place,
                  x_off, y_off, pradius, pcolour, idata) in images:
-            log(f'draw_image_layer: lon={lon}, lat={lat}, w={w}, h={h}, pradius={pradius}, pcolour={pcolour}')
+            log(f'draw_image_layer: lon={lon}, lat={lat}, w={w}, h={h}, place={place}, x_off={x_off}, y_off={y_off}, pradius={pradius}, pcolour={pcolour}')
             (pt, ex) = pex(place, (lon, lat), x_off, y_off, w, h)
             log(f'draw_image_layer: pt={pt}, ex={ex}')
             if ex:
-                (ix, _, iy, _) = ex
-                ix = int(ix)
-                iy = int(iy)
+                (ix, iy) = pt
                 log(f'draw_image_layer: drawing image at ix={ix}, iy={iy}, pmap={pmap}')
-                log(f'draw_image_layer: self.view_width={self.view_width}, self.view_height={self.view_height}')
+                log(f'draw_image_layer: .view_width={self.view_width}, .view_height={self.view_height}')
                 size = pmap.size()
                 log(f'draw_image_layer: image width={size.width()}, height={size.height()}')
+                log(f'draw_image_layer: drawing image at ({ix},{iy})')
                 dc.drawPixmap(QPoint(ix, iy), pmap)
             else:
                 log('draw_image_layer: image off-map')
 
-            if pt and pradius:
+            if pradius:
                 if cache_pcolour != pcolour:
                     log(f'draw_image_layer: pcolour={pcolour}')
                     pen = QPen(pcolour, pradius, Qt.SolidLine)
@@ -1105,9 +1097,9 @@ class PySlipQt(QWidget):
         log('draw_polygon_layer: entered')
 
         # get the correct pex function for mode (map/view)
-        pex = self.PexPolygonView
+        pex = self.pex_polygon_view
         if map_rel:
-            pex = self.PexPolygon
+            pex = self.pex_polygon
 
         # draw polygons
         cache_colour_width = None         # speed up mostly unchanging data
@@ -1149,9 +1141,9 @@ class PySlipQt(QWidget):
         log('draw_polyline_layer: entered')
 
         # get the correct pex function for mode (map/view)
-        pex = self.PexPolygonView
+        pex = self.pex_polygon_view
         if map_rel:
-            pex = self.PexPolygon
+            pex = self.pex_polygon
 
         # brush is always transparent
         dc.setBrush(QBrush(QColor(0, 0, 0, 0)))
@@ -1169,7 +1161,7 @@ class PySlipQt(QWidget):
                 log(f'draw_polyline_layer: qpoly={qpoly}')
                 dc.drawPolyline(QPolygon(qpoly))
 
-    def ViewExtent(self, place, view, w, h, x_off, y_off, dcw=0, dch=0):
+    def view_extent(self, place, view, w, h, x_off, y_off, dcw=0, dch=0):
         """Get view extent of area.
 
         place         placement string ('cc', 'se', etc)
@@ -1188,14 +1180,19 @@ class PySlipQt(QWidget):
         the extent rectangle.
         """
 
+        log(f'view_extent: place={place}, view={view}, w={w}, h={h}, x_off={x_off}, y_off={y_off}, dcw={dcw}, dch={dch}')
+
         # top left corner
         (x, y) = view
         (left, top) = self.extent_placement(place, x, y, x_off, y_off,
                                             w, h, dcw, dch)
+        log(f'view_extent: after .extent_placement(), left={left}, top={top}')
 
         # bottom right corner
         right = left + w
         bottom = top + h
+
+        log(f'view_extent: returning ({left}, {right}, {top}, {bottom})')
 
         return (left, right, top, bottom)
 
@@ -1282,7 +1279,7 @@ class PySlipQt(QWidget):
 
         Return a tuple of point and extent origins (point, extent) where 'point'
         is (px, py) and extent is (elx, erx, ety, eby) (both in view coords).
-        Return None for either or both if off-view.
+        Return None for extent if extent is completely off-view.
 
         The 'extent' here is the extent of the point+radius.
         """
@@ -1304,11 +1301,7 @@ class PySlipQt(QWidget):
         extent = (elx, erx, ety, eby)
         log(f'pex_point: extent={extent}')
 
-        # decide if point and extent are off-view
-        if px < 0 or px > self.view_width or py < 0 or py > self.view_height:
-            log(f'pex_point: point off-view, return None')
-            point = None
-
+        # decide if extent is off-view
         if erx < 0 or elx > self.view_width or eby < 0 or ety > self.view_height:
             # no extent if ALL of extent is off-view
             log(f'pex_point: extent off-view, return None')
@@ -1327,7 +1320,7 @@ class PySlipQt(QWidget):
 
         Return a tuple of point and extent origins (point, extent) where 'point'
         is (px, py) and extent is (elx, erx, ety, eby) (both in view coords).
-        Return None for either or both if off-view.
+        Return None for extent if extent is completely off-view.
 
         The 'extent' here is the extent of the point+radius.
         """
@@ -1345,11 +1338,7 @@ class PySlipQt(QWidget):
         eby = py + radius
         extent = (elx, erx, ety, eby)
 
-        # decide if point and extent are off-view
-        if (px < 0 or px > self.view_width
-                or py < 0 or py > self.view_height):
-            view = None
-
+        # decide if extent is off-view
         if erx < 0 or elx > self.view_width or eby < 0 or ety > self.view_height:
             # no extent if ALL of extent is off-view
             extent = None
@@ -1368,7 +1357,7 @@ class PySlipQt(QWidget):
         data where '(px, py)' is the point and '(elx, erx, ety, eby)' is the
         extent.  Both point and extent are in view coordinates.
 
-        Returns (None, None) if point/extent is off-view.
+        Return None for extent if extent is completely off-view.
 
         An extent object can be either an image object or a text object.
         """
@@ -1381,22 +1370,22 @@ class PySlipQt(QWidget):
 
         log(f'pex_extent: geo_to_view({geo}) -> point={point}')
 
-        # extent = (left, right, top, bottom) in view coords
-        extent = self.ViewExtent(place, point, w, h, x_off, y_off)
-        (elx, erx, ety, eby) = extent
+        # get extent limits
+        elx = px
+        erx = px + w
+        ety = py
+        eby = py + h
 
-        log(f'pex_extent: ViewExtent({place}, {point}, {w}, {h}, {x_off}, {y_off}) -> extent={extent}')
+        log(f'pex_extent: view_extent({place}, {point}, {w}, {h}, {x_off}, {y_off}) -> extent=({elx}, {erx}, {ety}, {eby})')
 
-        # decide if point and extent are off-view
-        if px < 0 or px > self.view_width or py < 0 or py > self.view_height:
-            point = None
-
+        # decide if extent is off-view
         if erx < 0 or elx > self.view_width or eby < 0 or ety > self.view_height:
             # no extent if ALL of extent is off-view
             extent = None
 
-        log(f'pex_extent: returning ({point}, {extent})')
-        return (point, extent)
+        log(f'pex_extent: returning ({point}, ({elx}, {erx}, {ety}, {eby}))')
+
+        return (point, (elx, erx, ety, eby))
 
     def pex_extent_view(self, place, view, x_off, y_off, w, h):
         """Given a view object convert point/extent coords to view coords.
@@ -1408,35 +1397,37 @@ class PySlipQt(QWidget):
 
         Return a tuple of point and extent origins (point, extent) where 'point'
         is (px, py) and extent is (elx, erx, ety, eby) (both in view coords).
-        Either point or extent is None if object off-view.
+        Return None for extent if extent is completely off-view.
 
         Takes size of extent object into consideration.
         """
 
+        log(f'pex_extent_view: place={place}, view={view}, x_off={x_off}, y_off={y_off}, w={w}, h={h}')
+
         # get point view coords and perturb point to placement origin
         (xview, yview) = view
-        point = self.point_placement(place, xview, yview, 0, 0,
-                                     self.view_width, self.view_height)
+        point = self.extent_placement(place, xview, yview, x_off, y_off,
+                                      w, h, self.view_width, self.view_height)
+        log(f'pex_extent_view: after .extent_placement(), point={point}')
 
         # get point view coords (X and Y)
-        (px, py) = view
+        (px, py) = point
 
         # extent = (left, right, top, bottom) in view coords
-        extent = self.ViewExtent(place, view, w, h, x_off, y_off,
-                                 self.view_width, self.view_height)
-        (elx, erx, ety, eby) = extent
+        elx = xview
+        erx = xview + w
+        ety = yview
+        eby = yview + h
+        log(f'pex_extent_view: extent=(elx={elx}, erx={erx}, ety={ety}, eby={eby})')
 
-        # decide if point and extent are off-view
-        if px < 0 or px > self.view_width or py < 0 or py > self.view_height:
-            view = None
-
+        log(f'pex_extent_view: .view_width={self.view_width}, .view_height={self.view_height}')
         if erx < 0 or elx > self.view_width or eby < 0 or ety > self.view_height:
             # no extent if ALL of extent is off-view
             extent = None
 
-        return (point, extent)
+        return (point, (elx, erx, ety, eby))
 
-    def PexPolygon(self, place, poly, x_off, y_off):
+    def pex_polygon(self, place, poly, x_off, y_off):
         """Given a polygon/line obj (geo coords) get points/extent in view coords.
 
         place         placement string
@@ -1445,7 +1436,7 @@ class PySlipQt(QWidget):
 
         Return a tuple of point and extent (point, extent) where 'point' is a
         list of (px, py) and extent is (elx, erx, ety, eby) (both in view coords).
-        Return None for either or both if off-view.
+        Return None for extent if extent is completely off-view.
         """
 
         # get polygon/line points in perturbed view coordinates
@@ -1463,19 +1454,17 @@ class PySlipQt(QWidget):
         eby = max(view_points, key=lambda x: x[1])[1]
         extent = (elx, erx, ety, eby)
 
-        # decide if polygon or extent are off-view
-        res_pt = None
-        res_ex = None
+        # decide if extent is off-view
+        res_ex = None       # assume extent is off-view
         for (px, py) in view_points:
             if ((px >= 0 and px < self.view_width)
                     and (py >= 0 and py < self.view_height)):
-                res_pt = view_points
-                res_ex = extent
+                res_ex = extent # at least some of extent is on-view
                 break
 
-        return (res_pt, res_ex)
+        return (view_points, res_ex)
 
-    def PexPolygonView(self, place, poly, x_off, y_off):
+    def pex_polygon_view(self, place, poly, x_off, y_off):
         """Given a polygon/line obj (view coords) get point/extent in view coords.
 
         place         placement string
@@ -1484,7 +1473,7 @@ class PySlipQt(QWidget):
 
         Return a tuple of point and extent origins (point, extent) where 'point'
         is a list of (px, py) and extent is (elx, erx, ety, eby) (both in view
-        coords).  Return None for either or both if off-view.
+        coords).  Return None for extent if extent is completely off-view.
         """
 
         # get polygon/line points in view coordinates
@@ -1503,16 +1492,14 @@ class PySlipQt(QWidget):
         extent = (elx, erx, ety, eby)
 
         # decide if polygon/line or extent are off-view
-        res_pt = None
         res_ex = None
         for (px, py) in view:
             if ((px >= 0 and px < self.view_width)
                     and (py >= 0 and py < self.view_height)):
-                res_pt = view
                 res_ex = extent
                 break
 
-        return (res_pt, res_ex)
+        return (view, res_ex)
 
 ######
 # Placement routines instead of original 'exec' code.
@@ -1534,15 +1521,19 @@ class PySlipQt(QWidget):
         dcw2 = dcw/2
         dch2 = dch/2
 
+        log(f'point_placement: place={place}, x={x}, y={y}, x_off={x_off}, y_off={y_off}, dcw={dcw}, dch={dch}')
+
         if place == 'cc':   x+=dcw2;       y+=dch2
         elif place == 'nw': x+=x_off;      y+=y_off
         elif place == 'cn': x+=dcw2;       y+=y_off
-        elif place == 'ne': x+=dcw-x_off;  y+=y_off
+        elif place == 'ne': x+=dcw-x_off;  y+=y_off; log('????')
         elif place == 'ce': x+=dcw-x_off;  y+=dch2
         elif place == 'se': x+=dcw-x_off;  y+=dch-y_off
         elif place == 'cs': x+=dcw2;       y+=dch-y_off
         elif place == 'sw': x+=x_off;      y+=dch-y_off
         elif place == 'cw': x+=x_off;      y+=dch2
+
+        log(f'point_placement: after, x={x}, y={y}')
 
         return (x, y)
 
@@ -1554,10 +1545,12 @@ class PySlipQt(QWidget):
         x, y          point relative to placement origin
         x_off, y_off  offset from point
         w, h          width, height of the image
-        dcw, dcw      width/height of the view draw context
+        dcw, dcw      width/height of the view draw context (zero if map-rel)
 
         Returns a tuple (x, y).
         """
+
+        log(f'extent_placement: place={place}, x={x}, y={y}, x_off={x_off}, y_off={y_off}, w={w}, h={h}, dcw={dcw}, dch={dch}')
 
         w2 = w/2
         h2 = h/2
@@ -1568,12 +1561,14 @@ class PySlipQt(QWidget):
         if place == 'cc':   x+=dcw2-w2;       y+=dch2-h2
         elif place == 'nw': x+=x_off;         y+=y_off
         elif place == 'cn': x+=dcw2-w2;       y+=y_off
-        elif place == 'ne': x+=dcw-w-x_off;   y+=y_off
+        elif place == 'ne': x+=dcw-w-x_off;   y+=y_off; log('!!!!')
         elif place == 'ce': x+=dcw-w-x_off;   y+=dch2-h2
         elif place == 'se': x+=dcw-w-x_off;   y+=dch-h-y_off
         elif place == 'cs': x+=dcw2-w2;       y+=dch-h-y_off
         elif place == 'sw': x+=x_off;         y+=dch-h-y_off
         elif place == 'cw': x+=x_off;         y+=dch2-h2
+
+        log(f'extent_placement: after, x={x}, y={y}')
 
         return (x, y)
 
