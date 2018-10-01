@@ -16,19 +16,18 @@ class DisplayTextExample(QWidget):
     def __init__(self):
         super().__init__()
 
-        self.dt_group = DisplayText(title='Group title longer', label='Label:')
+        self.dt_group = DisplayText(title='Group title longer', label='Label:',
+                                    tooltip='A tooltip')
+        self.dt_group.set_text("A longer text")
 
         hbox = QHBoxLayout()
         hbox.setSpacing(5)
-        hbox.setContentsMargins(3, 3, 3, 3)
+        hbox.setContentsMargins(1, 1, 1, 1)
         hbox.addWidget(self.dt_group)
         self.setLayout(hbox)
 
         self.setWindowTitle('DisplayText widget')
         self.show()
-
-        self.dt_group.set_text("A longer text")
-
 
 app = QApplication(sys.argv)
 ex = DisplayTextExample()

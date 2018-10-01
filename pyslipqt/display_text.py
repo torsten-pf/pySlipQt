@@ -16,7 +16,12 @@ Used to display text.  The grid and components:
 
 The constructor:
 
-    dt = DisplayText(parent, title='', label='', tooltip=None)
+    dt = DisplayText(parent, title='', label='', textwidth=None, tooltip=None)
+
+    where title      is the text to display at the top of the widget
+          label      is the text to the left of the displayed <text>
+          textwidth  is the width (in pixels) of the <text> field
+          tooltip    is the text of a tooltip for the widget
 
 Methods:
 
@@ -25,60 +30,43 @@ Methods:
 
 """
 
-#import platform
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import Qt
 
 class DisplayText(QWidget):
 
-#    # set platform dependent values, if any
-#    if platform.system() == 'Linux':
-#        pass
-#    elif platform.system() == 'Darwin':
-#        pass
-#    elif platform.system() == 'Windows':
-#        pass
-#    else:
-#        raise Exception('Unrecognized platform: %s' % platform.system())
-
-#    text_style = ('background-color: rgb(240, 240, 240);'
-#                  'border:1px solid rgb(128, 128, 128);'
-#                  'border-radius: 3px;'
-#                 )
     text_style = ('background-color: rgb(255, 255, 255);'
                   'border:1px solid rgb(128, 128, 128);'
-                  'border-radius: 3px;'
-                 )
+                  'border-radius: 3px;')
 
     def __init__(self, title, label, tooltip=None, text_width=None):
         QWidget.__init__(self)
 
-        # create both labels required for display
+        grid = QGridLayout()
+        grid.setContentsMargins(2, 2, 2, 2)
+
+        group = QGroupBox(title)
+
         lbl_label = QLabel(label)
-#        lbl_label.setAlignment(Qt.AlignRight)
+        lbl_label.setFixedHeight(20)
         self.lbl_text = QLabel()
-        self.lbl_text.setStyleSheet(self.text_style)
+        self.lbl_text.setStyleSheet(DisplayText.text_style)
         if text_width:
             self.lbl_text.setFixedWidth(text_width)
+        self.lbl_text.setFixedHeight(20)
 
-        # start grid
-        grid = QGridLayout()
-        grid.columnStretch(1)
-#        grid.setSpacing(0)
-        grid.setContentsMargins(5, 5, 3, 5)
+        hbox = QHBoxLayout()
+        hbox.setContentsMargins(1, 1, 1, 1)
+        hbox.addWidget(lbl_label)
+        hbox.addWidget(self.lbl_text)
+        hbox.addStretch(1)
+        group.setLayout(hbox)
 
-        groupbox = QGroupBox(title)
-        groupbox.setContentsMargins(3, 3, 3, 3)
-        grid.addWidget(groupbox)
-
-        grid.addWidget(lbl_label, 0, 0)
-        grid.addWidget(self.lbl_text, 0, 1)
-
+        grid.addWidget(group)
         self.setLayout(grid)
 
         if tooltip:
             self.setToolTip(tooltip)
-
 
     def set_text(self, text):
         """Set the text of the display field.

@@ -37,7 +37,7 @@ except ImportError:
     tkinter_error(msg)
     sys.exit(1)
 
-#from PyQt5.QtWidgets import (QLabel, QLineEdit)
+from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QLabel,
                              QSpinBox, QVBoxLayout, QVBoxLayout, QAction,
@@ -166,6 +166,7 @@ class PySlipQtDemo(QWidget):
     def __init__(self):
         super().__init__()
 
+        # menus
 #        #exitAct = QAction(QIcon('exit.png'), '&Exit', self)
 #        exitAct = QAction('&Exit', self)
 #        exitAct.setShortcut('Ctrl+Q')
@@ -183,8 +184,6 @@ class PySlipQtDemo(QWidget):
         self.setLayout(grid)
 
         grid.setColumnStretch(0, 1)
-#        grid.setColumnStretch(1, 0)
-#        grid.setColumnStretch(2, 0)
         grid.setContentsMargins(2, 2, 2, 2)
 
         # build the 'controls' part of GUI
@@ -204,6 +203,9 @@ class PySlipQtDemo(QWidget):
         self.setWindowTitle('%s %s' % (DemoName, DemoVersion))
         self.show()
 
+        # set initial view position
+        QTimer.singleShot(1, self.final_setup)
+
         # finally, bind events to handlers
         self.pyslipqt.events.EVT_PYSLIPQT_LEVEL.connect(self.level_change_event)
         self.pyslipqt.events.EVT_PYSLIPQT_POSITION.connect(self.mouse_posn_event)
@@ -212,10 +214,6 @@ class PySlipQtDemo(QWidget):
 #        def hovered():
 #            self.labelOnlineHelp.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
 #        self.labelOnlineHelp.linkHovered.connect(hovered)
-
-#        self.panel = wx.Panel(self, wx.ID_ANY)
-#        self.panel.SetBackgroundColour(wx.WHITEself.select_event80)
-#        self.panel.ClearBackground()
 
 #        # create tileset menuitems
 #        menuBar = wx.MenuBar()
@@ -242,15 +240,17 @@ class PySlipQtDemo(QWidget):
 #            raise Exception('Bad DefaultTileset (%s) or TileSources (%s)'
 #                            % (DefaultTileset, str(TileSources)))
 
-        # finally, bind events to handlers
-#        self.pyslipqt.Bind(pyslipqt.EVT_PYSLIP_SELECT, self.handle_select_event)
-#        self.pyslipqt.Bind(pyslipqt.EVT_PYSLIP_BOXSELECT, self.handle_select_event)
-#        self.pyslipqt.Bind(pyslipqt.EVT_PYSLIP_POSITION, self.handle_position_event)
-#        self.pyslipqt.Bind(pyslipqt.EVT_PYSLIP_LEVEL, self.handle_level_change)
-
 #        # select the required tileset
 #        item_id = self.name2guiid[self.default_tileset_name]
 #        tile_menu.Check(item_id, True)
+
+    def final_setup(self):
+        """Perform final setup.
+
+        This is called via a oneShot after initial setup is complete.
+        """
+
+        self.pyslipqt.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
 
     def make_gui_controls(self, grid):
         """Build the 'controls' part of the GUI
@@ -265,10 +265,10 @@ class PySlipQtDemo(QWidget):
 
         # put level and position into grid at top right
         self.map_level = DisplayText(title='Map level', label='Level:',
-                                     tooltip=None, text_width=30)
+                                     tooltip=None)
         grid.addWidget(self.map_level, grid_row, 1, 1, 1)
         self.mouse_position = DisplayText(title='Cursor position',
-                                          label='Lon/Lat:', text_width=100,
+                                          label='Lon/Lat:', text_width=85,
                                           tooltip='Shows the mouse longitude and latitude on the map',)
         grid.addWidget(self.mouse_position, grid_row, 2, 1, 1)
         grid_row += 1
@@ -386,297 +386,6 @@ class PySlipQtDemo(QWidget):
         pass
 
         #self.Close(True)
-
-######
-## Build the GUI
-######
-#
-#    def make_gui(self, parent):
-#        """Create application GUI."""
-#
-#        # start application layout
-#        all_display = QHBoxLayout()
-#
-#        # put map view in left of horizontal box
-#        sl_box = self.make_gui_view(parent)
-#        all_display.addLayout(sl_box)
-#
-#        # add controls at right
-#        controls = self.make_gui_controls(parent)
-#        all_display.addLayout(controls)
-#
-#        return all_display
-#
-#    def make_gui_view(self, parent):
-#        """Build the map view widget
-#
-#        parent  reference to the widget parent
-#
-#        Returns the box layout.
-#        """
-#
-#        # create gui objects
-#        vbox = QVBoxLayout()
-#        self.pyslipqt = pyslipqt.PySlipQt(parent, tile_src=self.tile_source, start_level=0)
-#        vbox.addWidget(self.pyslipqt)
-#
-#        return vbox
-#
-#    def make_gui_controls(self, parent):
-#        """Build the 'controls' part of the GUI
-#
-#        parent  reference to parent
-#
-#        Returns reference to containing sizer object.
-#        """
-#
-#        # all controls in vertical box sizer
-#        controls = QVBoxLayout()
-#
-#        # put level and position into one 'controls' position
-#        l_p = self.make_gui_level_posn(parent)
-#        controls.addLayout(l_p)
-#
-#        # controls for map-relative points layer
-#        point = self.make_gui_point(parent)
-#        controls.addWidget(point)
-#
-#        # controls for view-relative points layer
-#        point_view = self.make_gui_point_view(parent)
-#        controls.addWidget(point_view)
-#
-#        # controls for map-relative image layer
-#        image = self.make_gui_image(parent)
-#        controls.addWidget(image)
-#
-#        # controls for map-relative image layer
-#        image_view = self.make_gui_image_view(parent)
-#        controls.addWidget(image_view)
-#
-#        # controls for map-relative text layer
-#        text = self.make_gui_text(parent)
-#        controls.addWidget(text)
-#
-#        # controls for view-relative text layer
-#        text_view = self.make_gui_text_view(parent)
-#        controls.addWidget(text_view)
-#
-#        # controls for map-relative polygon layer
-#        poly = self.make_gui_poly(parent)
-#        controls.addWidget(poly)
-#
-#        # controls for view-relative polygon layer
-#        poly_view = self.make_gui_poly_view(parent)
-#        controls.addWidget(poly_view)
-#
-#        # controls for map-relative polyline layer
-#        polyline = self.make_gui_polyline(parent)
-#        controls.addWidget(polyline)
-#
-#        # controls for view-relative polyline layer
-#        polyline_view = self.make_gui_polyline_view(parent)
-#        controls.addWidget(polyline_view)
-#
-#        return controls
-#
-#    def make_gui_level_posn(self, parent):
-#        """Build the control that shows the level.
-#
-#        parent  reference to parent
-#
-#        Returns reference to containing sizer object.
-#        """
-#
-#        hbox = QHBoxLayout()
-#        self.map_level = DisplayText(title='Map level', label='Level:', tooltip=None, width=50)
-#        hbox.addWidget(self.map_level)
-#        self.mouse_position = DisplayText(title='Cursor position',
-#                                          label='Lon/Lat:',
-#                                          tooltip='Shows the mouse longitude and latitude on the map',
-#                                          width=50)
-#        hbox.addWidget(self.mouse_position)
-#
-#        return hbox
-#
-#    def make_gui_point(self, parent):
-#        """Build the points part of the controls part of GUI.
-#
-#        parent  reference to parent
-#
-#        Returns reference to containing sizer object.
-#        """
-#
-#        # create widgets
-#        point = LayerControl(parent, title='Points, map relative %s' % str(MRPointShowLevels), selectable=True)
-#
-#        # tie to event handler(s)
-#        point.change_add.connect(self.pointOnOff)
-#        point.change_show.connect(self.pointShowOnOff)
-#        point.change_select.connect(self.pointSelectOnOff)
-#
-#        return point
-#
-#    def make_gui_point_view(self, parent):
-#        """Build the view-relative points part of the GUI.
-#
-#        parent  reference to parent
-#
-#        Returns reference to containing sizer object.
-#        """
-#
-#        # create widgets
-#        point = LayerControl(parent, 'Points, view relative', selectable=True)
-#
-#        # tie to event handler(s)
-#        point.change_add.connect(self.pointViewOnOff)
-#        point.change_show.connect(self.pointViewShowOnOff)
-#        point.change_select.connect(self.pointViewSelectOnOff)
-#
-#        return point
-#
-#    def make_gui_image(self, parent):
-#        """Build the image part of the controls part of GUI.
-#
-#        parent  reference to parent
-#
-#        Returns reference to containing sizer object.
-#        """
-#
-#        # create widgets
-#        image = LayerControl(parent, 'Images, map relative %s' % str(MRImageShowLevels), selectable=True)
-#
-#        # tie to event handler(s)
-#        image.change_add.connect(self.imageOnOff)
-#        image.change_show.connect(self.imageShowOnOff)
-#        image.change_select.connect(self.imageSelectOnOff)
-#
-#        return image
-#
-#    def make_gui_image_view(self, parent):
-#        """Build the view-relative image part of the controls part of GUI.
-#
-#        parent  reference to parent
-#
-#        Returns reference to containing sizer object.
-#        """
-#
-#        # create widgets
-#        image = LayerControl(parent, 'Images, view relative', selectable=True) 
-#
-#        # tie to event handler(s)
-#        image.change_add.connect(self.imageViewOnOff)
-#        image.change_show.connect(self.imageViewShowOnOff)
-#        image.change_select.connect(self.imageViewSelectOnOff)
-#
-#        return image
-#
-#    def make_gui_text(self, parent):
-#        """Build the map-relative text part of the controls part of GUI.
-#
-#        parent  reference to parent
-#
-#        Returns reference to containing sizer object.
-#        """
-#
-#        # create widgets
-#        text = LayerControl(parent, 'Text, map relative %s' % str(MRTextShowLevels), selectable=True)
-#
-#        # tie to event handler(s)
-#        text.change_add.connect(self.textOnOff)
-#        text.change_show.connect(self.textShowOnOff)
-#        text.change_select.connect(self.textSelectOnOff)
-#
-#        return text
-#
-#    def make_gui_text_view(self, parent):
-#        """Build the view-relative text part of the controls part of GUI.
-#
-#        parent  reference to parent
-#
-#        Returns reference to containing sizer object.
-#        """
-#
-#        # create widgets
-#        text_view = LayerControl(parent, 'Text, view relative', selectable=True)
-#
-#        # tie to event handler(s)
-#        text_view.change_add.connect(self.textViewOnOff)
-#        text_view.change_show.connect(self.textViewShowOnOff)
-#        text_view.change_select.connect(self.textViewSelectOnOff)
-#
-#        return text_view
-#
-#    def make_gui_poly(self, parent):
-#        """Build the map-relative polygon part of the controls part of GUI.
-#
-#        parent  reference to parent
-#
-#        Returns reference to containing sizer object.
-#        """
-#
-#        # create widgets
-#        poly = LayerControl(parent, 'Polygon, map relative %s' % str(MRPolyShowLevels), selectable=True)
-#
-#        # tie to event handler(s)
-#        poly.change_add.connect(self.polyOnOff)
-#        poly.change_show.connect(self.polyShowOnOff)
-#        poly.change_select.connect(self.polySelectOnOff)
-#
-#        return poly
-#
-#    def make_gui_poly_view(self, parent):
-#        """Build the view-relative polygon part of the controls part of GUI.
-#
-#        parent  reference to parent
-#
-#        Returns reference to containing sizer object.
-#        """
-#
-#        # create widgets
-#        poly_view = LayerControl(parent, 'Polygon, view relative', selectable=True)
-#
-#        # tie to event handler(s)
-#        poly_view.change_add.connect(self.polyViewOnOff)
-#        poly_view.change_show.connect(self.polyViewShowOnOff)
-#        poly_view.change_select.connect(self.polyViewSelectOnOff)
-#
-#        return poly_view
-#
-#    def make_gui_polyline(self, parent):
-#        """Build the map-relative polyline part of the controls part of GUI.
-#
-#        parent  reference to parent
-#
-#        Returns reference to containing sizer object.
-#        """
-#
-#        # create widgets
-#        poly = LayerControl(parent, 'Polyline, map relative %s' % str(MRPolyShowLevels), selectable=True)
-#
-#        # tie to event handler(s)
-#        poly.change_add.connect(self.polylineOnOff)
-#        poly.change_show.connect(self.polylineShowOnOff)
-#        poly.change_select.connect(self.polylineSelectOnOff)
-#
-#        return poly
-#
-#    def make_gui_polyline_view(self, parent):
-#        """Build the view-relative polyline part of the controls part of GUI.
-#
-#        parent  reference to parent
-#
-#        Returns reference to containing sizer object.
-#        """
-#
-#        # create widgets
-#        poly_view = LayerControl(parent, 'Polyline, view relative', selectable=True)
-#
-#        # tie to event handler(s)
-#        poly_view.change_add.connect(self.polylineViewOnOff)
-#        poly_view.change_show.connect(self.polylineViewShowOnOff)
-#        poly_view.change_select.connect(self.polylineViewSelectOnOff)
-#
-#        return poly_view
 
     ######
     # pySlip demo control event handlers

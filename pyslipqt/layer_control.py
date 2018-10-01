@@ -2,7 +2,7 @@
 Custom LayerControl widget.
 
 This is used to control each type of layer, whether map- or view-relative.
-The layout is:
+The grid is:
 
     + Title text ------------------------------+
     |  +--+                                    |
@@ -49,11 +49,6 @@ class LayerControl(QWidget):
     change_show = pyqtSignal(bool)      # signal raised when user toggles "show" checkbox
     change_select = pyqtSignal(bool)    # signal raised when user toggles "select" checkbox
 
-#    # size of the widget
-#    WidgetWidth = 160
-#    WidgetHeight = 80
-
-
     def __init__(self, parent, title, selectable=False, tooltip=None):
         """Initialise a LayerControl instance.
 
@@ -71,31 +66,31 @@ class LayerControl(QWidget):
         self.cb_select = QCheckBox('Select')
 
         # start layout
-        layout = QGridLayout()
-        layout.setContentsMargins(5, 5, 3, 5)
+        grid = QGridLayout()
+        grid.setContentsMargins(2, 2, 2, 2)
 
-        groupbox = QGroupBox(title)
-        groupbox.setContentsMargins(3, 3, 3, 3)
-        groupbox.setCheckable(True)
-        groupbox.setChecked(False)
-        layout.addWidget(groupbox, 0, 0)
+        group = QGroupBox(title)
+        group.setCheckable(True)
+        group.setChecked(False)
+        grid.addWidget(group, 0, 0)
 
         hbox = QHBoxLayout()
-        hbox.setContentsMargins(0, 0, 0, 0)
-        groupbox.setLayout(hbox)
+        hbox.setContentsMargins(1, 1, 1, 1)
+        group.setLayout(hbox)
 
+        hbox.addStretch(1)
         hbox.addWidget(self.cb_show)
         hbox.addWidget(self.cb_select)
-        hbox.addStretch()
+        hbox.addStretch(3)
 
-        self.setLayout(layout)
+        self.setLayout(grid)
 
         # if tooltip given, set it up
         if tooltip:
             self.setToolTip(tooltip)
 
         # connect internal widget events to handlers
-        groupbox.toggled.connect(self.changed_add)
+        group.toggled.connect(self.changed_add)
         self.cb_show.stateChanged.connect(self.changed_show)
         if selectable:
             self.cb_select.stateChanged.connect(self.changed_select)
@@ -105,7 +100,7 @@ class LayerControl(QWidget):
     def changed_add(self, state):
         """Main checkbox changed.
        
-        state  the state of the groupbox check: True == ticked
+        state  the state of the group check: True == ticked
 
         Emit a signal with the state.
         """
