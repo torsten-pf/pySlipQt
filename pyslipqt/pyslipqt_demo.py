@@ -70,7 +70,8 @@ InitViewLevel = 0
 
 # this will eventually be selectable within the app
 # a selection of cities, position from WikiPedia, etc
-InitViewPosition = (0.0, 51.48)             # Greenwich, England
+#InitViewPosition = (0.0, 51.48)             # Greenwich, England
+InitViewPosition = (0.0, 0.0)                #"Null" Island
 #InitViewPosition = (5.33, 60.389444)        # Bergen, Norway
 #InitViewPosition = (153.033333, -27.466667) # Brisbane, Australia
 #InitViewPosition = (98.3786761, 7.8627326)  # Phuket (ภูเก็ต), Thailand
@@ -203,13 +204,13 @@ class PySlipQtDemo(QWidget):
         self.setWindowTitle('%s %s' % (DemoName, DemoVersion))
         self.show()
 
-        # set initial view position
-        QTimer.singleShot(1, self.final_setup)
-
         # finally, bind events to handlers
         self.pyslipqt.events.EVT_PYSLIPQT_LEVEL.connect(self.level_change_event)
         self.pyslipqt.events.EVT_PYSLIPQT_POSITION.connect(self.mouse_posn_event)
         self.pyslipqt.events.EVT_PYSLIPQT_SELECT.connect(self.select_event)
+
+        # set initial view position
+        QTimer.singleShot(1, self.final_setup)
 
 #        def hovered():
 #            self.labelOnlineHelp.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
@@ -247,7 +248,8 @@ class PySlipQtDemo(QWidget):
     def final_setup(self):
         """Perform final setup.
 
-        This is called via a oneShot after initial setup is complete.
+        We do this in a OneShot() function for those operations that
+        must not be done while the GUI is "fluid".
         """
 
         self.pyslipqt.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
@@ -268,7 +270,7 @@ class PySlipQtDemo(QWidget):
                                      tooltip=None)
         grid.addWidget(self.map_level, grid_row, 1, 1, 1)
         self.mouse_position = DisplayText(title='Cursor position',
-                                          label='Lon/Lat:', text_width=85,
+                                          label='Lon/Lat:', text_width=100,
                                           tooltip='Shows the mouse longitude and latitude on the map',)
         grid.addWidget(self.mouse_position, grid_row, 2, 1, 1)
         grid_row += 1
@@ -1697,18 +1699,6 @@ class PySlipQtDemo(QWidget):
         log(f'InitViewLevel={InitViewLevel}')
         self.map_level.set_text('%d' % InitViewLevel)
 
-    def final_setup(self, level, position):
-        """Perform final setup.
-
-        level     zoom level required
-        position  position to be in centre of view
-
-        We do this in a CallAfter() function for those operations that
-        must not be done while the GUI is "fluid".
-        """
-
-        self.pyslipqt.GotoLevelAndPosition(level, position)
-
     ######
     # Exception handlers
     ######
@@ -1808,7 +1798,7 @@ if __name__ == '__main__':
         log(msg)
         print(msg)
         tkinter_error(msg)
-        sys.exit(1)
+#        sys.exit(1)
 
     # plug our handler into the python system
     sys.excepthook = excepthook
