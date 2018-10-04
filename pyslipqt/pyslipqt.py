@@ -7,6 +7,7 @@ Some semantics:
           (view may be smaller than map, or larger)
 """
 
+from math import floor
 from PyQt5.QtCore import Qt, QTimer, QPoint, QPointF, QObject, pyqtSignal
 from PyQt5.QtWidgets import QLabel, QSizePolicy, QWidget
 from PyQt5.QtGui import QPainter, QColor, QPixmap, QPen, QFont, QFontMetrics
@@ -88,7 +89,7 @@ class PySlipQt(QWidget):
     class Events(QObject):
         EVT_PYSLIPQT_LEVEL = pyqtSignal(int, int)
         EVT_PYSLIPQT_POSITION = pyqtSignal(int, object, tuple)
-        EVT_PYSLIPQT_SELECT = pyqtSignal(int, tuple, tuple, object, tuple, list, list)
+        EVT_PYSLIPQT_SELECT = pyqtSignal(int, tuple, tuple, object, object, list, list)
         EVT_PYSLIPQT_BOXSELECT = pyqtSignal()
         EVT_PYSLIPQT_POLYSELECT = pyqtSignal()
         EVT_PYSLIPQT_POLYBOXSELECT = pyqtSignal()
@@ -198,6 +199,11 @@ class PySlipQt(QWidget):
     # layer type values
     (TypePoint, TypeImage, TypeText, TypePolygon, TypePolyline) = range(5)
 
+    # cursor types
+    StandardCursor = Qt.ArrowCursor
+    BoxSelectCursor = Qt.CrossCursor
+    WaitCursor = Qt.WaitCursor
+    DragCursor = Qt.OpenHandCursor
 
     def __init__(self, parent, tile_src, start_level, **kwargs):
         """Initialize the pySlipQt widget.
@@ -227,8 +233,11 @@ class PySlipQt(QWidget):
         self.tile_height = tile_src.tile_size_y # height of tile in pixels
         self.num_tiles_x = tile_src.num_tiles_x # number of map tiles in X direction
         self.num_tiles_y = tile_src.num_tiles_y # number of map tiles in Y direction
-        self.wrap_x = tile_src.wrap_x           # True if tiles wrap in X direction
-        self.wrap_y = tile_src.wrap_y           # True if tiles wrap in Y direction
+# TODO: implement map wrap-around
+#        self.wrap_x = tile_src.wrap_x           # True if tiles wrap in X direction
+#        self.wrap_y = tile_src.wrap_y           # True if tiles wrap in Y direction
+        self.wrap_x = False                     # True if tiles wrap in X direction
+        self.wrap_y = False                     # True if tiles wrap in Y direction
 
         self.map_width = self.num_tiles_x * self.tile_width     # virtual map width
         self.map_height = self.num_tiles_y * self.tile_height   # virtual map height
@@ -256,12 +265,30 @@ class PySlipQt(QWidget):
         self.start_drag_x = None
         self.start_drag_y = None
 
-        # layer state cariables
+        # layer state variables
         self.layer_mapping = {}         # maps layer ID to layer data
         self.layer_z_order = []         # layer Z order, contains layer IDs
 
         # some cursors
-        self.default_cursor = QCursor(Qt.CrossCursor)
+        self.standard_cursor = QCursor(self.StandardCursor)
+        self.box_select_cursor = QCursor(self.BoxSelectCursor)
+        self.wait_cursor = QCursor(self.WaitCursor)
+        self.drag_cursor = QCursor(self.DragCursor)
+
+        # set up dispatch dictionaries for layer select handlers
+        # for point select
+        self.layerPSelHandler = {self.TypePoint: self.sel_point_in_layer,
+                                 self.TypeImage: self.sel_image_in_layer,
+                                 self.TypeText: self.sel_text_in_layer,
+                                 self.TypePolygon: self.sel_polygon_in_layer,
+                                 self.TypePolyline: self.sel_polyline_in_layer}
+
+        # for box select
+        self.layerBSelHandler = {self.TypePoint: self.sel_box_points_in_layer,
+                                 self.TypeImage: self.sel_box_images_in_layer,
+                                 self.TypeText: self.sel_box_texts_in_layer,
+                                 self.TypePolygon: self.sel_box_polygons_in_layer,
+                                 self.TypePolyline: self.sel_box_polylines_in_layer}
 
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.setMinimumSize(self.tile_width, self.tile_height)
@@ -271,8 +298,17 @@ class PySlipQt(QWidget):
         self.events = PySlipQt.Events()
 
         self.setMouseTracking(True)
+#        self.setEnabled(True)
 
-        self.setCursor(self.default_cursor)
+        log('__init__: set cursor to standard')
+        self.default_cursor = self.standard_cursor
+        self.setCursor(self.standard_cursor)
+
+        # DEBUG
+        result = self.tile_src.Tile2Geo((0.0, 0.0))
+        log(f'DEBUG: Tile2Geo((0.0, 0.0)) -> {result}')
+        result = self.tile_src.Tile2Geo((1.0, 1.0))
+        log(f'DEBUG: Tile2Geo((1.0, 1.0)) -> {result}')
 
         # do a "resize" after this function
         QTimer.singleShot(10, self.resizeEvent)
@@ -287,6 +323,7 @@ class PySlipQt(QWidget):
             pass
         elif b == Qt.LeftButton:
             self.left_mbutton_down = True
+
         elif b == Qt.MidButton:
             self.mid_mbutton_down = True
         elif b == Qt.RightButton:
@@ -294,12 +331,11 @@ class PySlipQt(QWidget):
         else:
             log('mousePressEvent: unknown button')
 
-        # DEBUG - calculate geo coords of view (0,0)
-        for x in (0, ):
-            for y in (0, ):
-                result = self.geo_to_view((x, y))
-         
     def mouseReleaseEvent(self, event):
+        """Mouse button was released."""
+
+        log(f'mouseReleaseEvent: entered')
+
         # cursor back to normal
         self.setCursor(self.default_cursor)
 
@@ -307,9 +343,57 @@ class PySlipQt(QWidget):
         if b == Qt.NoButton:
             pass
         elif b == Qt.LeftButton:
+            log(f'mouseReleaseEvent: left button released')
+
             self.left_mbutton_down = False
-            self.start_drag_x = None    # end drag, if any
-            self.start_drag_y = None
+            self.start_drag_x = self.start_drag_y = None    # end drag, if any
+
+#            # if required, ignore this event
+#            if self.ignore_next_up:
+#                self.ignore_next_up = False
+#                return
+#            # we need a repaint to remove any selection box, but NOT YET!
+#            delayed_paint = self.sbox_1_x       # True if box select active
+
+            # possible point selection, get click point in view & global coords
+            p = event.globalPos()
+            clickpt_v = (p.x(), p.y())
+            log(f'mouseReleaseEvent: clickpt_v={clickpt_v}')
+            clickpt_g = self.view_to_geo(clickpt_v)
+            log(f'mouseReleaseEvent: clickpt_g={clickpt_g}')
+            if clickpt_g is None:
+                log(f'mouseReleaseEvent: clicked off-map, returning')
+                return          # we clicked off the map
+
+            # check each layer for a point select handler
+            # we work on a copy as user click-handler code could change order
+            for id in self.layer_z_order[:]:
+                log(f'mouseReleaseEvent: checking layer {id}')
+                l = self.layer_mapping[id]
+                # if layer visible and selectable
+                if l.selectable and l.visible:
+                    log(f'mouseReleaseEvent: layer is selectable and visible')
+                    if l.map_rel:
+                        sel = self.layerPSelHandler[l.type](l, clickpt_g)
+                    else:
+                        sel = self.layerPSelHandler[l.type](l, clickpt_v)
+                    log(f'mouseReleaseEvent: sel={sel} returned from handler')
+#                    self.RaiseEventSelect(mposn=clickpt_g, vposn=clickpt_v,
+#                                          layer=l, selection=sel)
+                    self.events.EVT_PYSLIPQT_SELECT.emit(PySlipQt.EVT_PYSLIPQT_SELECT,
+                                                         clickpt_g, clickpt_v,
+                                                         id, sel, [], [])
+#                    # user code possibly updated screen
+#                    delayed_paint = True
+
+#event.type
+#event.mposn
+#event.vposn
+#event.layer_id
+#event.selection
+#event.data
+#event.relsel
+
         elif b == Qt.MidButton:
             self.mid_mbutton_down = False
         elif b == Qt.RightButton:
@@ -336,14 +420,42 @@ class PySlipQt(QWidget):
         x = event.x()
         y = event.y()
         mouse_view = (x, y)
-
         mouse_map = self.view_to_geo(mouse_view)
+        log(f'mouseMoveEvent: x={x}, y={y}, mouse_view={mouse_view}, mouse_map={mouse_map}')
 
         if self.left_mbutton_down:
             if self.start_drag_x:       # if we are already dragging
+                log(f'mouseMoveEvent: dragging, .key_tile_left={self.key_tile_left}, .key_tile_xoffset={self.key_tile_xoffset}')
+
+                # we don't move much - less than a tile width/height
+                # drag the key tile in the X direction
                 delta_x = self.start_drag_x - x
+                self.key_tile_xoffset -= delta_x
+                log(f'mouseMoveEvent: delta_x={delta_x}, new .key_tile_xoffset={self.key_tile_xoffset}')
+                if self.key_tile_xoffset < -self.tile_width:    # too far left
+                    self.key_tile_xoffset += self.tile_width
+                    self.key_tile_left += 1
+                    log(f'mouseMoveEvent: too far left, new .key_tile_left={self.key_tile_left}, .key_tile_xoffset={self.key_tile_xoffset}')
+                if self.key_tile_xoffset > 0:                   # too far right
+                    self.key_tile_xoffset -= self.tile_width
+                    self.key_tile_left -= 1
+                    log(f'mouseMoveEvent: too far right, new .key_tile_left={self.key_tile_left}, .key_tile_xoffset={self.key_tile_xoffset}')
+
+                # drag the key tile in the Y direction
                 delta_y = self.start_drag_y - y
-                self.normalize_key_after_drag(delta_x, delta_y) # normalize the "key" tile
+                self.key_tile_yoffset -= delta_y
+                if self.key_tile_yoffset < -self.tile_height:   # too far up
+                    self.key_tile_yoffset += self.tile_height
+                    self.key_tile_top += 1
+                if self.key_tile_yoffset > 0:                   # too far down
+                    self.key_tile_yoffset -= self.tile_height
+                    self.key_tile_top -= 1
+
+                log(f'mouseMoveEvent: after drag, .key_tile_left={self.key_tile_left}, .key_tile_xoffset={self.key_tile_xoffset}')
+
+#                self.normalize_key_after_drag(delta_x, delta_y) # normalize the "key" tile
+                self.rectify_key_tile()
+                log(f'mouseMoveEvent: after rectify, .key_tile_left={self.key_tile_left}, .key_tile_xoffset={self.key_tile_xoffset}')
                 self.update()                                   # force a repaint
 
             self.start_drag_x = x
@@ -355,11 +467,11 @@ class PySlipQt(QWidget):
     def keyPressEvent(self, event):
         """Capture a keyboard event."""
 
-        pass
+        log(f'keyPressEvent: key pressed={event.key()}')
 
     def keyReleaseEvent(self, event):
 
-        pass
+        log(f'keyReleaseEvent: key released={event.key()}')
 
     def wheelEvent(self, event):
         """Handle a mouse wheel rotation."""
@@ -368,7 +480,10 @@ class PySlipQt(QWidget):
             new_level = self.level + 1
         else:
             new_level = self.level - 1
-        self.use_level(new_level)
+        log(f'wheelEvent: using new level {new_level}')
+
+        self.zoom_level(new_level)
+#        self.use_level(new_level)
 
     def resizeEvent(self, event=None):
         """Widget resized, recompute some state."""
@@ -378,10 +493,12 @@ class PySlipQt(QWidget):
         self.view_height = self.height()
 
         # recalculate the "key" tile stuff
-        self.recalc_wrap_limits()
-        self.normalize_key_after_drag(0, 0)
+#        self.recalc_wrap_limits()
+#        self.normalize_key_after_drag(0, 0)
+        self.rectify_key_tile()
 
     def enterEvent(self, event):
+#        self.setFocus()
         pass
 
     def leaveEvent(self, event):
@@ -389,6 +506,9 @@ class PySlipQt(QWidget):
 
     def paintEvent(self, event):
         """Draw the base map and then the layers on top."""
+
+        log(f'paintEvent: .key_tile_left={self.key_tile_left}, .key_tile_xoffset={self.key_tile_xoffset}')
+        log(f'paintEvent: .key_tile_top={self.key_tile_top}, .key_tile_yoffset={self.key_tile_yoffset}')
 
         ######
         # The "key" tile position is maintained by other code, we just
@@ -405,6 +525,7 @@ class PySlipQt(QWidget):
                 break
             x_coord = (x_coord + 1) % self.num_tiles_x
             x_pix_start += self.tile_height
+        log(f'paintEvent: col_list={col_list}')
 
         row_list = []
         y_coord = self.key_tile_top
@@ -415,6 +536,7 @@ class PySlipQt(QWidget):
                 break
             y_coord = (y_coord + 1) % self.num_tiles_y
             y_pix_start += self.tile_height
+        log(f'paintEvent: row_list={row_list}')
 
         ######
         # Ready to update the view
@@ -570,6 +692,7 @@ class PySlipQt(QWidget):
     #
     ######
 
+# UNUSED
     def use_level(self, level):
         """Use new map level.
 
@@ -684,6 +807,7 @@ class PySlipQt(QWidget):
 
         return (zx_frac, zy_frac)
 
+# UNUSED
     def tile_to_key(self, z_point, x, y):
         """Get new 'key' tile data given a zoom point and a view point.
 
@@ -716,6 +840,7 @@ class PySlipQt(QWidget):
 
         return (key_tile_left, key_tile_xoffset, key_tile_top, key_tile_yoffset)
 
+# UNUSED
     def view_to_tile(self, x=None, y=None):
         """Convert view coordinates to the fractional tile coordinates.
 
@@ -890,7 +1015,7 @@ class PySlipQt(QWidget):
         map_rel  points relative to map if True, else relative to view
         """
 
-        log('@@@@@: >>>>> draw_point_layer begin')
+#        log('@@@@@: >>>>> draw_point_layer begin')
 
         # get correct pex function - this handles map or view
         pex = self.pex_point_view
@@ -913,7 +1038,7 @@ class PySlipQt(QWidget):
                 (pt_x, pt_y) = pt
                 dc.drawEllipse(QPoint(pt_x, pt_y), radius, radius)
 
-        log('@@@@@: <<<<< draw_point_layer end')
+#        log('@@@@@: <<<<< draw_point_layer end')
 
     def draw_image_layer(self, dc, images, map_rel):
         """Draw an image Layer on the view.
@@ -1151,22 +1276,45 @@ class PySlipQt(QWidget):
         tiles, else returns None.
         """
 
+        log(f'view_to_geo: view={view}')
+
         (xview, yview) = view
         (min_xgeo, max_xgeo, min_ygeo, max_ygeo) = self.tile_src.GetExtent()
 
+        log(f'view_to_geo: min_xgeo={min_xgeo}, max_xgeo={max_xgeo}, min_ygeo={min_ygeo}, max_ygeo={max_ygeo}')
+        log(f'view_to_geo: .key_tile_left={self.key_tile_left}, .key_tile_xoffset={self.key_tile_xoffset}')
+        log(f'view_to_geo: .num_tiles_x={self.num_tiles_x}, .num_tiles_y={self.num_tiles_y}')
 
         x_from_key = xview - self.key_tile_xoffset
         y_from_key = yview - self.key_tile_yoffset
 
+        log(f'view_to_geo: x_from_key={x_from_key}')
+
+        # get view point as tile coordinates
         xtile = self.key_tile_left + x_from_key/self.tile_width
         ytile = self.key_tile_top + y_from_key/self.tile_height
 
-        (xgeo, ygeo) = self.tile_src.Tile2Geo((xtile, ytile))
+        log(f'view_to_geo: x_from_key/self.tile_width={x_from_key/self.tile_width}')
+        log(f'view_to_geo: xtile={xtile}, self.tile_width={self.tile_width}')
 
-        if (min_xgeo <= xgeo <= max_xgeo) and (min_ygeo <= ygeo <= max_ygeo):
-            return (xtile, ytile)
+        result = (xgeo, ygeo) = self.tile_src.Tile2Geo((xtile, ytile))
 
-        return None
+        log(f'view_to_geo: result={result}')
+
+        if self.wrap_x and self.wrap_y:
+            log(f'view_to_geo: returning {result}')
+            return result
+        if not self.wrap_x:
+            if not (min_xgeo <= xgeo <= max_xgeo):
+                log(f'view_to_geo: returning None')
+                return None
+        if not self.wrap_y:
+            if not (min_ygeo <= ygeo <= max_ygeo):
+                log(f'view_to_geo: returning None')
+                return None
+
+        log(f'view_to_geo: returning {result}')
+        return result
 
 ######
 # PEX - Point & EXtension.
@@ -1467,62 +1615,164 @@ class PySlipQt(QWidget):
                 f'\t.map_height={self.map_height}\n'
                )
 
-    def zoom_level(self, level, x=None, y=None):
+    def zoom_level(self, level):
         """Zoom to a map level.
 
         level  map level to zoom to
-        x, y   view coordinates of point around which we zoom
 
         Change the map zoom level to that given. Returns True if the zoom
         succeeded, else False. If False is returned the method call has no effect.
         """
 
-        # if x,y not given, use view centre
-        if x is None:
-            x = self.view_width // 2
-        if y is None:
-            y = self.view_height // 2
+        log(f'zoom_level: level={level}')
+        log(f'zoom_level: before zoom, self.key_tile_left={self.key_tile_left}, self.key_tile_xoffset={self.key_tile_xoffset}')
+        log(f'zoom_level: before zoom, self.key_tile_top={self.key_tile_top}, self.key_tile_yoffset={self.key_tile_yoffset}')
+        log(f'zoom_level: before zoom, .num_tiles_x={self.num_tiles_x}, .num_tiles_y={self.num_tiles_y}')
+
+        # get geo coords of view centre point
+        x = self.view_width / 2
+        y = self.view_height / 2
+        geo = self.view_to_geo((x, y))
+        log(f'zoom_level: centre view at {geo}')
 
         # get tile source to use the new level
         result = self.tile_src.UseLevel(level)
+        log(f'zoom_level: .tile_src.UseLevel({level}) returned {result}')
 
-        # if tile-source changed, calculate new centre tile
         if result:
-            # calculate zoom point tile coordinates before zoom
-            z_point = self.view_to_tile()
-
-            # figure out the scale of the zoom (2 or 0.5)
-            scale = (self.level + 1) / (level + 1)
-            scale = 2**(level - self.level)
-
-            new_z_point = self.zoom_tile(z_point, scale)
-
-            new_key = self.tile_to_key(new_z_point, x, y)
-
-            (self.key_tile_left, self.key_tile_xoffset,
-                    self.key_tile_top, self.key_tile_yoffset) = new_key
+            # zoom worked, adjust state variables
+            self.level = level
 
             # move to new level
-            self.level = level
             (self.num_tiles_x, self.num_tiles_y, _, _) = self.tile_src.GetInfo(level)
             self.map_width = self.num_tiles_x * self.tile_width
             self.map_height = self.num_tiles_y * self.tile_height
 
-            self.recalc_wrap_limits()
-            self.normalize_key_after_drag(0, 0)
-            self.update()       # redraw the map
+#            self.recalc_wrap_limits()
+#            self.normalize_key_after_drag(0, 0)
+###            self.rectify_key_tile()
+            log(f'zoom_level: after recalc, self.key_tile_left={self.key_tile_left}, self.key_tile_xoffset={self.key_tile_xoffset}')
+            log(f'zoom_level: after recalc, self.key_tile_top={self.key_tile_top}, self.key_tile_yoffset={self.key_tile_yoffset}')
+            log(f'zoom_level: after zoom, .num_tiles_x={self.num_tiles_x}, .num_tiles_y={self.num_tiles_y}')
+
+            # finally, pan to original map centre (updates widget)
+            log(f'zoom_level: panning to geo={geo}')
+            self.pan_position(geo)
+            log(f'zoom_level: after pan, self.key_tile_left={self.key_tile_left}, self.key_tile_xoffset={self.key_tile_xoffset}')
+            log(f'zoom_level: after pan, self.key_tile_top={self.key_tile_top}, self.key_tile_yoffset={self.key_tile_yoffset}')
 
             self.events.EVT_PYSLIPQT_LEVEL.emit(PySlipQt.EVT_PYSLIPQT_LEVEL, level)
 
+            # trigger an EVT_PYSLIPQT_POSITION event to update any user widget
+            # TODO
+
         return result
 
-    def pan_position(self, posn):
-        """Pan to the given position in the current map zoom level.
+    def pan_position(self, geo):
+        """Pan to the given geo position in the current map zoom level.
 
-        posn  a tuple (xgeo, ygeo)
+        geo  a tuple (xgeo, ygeo)
+
+        We just adjust the key tile to place the required geo pisition in the
+        middle of the view.  If that is not possible, just centre in either
+        the X or Y directions, or both.
         """
 
-        pass
+        log(f'pan_position: geo={geo}')
+        # geo=(115.0, 0.0)
+        # convert the geo posn to a tile position
+        (tile_x, tile_y) = self.tile_src.Geo2Tile(geo)
+        log(f'pan_position: tile_x={tile_x}, tile_y={tile_y}')
+        # tile_x=2.0, tile_y=1.0
+
+        # determine what the new key tile should be
+        # figure out number of tiles from centre point to edges
+        tx = (self.view_width / 2) / self.tile_width
+        ty = (self.view_height / 2) / self.tile_height
+        log(f'pan_position: tx={tx}, ty={ty}')
+        # tx=1.00390625, ty=1.1875
+        
+        # calculate tile coordinates of the top-left corner of the view
+        key_tx = tile_x - tx
+        key_ty = tile_y - ty
+        log(f'pan_position: key_tx={key_tx}, key_ty={key_ty}')
+        # key_tx=0.99609375, key_ty=-0.1875
+
+########
+
+        (key_tile_left, x_offset) = divmod(key_tx, 1)
+        log(f'pan_position: key_tile_left={key_tile_left}, x_offset={x_offset}')
+        self.key_tile_left = int(key_tile_left)
+        self.key_tile_xoffset = -int(x_offset * self.tile_width)
+        log(f'pan_position: .key_tile_left={self.key_tile_left}, .key_tile_xoffset={self.key_tile_xoffset}')
+        # .key_tile_left=0, .key_tile_xoffset=255
+
+        (key_tile_top, y_offset) = divmod(key_ty, 1)
+        self.key_tile_top = int(key_tile_top)
+        self.key_tile_yoffset = -int(y_offset * self.tile_height)
+        log(f'pan_position: .key_tile_top={self.key_tile_top}, .key_tile_yoffset={self.key_tile_yoffset}')
+        # .key_tile_top=-1, .key_tile_yoffset=208
+
+        # adjust key tile, if necessary
+        self.rectify_key_tile()
+        log(f'pan_position: after rectify, .key_tile_left={self.key_tile_left}, .key_tile_xoffset={self.key_tile_xoffset}')
+        # after rectify, .key_tile_left=0, .key_tile_xoffset=255
+        log(f'pan_position: after rectify, .key_tile_top={self.key_tile_top}, .key_tile_yoffset={self.key_tile_yoffset}')
+        # after rectify, .key_tile_top=0, .key_tile_yoffset=48
+
+        # redraw the widget
+        self.update()
+
+    def rectify_key_tile(self):
+        """Adjust key tile variables, as required, to ensure map centred, etc."""
+
+        log(f'rectify_key_tile: .map_width={self.map_width}, .map_height={self.map_height}')
+        log(f'rectify_key_tile: .view_width={self.view_width}, .view_height={self.view_height}')
+
+        if self.map_width < self.view_width:
+            # map < view, fits totally in view, centre in X
+            self.key_tile_left = 0
+            self.key_tile_xoffset = (self.view_width - self.map_width) // 2
+        else:
+            # if key tile out of map in X direction, rectify
+            if self.key_tile_left < 0:
+                self.key_tile_xoffset += self.tile_width * -self.key_tile_left
+                self.key_tile_left = 0
+
+            # if map left/right edges showing, cover them
+            show_len = (self.num_tiles_x - self.key_tile_left - 1)*self.tile_width - self.key_tile_xoffset
+            if show_len < self.view_width:
+                # figure out key tile X to have right edge of map and view equal
+                tiles_showing = self.view_width / self.tile_width
+                int_tiles = int(tiles_showing)
+                self.key_tile_left = self.num_tiles_x - int_tiles - 1
+                self.key_tile_xoffset = -int((1.0 - (tiles_showing - int_tiles)) * self.tile_width)
+    # TODO handle left edge
+
+        if self.map_height < self.view_height:
+            # map < view, fits totally in view, centre in Y
+            self.key_tile_top = 0
+            self.key_tile_yoffset = (self.view_height - self.map_height) // 2
+        else:
+            # if key tile out of map in Y direction, rectify
+            if self.key_tile_top < 0:
+                self.key_tile_yoffset += self.tile_width * -self.key_tile_top
+                self.key_tile_top = 0
+
+            # if map top/bottom edges showing, cover them
+            show_len = (self.num_tiles_y - self.key_tile_top - 1)*self.tile_height - self.tile_height*self.key_tile_yoffset
+            log(f'rectify_key_tile: show_len={show_len}, .view_height={self.view_height}')
+            if show_len < self.view_height:
+                log(f'rectify_key_tile: bottom edge showing!')
+                # figure out key tile Y to have bottom edge of map and view equal
+                tiles_showing = self.view_height / self.tile_height
+                (int_tiles, frac_tile) = divmod(tiles_showing, 1)
+                log(f'rectify_key_tile: int_tiles={int_tiles}, frac_tile={frac_tile}')
+                self.key_tile_top = self.num_tiles_y - int(int_tiles) - 1
+                #self.key_tile_yoffset = -int((1.0 - (tiles_showing - int_tiles)) * self.tile_height)
+                self.key_tile_yoffset = self.tile_height - int(self.tile_height*frac_tile)
+    # TODO handle bottom edge
+        log(f'rectify_key_tile: rectified .key_tile_top={self.key_tile_top}, .key_tile_yoffset={self.key_tile_yoffset}')
 
     def zoom_level_position(self, level, posn):
         """Zoom to a map level and pan to the given position in the map.
@@ -1531,7 +1781,8 @@ class PySlipQt(QWidget):
         posn  a tuple (xgeo, ygeo)
         """
 
-        pass
+        if self.zoom_level(level):
+            self.pan_position(posn)
 
     def zoom_area(self, posn, size):
         """Zoom to a map level and area.
@@ -1566,6 +1817,7 @@ class PySlipQt(QWidget):
 
         return result
 
+# UNUSED
     def info(self, msg):
         """Display an information message, log and graphically."""
 
@@ -1579,8 +1831,9 @@ class PySlipQt(QWidget):
 
         wx.MessageBox(msg, 'Warning', wx.OK | wx.ICON_INFORMATION)
 
+# UNUSED
     def warn(self, msg):
-        """Display a warning message, log and graphically."""
+        """Display a warning message, in the log and graphically."""
 
         log_msg = '# ' + msg
         length = len(log_msg)
@@ -2097,6 +2350,107 @@ class PySlipQt(QWidget):
                              selectable=selectable, name=name,
                              type=self.TypePolyline)
 
+######
+# Positioning methods
+######
+
+    def GotoLevel(self, level):
+        """Use a new tile level.
+
+        level  the new tile level to use.
+
+        Returns True if all went well.
+        """
+
+        if not self.tile_src.UseLevel(level):
+            return False        # couldn't change level
+
+        self.level = level
+        self.map_width = self.tile_src.num_tiles_x * self.tile_width
+        self.map_height = self.tile_src.num_tiles_y * self.tile_height
+        (self.map_llon, self.map_rlon,
+         self.map_blat, self.map_tlat) = self.tile_src.extent
+
+        # to set some state variables
+        self.resizeEvent()
+
+        # raise level change event
+        self.events.EVT_PYSLIPQT_LEVEL.emit(PySlipQt.EVT_PYSLIPQT_LEVEL, level)
+
+        return True
+
+    def GotoPosition(self, geo):
+        """Set view to centre on a geo position in the current level.
+
+        geo  a tuple (xgeo,ygeo) to centre view on
+
+        Sets self.view_offset_x and self.view_offset_y and then calls
+        RecalcViewLimits(), redraws widget.
+        """
+
+        # get fractional tile coords of required centre of view
+        (xtile, ytile) = self.tile_src.Geo2Tile(geo)
+
+        # now calculate view offsets, top, left, bottom and right
+        half_width = self.view_width / 2
+        centre_pixels_from_map_left = int(xtile * self.tile_width)
+        self.view_offset_x = centre_pixels_from_map_left - half_width
+
+        half_height = self.view_height / 2
+        centre_pixels_from_map_top = int(ytile * self.tile_height)
+        self.view_offset_y = centre_pixels_from_map_top - half_height
+
+        # set the left/right/top/bottom lon/lat extents and redraw view
+#        self.RecalcViewLimits()
+# TODO: update routine to set 'key' tile stuff.
+        self.update()
+
+    def GotoLevelAndPosition(self, level, geo):
+        """Goto a map level and set view to centre on a position.
+
+        level  the map level to use
+        geo    a tuple (xgeo,ygeo) to centre view on
+
+        Does nothing if we can't use desired level.
+        """
+
+        log(f'GotoLevelAndPosition: level={level}, geo={geo}')
+        if self.GotoLevel(level):
+            log(f'GotoLevelAndPosition: went to level {level}, now going to geo={geo}')
+            self.GotoPosition(geo)
+
+    def ZoomToArea(self, geo, size):
+        """Set view to level and position to view an area.
+
+        geo   a tuple (xgeo,ygeo) to centre view on
+        size  a tuple (width,height) of area in degrees
+
+        Centre an area and zoom to view such that the area will fill
+        approximately 50% of width or height, whichever is greater.
+
+        Use the ppd_x and ppd_y values in the level 'tiles' file.
+        """
+
+        # unpack area width/height (degrees)
+        (awidth, aheight) = size
+
+        # step through levels (smallest first) and check view size (degrees)
+        for l in self.tile_src.levels:
+            level = l
+            (_, _, ppd_x, ppd_y) = self.tile_src.getInfo(l)
+            view_deg_width = self.view_width / ppd_x
+            view_deg_height = self.view_height / ppd_y
+
+            # if area >= 50% of view, finished
+            if awidth >= view_deg_width / 2 or aheight >= view_deg_height / 2:
+                break
+
+        self.GotoLevelAndPosition(level, geo)
+
+######
+#
+######
+
     def colour_to_internal(self, colour):
         """Convert a colour in one of various forms to an internal format.
 
@@ -2111,9 +2465,8 @@ class PySlipQt(QWidget):
             # expect '#RRGGBBAA' form
             if len(colour) != 9 or colour[0] != '#':
                 # assume it's a colour *name*
-                c = QColor(colour)
+                c = QColor(colour)      # TODO catch bad colour names
                 result = (c.red(), c.blue(), c.green(), c.alpha())
-#                raise Exception(msg)
             else:
                 # we try for a colour like '#RRGGBBAA'
                 r = int(colour[1:3], 16)
@@ -2146,3 +2499,487 @@ class PySlipQt(QWidget):
             result = tuple(result)
 
         return result
+
+    def sel_box_canonical(self):
+        """'Canonicalize' a selection box limits.
+
+        Uses instance variables (all in view coordinates):
+            self.sbox_1_x    X position of box select start
+            self.sbox_1_y    Y position of box select start
+            self.sbox_w      width of selection box (start to finish)
+            self.sbox_h      height of selection box (start to finish)
+
+        Four ways to draw the selection box (starting in each of the four
+        corners), so four cases.
+
+        The sign of the width/height values are decided with respect to the
+        origin at view top-left corner.  That is, a negative width means
+        the box was started at the right and swept to the left.  A negative
+        height means the selection started low and swept high in the view.
+
+        Returns a tuple (llx, llr, urx, ury) where llx is lower left X, ury is
+        upper right corner Y, etc.  All returned values in view coordinates.
+        """
+
+        if self.sbox_h >= 0:
+            if self.sbox_w >= 0:
+                # 2
+                ll_corner_vx = self.sbox_1_x
+                ll_corner_vy = self.sbox_1_y + self.sbox_h
+                tr_corner_vx = self.sbox_1_x + self.sbox_w
+                tr_corner_vy = self.sbox_1_y
+            else:
+                # 1
+                ll_corner_vx = self.sbox_1_x + self.sbox_w
+                ll_corner_vy = self.sbox_1_y + self.sbox_h
+                tr_corner_vx = self.sbox_1_x
+                tr_corner_vy = self.sbox_1_y
+        else:
+            if self.sbox_w >= 0:
+                # 3
+                ll_corner_vx = self.sbox_1_x
+                ll_corner_vy = self.sbox_1_y
+                tr_corner_vx = self.sbox_1_x + self.sbox_w
+                tr_corner_vy = self.sbox_1_y + self.sbox_h
+            else:
+                # 4
+                ll_corner_vx = self.sbox_1_x + self.sbox_w
+                ll_corner_vy = self.sbox_1_y
+                tr_corner_vx = self.sbox_1_x
+                tr_corner_vy = self.sbox_1_y + self.sbox_h
+
+        return (ll_corner_vx, ll_corner_vy, tr_corner_vx, tr_corner_vy)
+
+######
+# Select helpers - get objects that were selected
+######
+
+    def sel_point_in_layer(self, layer, pt):
+        """Determine if clicked location selects a point in layer data.
+
+        layer  layer object we are looking in
+        pt     click location tuple (geo or view coordinates)
+
+        We must look for the nearest point to the click.
+
+        Return None (no selection) or (point, data, None) of selected point
+        where point is [(x,y,attrib)] where X and Y are map or view relative
+        depending on layer.map_rel.  'data' is the data object associated with
+        each selected point.  The None is a placeholder for the relative
+        selection point, which is meaningless for point selection.
+        """
+
+        log(f'sel_point_in_layer: layer={layer}, pt={pt}, layer.delta={layer.delta}')
+
+        # TODO: speed this up?  Do we need to??
+        # http://en.wikipedia.org/wiki/Kd-tree
+        # would need to create kd-tree in AddLayer()
+
+        result = None
+        delta = layer.delta
+        dist = 9999999.0        # more than possible
+
+        # get correct pex function and click point in correct coords
+        pex = self.pex_point_view
+        clickpt = pt
+        log(f'sel_point_in_layer: clickpt={clickpt}')
+        if layer.map_rel:
+            pex = self.pex_point
+
+        # get selected point on map/view
+        (xclick, yclick) = clickpt
+        for (x, y, place, radius, colour, x_off, y_off, udata) in layer.data:
+            (vp, _) = pex(place, (x,y), x_off, y_off, radius)
+            if vp:
+                (vx, vy) = vp
+                d = (vx - xclick)*(vx - xclick) + (vy - yclick)*(vy - yclick)
+                if d < dist:
+                    rpt = (x, y, {'placement': place,
+                                  'radius': radius,
+                                  'colour': colour,
+                                  'offset_x': x_off,
+                                  'offset_y': y_off})
+                    result = ([rpt], udata, None)
+                    dist = d
+
+        log(f'sel_point_in_layer: after loop, result={result}, dist={dist}')
+
+        if dist <= layer.delta:
+            return result
+        return None
+
+    def sel_box_points_in_layer(self, layer, ll, ur):
+        """Get list of points inside box.
+
+        layer  reference to layer object we are working on
+        ll     lower-left corner point of selection box (geo or view)
+        ur     upper-right corner point of selection box (geo or view)
+
+        Return a tuple (selection, data) where 'selection' is a list of
+        selected point positions (xgeo,ygeo) and 'data' is a list of userdata
+        objects associated withe selected points.
+
+        If nothing is selected return None.
+        """
+
+        # get a list of points inside the selection box
+        selection = []
+        data = []
+
+        # get correct pex function and box limits in view coords
+        pex = self.pex_point_view
+        (blx, bby) = ll
+        (brx, bty) = ur
+        if layer.map_rel:
+            pex = self.pex_point
+            (blx, bby) = self.geo_to_view(ll)
+            (brx, bty) = self.geo_to_view(ur)
+
+        # get points selection
+        for (x, y, place, radius, colour, x_off, y_off, udata) in layer.data:
+            (vp, _) = pex(place, (x,y), x_off, y_off, radius)
+            if vp:
+                (vpx, vpy) = vp
+                if blx <= vpx <= brx and bby >= vpy >= bty:
+                    selection.append((x, y, {'placement': place,
+                                             'radius': radius,
+                                             'colour': colour,
+                                             'offset_x': x_off,
+                                             'offset_y': y_off}))
+                    data.append(udata)
+
+        if selection:
+            return (selection, data, None)
+        return None
+
+    def sel_image_in_layer(self, layer, point):
+        """Decide if click location selects image object(s) in layer data.
+
+        layer  layer object we are looking in
+        point  click location tuple (geo or view)
+
+        Returns either None if no selection or a tuple (selection, data, relsel)
+        where 'selection' is a tuple (xgeo,ygeo) or (xview,yview) of the object
+        placement point, 'data' is the data object associated with the selected
+        object and 'relsel' is the relative position within the selected object
+        of the mouse click.
+
+        Note that there could conceivably be more than one image selectable in
+        the layer at the mouse click position but only the first is selected.
+        """
+
+        (ptx, pty) = point
+        result = None
+
+        # get correct pex function and click point into view coords
+        clickpt = point
+        pex = self.pex_extent_view
+        if layer.map_rel:
+            clickpt = self.geo_to_view(point)
+            pex = self.pex_extent
+        (xclick, yclick) = clickpt
+
+        # select image
+        for (x, y, bmp, w, h, place,
+                x_off, y_off, radius, colour, udata) in layer.data:
+            (_, e) = pex(place, (x,y), x_off, y_off, w, h)
+            if e:
+                (lx, rx, ty, by) = e
+                if lx <= xclick <= rx and ty <= yclick <= by:
+                    selection = [(x, y, bmp, {'placement': place,
+                                              'radius': radius,
+                                              'colour': colour,
+                                              'offset_x': x_off,
+                                              'offset_y': y_off})]
+                    relsel = (int(xclick - lx), int(yclick - ty))
+                    result = (selection, udata, relsel)
+                    break
+
+        return result
+
+    def sel_box_images_in_layer(self, layer, ll, ur):
+        """Get list of images inside selection box.
+
+        layer  reference to layer object we are working on
+        ll     lower-left corner point of selection box (geo or view coords)
+        ur     upper-right corner point of selection box (geo or view coords)
+
+        Return a tuple (selection, data) where 'selection' is a list of
+        selected point positions (xgeo,ygeo) and 'data' is a list of userdata
+        objects associated withe selected points.
+
+        If nothing is selected return None.
+        """
+
+        # get correct pex function and box limits in view coords
+        pex = self.pex_extent_view
+        if layer.map_rel:
+            pex = self.pex_extent
+            ll = self.geo_to_view(ll)
+            ur = self.geo_to_view(ur)
+        (vboxlx, vboxby) = ll
+        (vboxrx, vboxty) = ur
+
+        # select images in map/view
+        selection = []
+        data = []
+        for (x, y, bmp, w, h, place,
+                x_off, y_off, radius, colour, udata) in layer.data:
+            (_, e) = pex(place, (x,y), x_off, y_off, w, h)
+            if e:
+                (li, ri, ti, bi) = e    # image extents (view coords)
+                if (vboxlx <= li and ri <= vboxrx
+                        and vboxty <= ti and bi <= vboxby):
+                    selection.append((x, y, bmp, {'placement': place,
+                                                  'radius': radius,
+                                                  'colour': colour,
+                                                  'offset_x': x_off,
+                                                  'offset_y': y_off}))
+                    data.append(udata)
+
+        if not selection:
+            return None
+        return (selection, data, None)
+
+    def sel_text_in_layer(self, layer, point):
+        """Determine if clicked location selects a text object in layer data.
+
+        layer  layer object we are looking in
+        point  click location tuple (view or geo coordinates)
+
+        Return ((x,y), data, None) for the selected text object, or None if
+        no selection.  The x and y coordinates are view/geo depending on
+        the layer.map_rel value.
+
+        ONLY SELECTS ON POINT, NOT EXTENT.
+        """
+
+        result = None
+        delta = layer.delta
+        dist = 9999999.0
+
+        # get correct pex function and mouse click in view coords
+        pex = self.pex_point_view
+        clickpt = point
+        if layer.map_rel:
+            pex = self.pex_point
+            clickpt = self.geo_to_view(point)
+        (xclick, yclick) = clickpt
+
+        # select text in map/view layer
+        for (x, y, text, place, radius, colour,
+                 tcolour, fname, fsize, x_off, y_off, data) in layer.data:
+            (vp, ex) = pex(place, (x,y), 0, 0, radius)
+            if vp:
+                (px, py) = vp
+                d = (px - xclick)**2 + (py - yclick)**2
+                if d < dist:
+                    selection = (x, y, text, {'placement': place,
+                                              'radius': radius,
+                                              'colour': colour,
+                                              'textcolour': tcolour,
+                                              'fontname': fname,
+                                              'fontsize': fsize,
+                                              'offset_x': x_off,
+                                              'offset_y': y_off})
+                    result = ([selection], data, None)
+                    dist = d
+
+        if dist <= delta:
+            return result
+        return None
+
+    def sel_box_texts_in_layer(self, layer, ll, ur):
+        """Get list of text objects inside box ll-ur.
+
+        layer  reference to layer object we are working on
+        ll     lower-left corner point of selection box (geo or view)
+        ur     upper-right corner point of selection box (geo or view)
+
+        The 'll' and 'ur' points are in view or geo coords, depending on
+        the layer.map_rel value.
+
+        Returns (selection, data, None) where 'selection' is a list of text
+        positions (geo or view, depending on layer.map_rel) and 'data' is a list
+        of userdata objects associated with the selected text objects.
+
+        Returns None if no selection.
+
+        ONLY SELECTS ON POINT, NOT EXTENT.
+        """
+
+        selection = []
+        data = []
+
+        # get correct pex function and box limits in view coords
+        pex = self.pex_point_view
+        if layer.map_rel:
+            pex = self.pex_point
+            ll = self.geo_to_view(ll)
+            ur = self.geo_to_view(ur)
+        (lx, by) = ll
+        (rx, ty) = ur
+
+        # get texts inside box
+        for (x, y, text, place, radius, colour,
+                tcolour, fname, fsize, x_off, y_off, udata) in layer.data:
+            (vp, ex) = pex(place, (x,y), x_off, y_off, radius)
+            if vp:
+                (px, py) = vp
+                if lx <= px <= rx and ty <= py <= by:
+                    sel = (x, y, text, {'placement': place,
+                                        'radius': radius,
+                                        'colour': colour,
+                                        'textcolour': tcolour,
+                                        'fontname': fname,
+                                        'fontsize': fsize,
+                                        'offset_x': x_off,
+                                        'offset_y': y_off})
+                    selection.append(sel)
+                    data.append(udata)
+
+        if selection:
+            return (selection, data, None)
+        return None
+
+    def sel_polygon_in_layer(self, layer, point):
+        """Get first polygon object clicked in layer data.
+
+        layer  layer object we are looking in
+        point  tuple of click position (xgeo,ygeo) or (xview,yview)
+
+        Returns an iterable: ((x,y), udata) of the first polygon selected.
+        Returns None if no polygon selected.
+        """
+
+        result = None
+
+        # get correct 'point in polygon' routine
+        pip = self.point_in_polygon_view
+        if layer.map_rel:
+            pip = self.point_in_polygon_geo
+
+        # check polyons in layer, choose first point is inside
+        for (poly, place, width, colour, close,
+                 filled, fcolour, x_off, y_off, udata) in layer.data:
+            if pip(poly, point, place, x_off, y_off):
+                sel = (poly, {'placement': place,
+                              'offset_x': x_off,
+                              'offset_y': y_off})
+                result = ([sel], udata, None)
+                break
+
+        return result
+
+    def sel_box_polygons_in_layer(self, layer, p1, p2):
+        """Get list of polygons inside box p1-p2 in given layer.
+
+        layer  reference to layer object we are working on
+        p1     bottom-left corner point of selection box (geo or view)
+        p2     top-right corner point of selection box (geo or view)
+
+        Return a tuple (selection, data, None) where 'selection' is a list of
+        iterables of vertex positions and 'data' is a list of data objects
+        associated with each polygon selected.
+        """
+
+        selection = []
+        data = []
+
+        # get correct pex function and box limits in view coords
+        pex = self.pex_polygon_view
+        if layer.map_rel:
+            pex = self.pex_polygon
+            p1 = self.geo_to_view(p1)
+            p2 = self.geo_to_view(p2)
+        (lx, by) = p1
+        (rx, ty) = p2
+
+        # check polygons in layer
+        for (poly, place, width, colour, close,
+                filled, fcolour, x_off, y_off, udata) in layer.data:
+            (pt, ex) = pex(place, poly, x_off, y_off)
+            if ex:
+                (plx, prx, pty, pby) = ex
+                if lx <= plx and prx <= rx and ty <= pty and pby <= by:
+                    sel = (poly, {'placement': place,
+                                  'offset_x': x_off,
+                                  'offset_y': y_off})
+                    selection.append(sel)
+                    data.append(udata)
+
+        if not selection:
+            return None
+        return (selection, data, None)
+
+    def sel_polyline_in_layer(self, layer, point):
+        """Get first polyline object clicked in layer data.
+
+        layer  layer object we are looking in
+        point  tuple of click position (xgeo,ygeo) or (xview,yview)
+
+        Returns a tuple (sel, udata, seg) if a polyline was selected.  'sel'
+        is the tuple (poly, attrib), 'udata' is userdata attached to the
+        selected polyline and 'seg' is a tuple (pt1, pt2) of nearest segment
+        endpoints.  Returns None if no polyline selected.
+        """
+
+        result = None
+        delta = layer.delta
+
+        # get correct 'point in polyline' routine
+        pip = self.point_near_polyline_view
+        if layer.map_rel:
+            pip = self.point_near_polyline_geo
+
+        # check polyons in layer, choose first where point is close enough
+        for (polyline, place, width, colour, x_off, y_off, udata) in layer.data:
+            seg = pip(point, polyline, place, x_off, y_off, delta=delta)
+            if seg:
+                sel = (polyline, {'placement': place,
+                                  'offset_x': x_off,
+                                  'offset_y': y_off})
+                result = ([sel], udata, seg)
+                break
+
+        return result
+
+    def sel_box_polylines_in_layer(self, layer, p1, p2):
+        """Get list of polylines inside box p1-p2 in given layer.
+
+        layer  reference to layer object we are working on
+        p1     bottom-left corner point of selection box (geo or view)
+        p2     top-right corner point of selection box (geo or view)
+
+        Return a tuple (selection, data, None) where 'selection' is a list of
+        iterables of vertex positions and 'data' is a list of data objects
+        associated with each polyline selected.
+        """
+
+        selection = []
+        data = []
+
+        # get correct pex function and box limits in view coords
+        pex = self.pex_polygon_view
+        if layer.map_rel:
+            pex = self.pex_polygon
+            p1 = self.geo_to_view(p1)
+            p2 = self.geo_to_view(p2)
+        (lx, by) = p1
+        (rx, ty) = p2
+
+        # check polygons in layer
+        for (poly, place, width, colour, x_off, y_off, udata) in layer.data:
+            (pt, ex) = pex(place, poly, x_off, y_off)
+            if ex:
+                (plx, prx, pty, pby) = ex
+                if lx <= plx and prx <= rx and ty <= pty and pby <= by:
+                    sel = (poly, {'placement': place,
+                                  'offset_x': x_off,
+                                  'offset_y': y_off})
+                    selection.append(sel)
+                    data.append(udata)
+
+        if not selection:
+            return None
+        return (selection, data, None)
