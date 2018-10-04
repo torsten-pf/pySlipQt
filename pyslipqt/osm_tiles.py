@@ -93,8 +93,9 @@ class Tiles(tiles.Tiles):
                                     url_path=TileURLPath,
                                     max_server_requests=MaxServerRequests,
                                     max_lru=MaxLRU, http_proxy=http_proxy)
-        self.wrap_x = True
-        self.wrap_y = False
+# TODO: implement map wrap-around
+#        self.wrap_x = True
+#        self.wrap_y = False
 
         # get tile information into instance
         self.level = min(TileLevels)
