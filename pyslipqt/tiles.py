@@ -74,7 +74,7 @@ class Cache(pycacheback.pyCacheBack):
         if not os.path.exists(file_path):
             # tile not there, raise KeyError
             raise KeyError("Item with key '%s' not found in on-disk cache"
-                           % str(key))
+                           % str(key)) from None
 
         # we have the tile file - read into memory & return
         return QPixmap(file_path)
@@ -133,8 +133,9 @@ class BaseTiles(object):
         self.max_level = max(self.levels)
         self.level = self.min_level
 
-        self.wrap_x = False
-        self.wrap_y = False
+# TODO: implement map wrap-around
+#        self.wrap_x = False
+#        self.wrap_y = False
 
         # setup the tile cache
         self.cache = Cache(tiles_dir=tiles_dir, max_lru=max_lru)
@@ -151,7 +152,7 @@ class BaseTiles(object):
             if os.path.isfile(tiles_dir):
                 msg = ("%s doesn't appear to be a tile cache directory"
                        % tiles_dir)
-                raise Exception(msg)
+                raise Exception(msg) from None
             os.makedirs(tiles_dir)
 
 # possible recursion here?
@@ -190,11 +191,11 @@ class BaseTiles(object):
         Tile coordinates are measured from map top-left.
         """
 
-        # if we are wrapping X or Y, get wrapped tile coords
-        if self.wrap_x:
-            x = (x + self.num_tiles_x*self.tile_size_x) % self.num_tiles_x
-        if self.wrap_y:
-            y = (y + self.num_tiles_y*self.tile_size_y) % self.num_tiles_y
+#        # if we are wrapping X or Y, get wrapped tile coords
+#        if self.wrap_x:
+#            x = (x + self.num_tiles_x*self.tile_size_x) % self.num_tiles_x
+#        if self.wrap_y:
+#            y = (y + self.num_tiles_y*self.tile_size_y) % self.num_tiles_y
 
         # retrieve the tile
         try:
@@ -202,7 +203,7 @@ class BaseTiles(object):
             return self.cache[(self.level, x, y)]
         except KeyError as e:
             raise KeyError("Can't find tile for key '%s'"
-                           % str((self.level, x, y)))
+                           % str((self.level, x, y))) from None
 
     def GetInfo(self, level):
         """Get tile info for a particular level.
