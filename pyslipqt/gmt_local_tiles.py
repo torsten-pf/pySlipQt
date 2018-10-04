@@ -86,17 +86,20 @@ class Tiles(tiles.BaseTiles):
                                     Tiles.TileWidth, Tiles.TileHeight,
                                     max_lru=MaxLRU, tiles_dir=tiles_dir)
 
-        # we *can* wrap tiles in X direction, but not Y
-        self.wrap_x = True
-        self.wrap_y = False
+# TODO: implement map wrap-around
+#        # we *can* wrap tiles in X direction, but not Y
+#        self.wrap_x = False
+#        self.wrap_y = False
 
         # override the tiles.py extent here, the GMT tileset is different
         self.extent = (-65.0, 295.0, -66.66, 66.66)
+        self.deg_span_x = 295.0 + 65.0
+        self.deg_span_y = 66.66 + 66.66
 
         # get tile information into instance
         self.level = min(TileLevels)
         (self.num_tiles_x, self.num_tiles_y,
-         self.ppd_x, self.ppd_y) = self.GetInfo(self.level)
+                        self.ppd_x, self.ppd_y) = self.GetInfo(self.level)
 
     def GetInfo(self, level):
         """Get tile info for a particular level.
@@ -130,7 +133,8 @@ class Tiles(tiles.BaseTiles):
 
         Returns (xtile, ytile).
 
-        This is an easy transformation as geo coordinates are Cartesian.
+        This is an easy transformation as geo coordinates are Cartesian
+        for this tileset.
         """
 
         # unpack the 'geo' tuple
@@ -139,7 +143,7 @@ class Tiles(tiles.BaseTiles):
         # get extent information
         (min_xgeo, max_xgeo, min_ygeo, max_ygeo) = self.extent
 
-        # get 'geo-like' coords with origin at top-left
+        # get number of degress from top-left corner
         x = xgeo - min_xgeo
         y = max_ygeo - ygeo
 
@@ -155,19 +159,44 @@ class Tiles(tiles.BaseTiles):
 
         Note that we assume the point *is* on the map!
 
-        This is an easy transformation as geo coordinates are Cartesian.
+        This is an easy transformation as geo coordinates are Cartesian for
+        this tileset.
         """
 
+        log(f'Tile2Geo: tile={tile}')
+
         (xtile, ytile) = tile
+
+        log(f'Tile2Geo: xtile={xtile}, self.ppd_x={self.ppd_x}')
 
         # get extent information
         (min_xgeo, max_xgeo, min_ygeo, max_ygeo) = self.extent
 
-        # compute tile degree sizes and position in the coordinate system
+        log(f'Tile2Geo: min_xgeo={min_xgeo}, self.tile_size_x={self.tile_size_x}, self.ppd_x={self.ppd_x}')
+
+        # compute tile size in degrees
         tdeg_x = self.tile_size_x / self.ppd_x
         tdeg_y = self.tile_size_y / self.ppd_y
+        log(f'Tile2Geo: tdeg_x=self.tile_size_x / self.ppd_x={tdeg_x}')
+
+        # calculate the geo coordinates
         xgeo = xtile*tdeg_x + min_xgeo
         ygeo = max_ygeo - ytile*tdeg_y
+
+        log(f'Tile2Geo: xgeo={xgeo}')
+
+#        if self.wrap_x:
+#            while xgeo < min_xgeo:
+#                xgeo += self.deg_span_x
+#            while xgeo > max_xgeo:
+#                xgeo -= self.deg_span_x
+#        if self.wrap_x:
+#            while ygeo > max_ygeo:
+#                ygeo -= self.deg_span_y
+#            while ygeo < min_ygeo:
+#                ygeo += self.deg_span_y
+
+        log(f'Tile2Geo: returning xgeo={xgeo}')
 
         return (xgeo, ygeo)
 
