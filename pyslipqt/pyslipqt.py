@@ -421,25 +421,19 @@ class PySlipQt(QWidget):
         y = event.y()
         mouse_view = (x, y)
         mouse_map = self.view_to_geo(mouse_view)
-        log(f'mouseMoveEvent: x={x}, y={y}, mouse_view={mouse_view}, mouse_map={mouse_map}')
 
         if self.left_mbutton_down:
             if self.start_drag_x:       # if we are already dragging
-                log(f'mouseMoveEvent: dragging, .key_tile_left={self.key_tile_left}, .key_tile_xoffset={self.key_tile_xoffset}')
-
                 # we don't move much - less than a tile width/height
                 # drag the key tile in the X direction
                 delta_x = self.start_drag_x - x
                 self.key_tile_xoffset -= delta_x
-                log(f'mouseMoveEvent: delta_x={delta_x}, new .key_tile_xoffset={self.key_tile_xoffset}')
                 if self.key_tile_xoffset < -self.tile_width:    # too far left
                     self.key_tile_xoffset += self.tile_width
                     self.key_tile_left += 1
-                    log(f'mouseMoveEvent: too far left, new .key_tile_left={self.key_tile_left}, .key_tile_xoffset={self.key_tile_xoffset}')
                 if self.key_tile_xoffset > 0:                   # too far right
                     self.key_tile_xoffset -= self.tile_width
                     self.key_tile_left -= 1
-                    log(f'mouseMoveEvent: too far right, new .key_tile_left={self.key_tile_left}, .key_tile_xoffset={self.key_tile_xoffset}')
 
                 # drag the key tile in the Y direction
                 delta_y = self.start_drag_y - y
@@ -451,11 +445,7 @@ class PySlipQt(QWidget):
                     self.key_tile_yoffset -= self.tile_height
                     self.key_tile_top -= 1
 
-                log(f'mouseMoveEvent: after drag, .key_tile_left={self.key_tile_left}, .key_tile_xoffset={self.key_tile_xoffset}')
-
-#                self.normalize_key_after_drag(delta_x, delta_y) # normalize the "key" tile
                 self.rectify_key_tile()
-                log(f'mouseMoveEvent: after rectify, .key_tile_left={self.key_tile_left}, .key_tile_xoffset={self.key_tile_xoffset}')
                 self.update()                                   # force a repaint
 
             self.start_drag_x = x
@@ -1724,55 +1714,66 @@ class PySlipQt(QWidget):
         self.update()
 
     def rectify_key_tile(self):
-        """Adjust key tile variables, as required, to ensure map centred, etc."""
+        """Adjust state variables to ensure map centred if map is smaller than
+        view.  Otherwise don't allow edges to be exposed.
+       
+        Adjusts the "key" tile variables to ensure proper presentation.
+        """
 
-        log(f'rectify_key_tile: .map_width={self.map_width}, .map_height={self.map_height}')
-        log(f'rectify_key_tile: .view_width={self.view_width}, .view_height={self.view_height}')
+#        log(f'rectify_key_tile: .map_width={self.map_width}, .map_height={self.map_height}')
+#        log(f'rectify_key_tile: .view_width={self.view_width}, .view_height={self.view_height}')
+#        log(f'rectify_key_tile: .key_tile_left={self.key_tile_left}, .key_tile_xoffset={self.key_tile_xoffset}')
+#        log(f'rectify_key_tile: .key_tile_top={self.key_tile_top}, .key_tile_yoffset={self.key_tile_yoffset}')
 
+        # check map in X direction
         if self.map_width < self.view_width:
+#            log(f'rectify_key_tile: MAP CENTRED IN X')
             # map < view, fits totally in view, centre in X
             self.key_tile_left = 0
             self.key_tile_xoffset = (self.view_width - self.map_width) // 2
         else:
             # if key tile out of map in X direction, rectify
             if self.key_tile_left < 0:
-                self.key_tile_xoffset += self.tile_width * -self.key_tile_left
+#                log(f'rectify_key_tile: LEFT EDGE SHOWING')
                 self.key_tile_left = 0
+                self.key_tile_xoffset = 0
+            else:
+                # if map left/right edges showing, cover them
+                show_len = (self.num_tiles_x - self.key_tile_left)*self.tile_width + self.key_tile_xoffset
+                if show_len < self.view_width:
+#                    log(f'rectify_key_tile: RIGHT EDGE SHOWING')
+                    # figure out key tile X to have right edge of map and view equal
+                    tiles_showing = self.view_width / self.tile_width
+                    int_tiles = int(tiles_showing)
+                    self.key_tile_left = self.num_tiles_x - int_tiles - 1
+                    self.key_tile_xoffset = -int((1.0 - (tiles_showing - int_tiles)) * self.tile_width)
 
-            # if map left/right edges showing, cover them
-            show_len = (self.num_tiles_x - self.key_tile_left - 1)*self.tile_width - self.key_tile_xoffset
-            if show_len < self.view_width:
-                # figure out key tile X to have right edge of map and view equal
-                tiles_showing = self.view_width / self.tile_width
-                int_tiles = int(tiles_showing)
-                self.key_tile_left = self.num_tiles_x - int_tiles - 1
-                self.key_tile_xoffset = -int((1.0 - (tiles_showing - int_tiles)) * self.tile_width)
-    # TODO handle left edge
-
+        # now check map in Y direction
         if self.map_height < self.view_height:
+#            log(f'rectify_key_tile: MAP CENTRED IN Y')
             # map < view, fits totally in view, centre in Y
             self.key_tile_top = 0
             self.key_tile_yoffset = (self.view_height - self.map_height) // 2
         else:
-            # if key tile out of map in Y direction, rectify
             if self.key_tile_top < 0:
-                self.key_tile_yoffset += self.tile_width * -self.key_tile_top
+                # map top edge showing, cover
+#                log(f'rectify_key_tile: TOP EDGE SHOWING')
                 self.key_tile_top = 0
+                self.key_tile_yoffset = 0
+            else:
+                # if map bottom edge showing, cover
+                show_len = (self.num_tiles_y - self.key_tile_top)*self.tile_height + self.key_tile_yoffset
+#                log(f'rectify_key_tile: show_len={show_len}, .view_height={self.view_height}')
+                if show_len < self.view_height:
+#                    log(f'rectify_key_tile: BOTTOM EDGE SHOWING')
+                    # figure out key tile Y to have bottom edge of map and view equal
+                    tiles_showing = self.view_height / self.tile_height
+                    int_tiles = int(tiles_showing)
+                    self.key_tile_top = self.num_tiles_y - int_tiles - 1
+                    self.key_tile_yoffset = -int((1.0 - (tiles_showing - int_tiles)) * self.tile_height)
 
-            # if map top/bottom edges showing, cover them
-            show_len = (self.num_tiles_y - self.key_tile_top - 1)*self.tile_height - self.tile_height*self.key_tile_yoffset
-            log(f'rectify_key_tile: show_len={show_len}, .view_height={self.view_height}')
-            if show_len < self.view_height:
-                log(f'rectify_key_tile: bottom edge showing!')
-                # figure out key tile Y to have bottom edge of map and view equal
-                tiles_showing = self.view_height / self.tile_height
-                (int_tiles, frac_tile) = divmod(tiles_showing, 1)
-                log(f'rectify_key_tile: int_tiles={int_tiles}, frac_tile={frac_tile}')
-                self.key_tile_top = self.num_tiles_y - int(int_tiles) - 1
-                #self.key_tile_yoffset = -int((1.0 - (tiles_showing - int_tiles)) * self.tile_height)
-                self.key_tile_yoffset = self.tile_height - int(self.tile_height*frac_tile)
-    # TODO handle bottom edge
-        log(f'rectify_key_tile: rectified .key_tile_top={self.key_tile_top}, .key_tile_yoffset={self.key_tile_yoffset}')
+#        log(f'rectify_key_tile: rectified .key_tile_left={self.key_tile_left}, .key_tile_xoffset={self.key_tile_xoffset}')
+#        log(f'rectify_key_tile: rectified .key_tile_top={self.key_tile_top}, .key_tile_yoffset={self.key_tile_yoffset}')
 
     def zoom_level_position(self, level, posn):
         """Zoom to a map level and pan to the given position in the map.
