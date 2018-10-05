@@ -204,6 +204,9 @@ class PySlipQtDemo(QWidget):
         self.setWindowTitle('%s %s' % (DemoName, DemoVersion))
         self.show()
 
+        # selected point, if not None
+        self.point_layer = None
+
         # finally, bind events to handlers
         self.pyslipqt.events.EVT_PYSLIPQT_LEVEL.connect(self.level_change_event)
         self.pyslipqt.events.EVT_PYSLIPQT_POSITION.connect(self.mouse_posn_event)
@@ -435,6 +438,8 @@ class PySlipQtDemo(QWidget):
     def pointSelectOnOff(self, event):
         """Handle SelectOnOff event for point layer control."""
 
+        log(f'pointSelectOnOff: entered')
+
         layer = self.point_layer
         if event:
             # if True, user selected "Selectable"
@@ -445,11 +450,11 @@ class PySlipQtDemo(QWidget):
             self.del_select_handler(layer)
             self.pyslipqt.SetLayerSelectable(layer, False)
 
-    def pointSelect(self, event):
+    def pointSelect(self, stype, layer_id, selection, data):
         """Handle map-relative point select exception from pyslipqt.
 
         event  the event that contains these attributes:
-                   type       the type of point selection: single or box
+                   stype      the type of point selection: single or box
                    layer_id   ID of the layer the select occurred on
                    selection  [list of] tuple (xgeo,ygeo) of selected point
                               (if None then no point(s) selected)
@@ -467,7 +472,7 @@ class PySlipQtDemo(QWidget):
         EventBoxSelect events.
         """
 
-        selection = event.selection
+        log(f'pointSelect: stype={stype}, layer_id={layer_id}, selection={selection}, data={data}')
 
         if selection == self.sel_point:
             # same point(s) selected again, turn point(s) off
@@ -484,13 +489,14 @@ class PySlipQtDemo(QWidget):
 
             # choose different highlight colour for different type of selection
             selcolour = '#00ffff'
-            if event.type == pyslipqt.EventSelect:
+#            if stype == pyslipqt.EventSelect:
+            if stype == pyslipqt.PySlipQt.EVT_PYSLIPQT_SELECT: # TODO better visibility (like pySlip)
                 selcolour = '#0000ff'
 
             # get selected points into form for display layer
             # delete 'colour' and 'radius' attributes as we want different values
             highlight = []
-            for (x, y, d) in selection:
+            for (x, y, d) in selection[0]:      # TODO worry about the [0]
                 del d['colour']     # AddLayer...() ensures keys exist
                 del d['radius']
                 highlight.append((x, y, d))
@@ -1464,6 +1470,8 @@ class PySlipQtDemo(QWidget):
 
         log(f'select_event: mposn={mposn}, vposn={vposn}, layer_id={layer_id}, selection={selection}, data={data}, relsel={relsel}')
 
+        self.demo_select_dispatch.get(layer_id, self.null_handler)(etype, layer_id, selection, data)
+
     ######
     # Small utility routines
     ######
@@ -1492,10 +1500,12 @@ class PySlipQtDemo(QWidget):
 
         # create PointData
         PointData = []
-        for lon in range(-70, 290+1, 5):
-            for lat in range(-65, 65+1, 5):
-                udata = 'point(%s,%s)' % (str(lon), str(lat))
-                PointData.append((lon, lat, {'data': udata}))
+        udata = 'point(%s,%s)' % (str(150.0), str(-20.0))
+        PointData.append((150.0, -20.0, {'data': udata}))  # DEBUG data
+#        for lon in range(-70, 290+1, 5):
+#            for lat in range(-65, 65+1, 5):
+#                udata = 'point(%s,%s)' % (str(lon), str(lat))
+#                PointData.append((lon, lat, {'data': udata}))
         PointDataColour = '#ff000080'	# semi-transparent
 
         # create PointViewData - a point-rendition of 'PYSLIP'

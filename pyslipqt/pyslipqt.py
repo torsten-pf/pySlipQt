@@ -74,7 +74,7 @@ class _Layer(object):
         self.id = id                    # ID of this layer
 
     def __str__(self):
-        return ('<pyslip Layer: id=%d, name=%s, map_rel=%s, visible=%s'
+        return ('<pyslip Layer: id=%d, name=%s, map_rel=%s, visible=%s>'
                 % (self.id, self.name, str(self.map_rel), str(self.visible)))
 
 
@@ -304,12 +304,6 @@ class PySlipQt(QWidget):
         self.default_cursor = self.standard_cursor
         self.setCursor(self.standard_cursor)
 
-        # DEBUG
-        result = self.tile_src.Tile2Geo((0.0, 0.0))
-        log(f'DEBUG: Tile2Geo((0.0, 0.0)) -> {result}')
-        result = self.tile_src.Tile2Geo((1.0, 1.0))
-        log(f'DEBUG: Tile2Geo((1.0, 1.0)) -> {result}')
-
         # do a "resize" after this function
         QTimer.singleShot(10, self.resizeEvent)
 
@@ -334,7 +328,10 @@ class PySlipQt(QWidget):
     def mouseReleaseEvent(self, event):
         """Mouse button was released."""
 
-        log(f'mouseReleaseEvent: entered')
+        x = event.x()
+        y = event.y()
+        clickpt_v = (x, y)
+        log(f'mouseReleaseEvent: entered, clickpt_v={clickpt_v}')
 
         # cursor back to normal
         self.setCursor(self.default_cursor)
@@ -343,7 +340,7 @@ class PySlipQt(QWidget):
         if b == Qt.NoButton:
             pass
         elif b == Qt.LeftButton:
-            log(f'mouseReleaseEvent: left button released')
+            log(f'mouseReleaseEvent: left button released at clickpt_v={clickpt_v}')
 
             self.left_mbutton_down = False
             self.start_drag_x = self.start_drag_y = None    # end drag, if any
@@ -356,8 +353,6 @@ class PySlipQt(QWidget):
 #            delayed_paint = self.sbox_1_x       # True if box select active
 
             # possible point selection, get click point in view & global coords
-            p = event.globalPos()
-            clickpt_v = (p.x(), p.y())
             log(f'mouseReleaseEvent: clickpt_v={clickpt_v}')
             clickpt_g = self.view_to_geo(clickpt_v)
             log(f'mouseReleaseEvent: clickpt_g={clickpt_g}')
@@ -367,32 +362,21 @@ class PySlipQt(QWidget):
 
             # check each layer for a point select handler
             # we work on a copy as user click-handler code could change order
+            log(f'mouseReleaseEvent: checking layers')
             for id in self.layer_z_order[:]:
                 log(f'mouseReleaseEvent: checking layer {id}')
                 l = self.layer_mapping[id]
                 # if layer visible and selectable
                 if l.selectable and l.visible:
                     log(f'mouseReleaseEvent: layer is selectable and visible')
-                    if l.map_rel:
-                        sel = self.layerPSelHandler[l.type](l, clickpt_g)
-                    else:
-                        sel = self.layerPSelHandler[l.type](l, clickpt_v)
+                    sel = self.layerPSelHandler[l.type](l, clickpt_v, clickpt_g)
                     log(f'mouseReleaseEvent: sel={sel} returned from handler')
-#                    self.RaiseEventSelect(mposn=clickpt_g, vposn=clickpt_v,
-#                                          layer=l, selection=sel)
                     self.events.EVT_PYSLIPQT_SELECT.emit(PySlipQt.EVT_PYSLIPQT_SELECT,
                                                          clickpt_g, clickpt_v,
                                                          id, sel, [], [])
 #                    # user code possibly updated screen
 #                    delayed_paint = True
-
-#event.type
-#event.mposn
-#event.vposn
-#event.layer_id
-#event.selection
-#event.data
-#event.relsel
+            log(f'mouseReleaseEvent: end of layer selection code')
 
         elif b == Qt.MidButton:
             self.mid_mbutton_down = False
@@ -420,7 +404,6 @@ class PySlipQt(QWidget):
         x = event.x()
         y = event.y()
         mouse_view = (x, y)
-        mouse_map = self.view_to_geo(mouse_view)
 
         if self.left_mbutton_down:
             if self.start_drag_x:       # if we are already dragging
@@ -451,7 +434,9 @@ class PySlipQt(QWidget):
             self.start_drag_x = x
             self.start_drag_y = y
 
-        # emit the event for mouse 
+        # emit the event for mouse position
+        mouse_map = self.view_to_geo(mouse_view)
+        log(f'mouseMoveEvent: rasing EVT_PYSLIPQT_POSITION: mouse_map={mouse_map}, mouse_view={mouse_view}')
         self.events.EVT_PYSLIPQT_POSITION.emit(PySlipQt.EVT_PYSLIPQT_POSITION, mouse_map, mouse_view)
 
     def keyPressEvent(self, event):
@@ -989,6 +974,7 @@ class PySlipQt(QWidget):
 
         # just in case id is None
         if id:
+            log(f'SetLayerSelectable: setting layer {id} selectable={selectable}')
             layer = self.layer_mapping[id]
             layer.selectable = selectable
 
@@ -1591,6 +1577,42 @@ class PySlipQt(QWidget):
 ################################################################################
 # Below are the "external" API methods.
 ################################################################################
+
+    ######
+    # Play with layers Z order
+    ######
+
+    def PushLayerToBack(self, id):
+        """Make layer specified be drawn at back of Z order.
+
+        id  ID of the layer to push to the back
+        """
+
+        self.layer_z_order.remove(id)
+        self.layer_z_order.insert(0, id)
+        self.update()
+
+    def PopLayerToFront(self, id):
+        """Make layer specified be drawn at front of Z order.
+
+        id  ID of the layer to pop to the front
+        """
+
+        self.layer_z_order.remove(id)
+        self.layer_z_order.append(id)
+        self.update()
+
+    def PlaceLayerBelowLayer(self, id, top_id):
+        """Place a layer so it will be drawn behind another layer.
+
+        id      ID of layer to place underneath 'top_id'
+        top_id  ID of layer to be drawn *above* 'id'
+        """
+
+        self.layer_z_order.remove(id)
+        i = self.layer_z_order.index(top_id)
+        self.layer_z_order.insert(i, id)
+        self.update()
 
     def dump_key_data(self):
         """Debug function to return string describing 'key' tile data."""
@@ -2555,13 +2577,14 @@ class PySlipQt(QWidget):
 # Select helpers - get objects that were selected
 ######
 
-    def sel_point_in_layer(self, layer, pt):
+    def sel_point_in_layer(self, layer, view_pt, map_pt):
         """Determine if clicked location selects a point in layer data.
 
-        layer  layer object we are looking in
-        pt     click location tuple (geo or view coordinates)
+        layer    layer object we are looking in
+        view_pt  click location tuple (view coords)
+        map_pt   click location tuple (geo coords)
 
-        We must look for the nearest point to the click.
+        We must look for the nearest point to the selection point.
 
         Return None (no selection) or (point, data, None) of selected point
         where point is [(x,y,attrib)] where X and Y are map or view relative
@@ -2570,7 +2593,7 @@ class PySlipQt(QWidget):
         selection point, which is meaningless for point selection.
         """
 
-        log(f'sel_point_in_layer: layer={layer}, pt={pt}, layer.delta={layer.delta}')
+        log(f'sel_point_in_layer: layer={layer}, view_pt={view_pt}, map_pt={map_pt}')
 
         # TODO: speed this up?  Do we need to??
         # http://en.wikipedia.org/wiki/Kd-tree
@@ -2580,20 +2603,23 @@ class PySlipQt(QWidget):
         delta = layer.delta
         dist = 9999999.0        # more than possible
 
-        # get correct pex function and click point in correct coords
+        # get correct pex function (map-rel or view-rel)
         pex = self.pex_point_view
-        clickpt = pt
-        log(f'sel_point_in_layer: clickpt={clickpt}')
         if layer.map_rel:
             pex = self.pex_point
 
-        # get selected point on map/view
-        (xclick, yclick) = clickpt
+        # find selected point on map/view
+        (map_x, map_y) = map_pt
+        (view_x, view_y) = view_pt
         for (x, y, place, radius, colour, x_off, y_off, udata) in layer.data:
+            log(f'sel_point_in_layer: possible point at ({x}, {y})')
             (vp, _) = pex(place, (x,y), x_off, y_off, radius)
+            log(f'sel_point_in_layer: vp for possible point = {vp}')
             if vp:
                 (vx, vy) = vp
-                d = (vx - xclick)*(vx - xclick) + (vy - yclick)*(vy - yclick)
+                log(f'sel_point_in_layer: map_x={map_x}, map_y={map_y}, vx={vx}, vy={vy}')
+                d = (vx - view_x)*(vx - view_x) + (vy - view_y)*(vy - view_y)
+                log(f'sel_point_in_layer: distance from point d={d}, dist={dist}')
                 if d < dist:
                     rpt = (x, y, {'placement': place,
                                   'radius': radius,
@@ -2601,6 +2627,7 @@ class PySlipQt(QWidget):
                                   'offset_x': x_off,
                                   'offset_y': y_off})
                     result = ([rpt], udata, None)
+                    log(f'sel_point_in_layer: close point (x={x}, y={y}), new dist={d}, result={result}')
                     dist = d
 
         log(f'sel_point_in_layer: after loop, result={result}, dist={dist}')
