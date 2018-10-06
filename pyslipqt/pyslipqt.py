@@ -300,7 +300,6 @@ class PySlipQt(QWidget):
         self.setMouseTracking(True)
 #        self.setEnabled(True)
 
-        log('__init__: set cursor to standard')
         self.default_cursor = self.standard_cursor
         self.setCursor(self.standard_cursor)
 
@@ -436,7 +435,6 @@ class PySlipQt(QWidget):
 
         # emit the event for mouse position
         mouse_map = self.view_to_geo(mouse_view)
-        log(f'mouseMoveEvent: rasing EVT_PYSLIPQT_POSITION: mouse_map={mouse_map}, mouse_view={mouse_view}')
         self.events.EVT_PYSLIPQT_POSITION.emit(PySlipQt.EVT_PYSLIPQT_POSITION, mouse_map, mouse_view)
 
     def keyPressEvent(self, event):
@@ -455,10 +453,8 @@ class PySlipQt(QWidget):
             new_level = self.level + 1
         else:
             new_level = self.level - 1
-        log(f'wheelEvent: using new level {new_level}')
 
         self.zoom_level(new_level)
-#        self.use_level(new_level)
 
     def resizeEvent(self, event=None):
         """Widget resized, recompute some state."""
@@ -500,7 +496,6 @@ class PySlipQt(QWidget):
                 break
             x_coord = (x_coord + 1) % self.num_tiles_x
             x_pix_start += self.tile_height
-        log(f'paintEvent: col_list={col_list}')
 
         row_list = []
         y_coord = self.key_tile_top
@@ -511,7 +506,6 @@ class PySlipQt(QWidget):
                 break
             y_coord = (y_coord + 1) % self.num_tiles_y
             y_pix_start += self.tile_height
-        log(f'paintEvent: row_list={row_list}')
 
         ######
         # Ready to update the view
@@ -974,7 +968,6 @@ class PySlipQt(QWidget):
 
         # just in case id is None
         if id:
-            log(f'SetLayerSelectable: setting layer {id} selectable={selectable}')
             layer = self.layer_mapping[id]
             layer.selectable = selectable
 
@@ -990,8 +983,6 @@ class PySlipQt(QWidget):
                      (x, y, place, radius, colour, x_off, y_off, udata)
         map_rel  points relative to map if True, else relative to view
         """
-
-#        log('@@@@@: >>>>> draw_point_layer begin')
 
         # get correct pex function - this handles map or view
         pex = self.pex_point_view
@@ -1013,8 +1004,6 @@ class PySlipQt(QWidget):
                     cache_pcolour = pcolour
                 (pt_x, pt_y) = pt
                 dc.drawEllipse(QPoint(pt_x, pt_y), radius, radius)
-
-#        log('@@@@@: <<<<< draw_point_layer end')
 
     def draw_image_layer(self, dc, images, map_rel):
         """Draw an image Layer on the view.
@@ -1252,44 +1241,27 @@ class PySlipQt(QWidget):
         tiles, else returns None.
         """
 
-        log(f'view_to_geo: view={view}')
-
         (xview, yview) = view
         (min_xgeo, max_xgeo, min_ygeo, max_ygeo) = self.tile_src.GetExtent()
 
-        log(f'view_to_geo: min_xgeo={min_xgeo}, max_xgeo={max_xgeo}, min_ygeo={min_ygeo}, max_ygeo={max_ygeo}')
-        log(f'view_to_geo: .key_tile_left={self.key_tile_left}, .key_tile_xoffset={self.key_tile_xoffset}')
-        log(f'view_to_geo: .num_tiles_x={self.num_tiles_x}, .num_tiles_y={self.num_tiles_y}')
-
         x_from_key = xview - self.key_tile_xoffset
         y_from_key = yview - self.key_tile_yoffset
-
-        log(f'view_to_geo: x_from_key={x_from_key}')
 
         # get view point as tile coordinates
         xtile = self.key_tile_left + x_from_key/self.tile_width
         ytile = self.key_tile_top + y_from_key/self.tile_height
 
-        log(f'view_to_geo: x_from_key/self.tile_width={x_from_key/self.tile_width}')
-        log(f'view_to_geo: xtile={xtile}, self.tile_width={self.tile_width}')
-
         result = (xgeo, ygeo) = self.tile_src.Tile2Geo((xtile, ytile))
 
-        log(f'view_to_geo: result={result}')
-
         if self.wrap_x and self.wrap_y:
-            log(f'view_to_geo: returning {result}')
             return result
         if not self.wrap_x:
             if not (min_xgeo <= xgeo <= max_xgeo):
-                log(f'view_to_geo: returning None')
                 return None
         if not self.wrap_y:
             if not (min_ygeo <= ygeo <= max_ygeo):
-                log(f'view_to_geo: returning None')
                 return None
 
-        log(f'view_to_geo: returning {result}')
         return result
 
 ######
@@ -1636,20 +1608,13 @@ class PySlipQt(QWidget):
         succeeded, else False. If False is returned the method call has no effect.
         """
 
-        log(f'zoom_level: level={level}')
-        log(f'zoom_level: before zoom, self.key_tile_left={self.key_tile_left}, self.key_tile_xoffset={self.key_tile_xoffset}')
-        log(f'zoom_level: before zoom, self.key_tile_top={self.key_tile_top}, self.key_tile_yoffset={self.key_tile_yoffset}')
-        log(f'zoom_level: before zoom, .num_tiles_x={self.num_tiles_x}, .num_tiles_y={self.num_tiles_y}')
-
         # get geo coords of view centre point
         x = self.view_width / 2
         y = self.view_height / 2
         geo = self.view_to_geo((x, y))
-        log(f'zoom_level: centre view at {geo}')
 
         # get tile source to use the new level
         result = self.tile_src.UseLevel(level)
-        log(f'zoom_level: .tile_src.UseLevel({level}) returned {result}')
 
         if result:
             # zoom worked, adjust state variables
@@ -1663,16 +1628,9 @@ class PySlipQt(QWidget):
 #            self.recalc_wrap_limits()
 #            self.normalize_key_after_drag(0, 0)
 ###            self.rectify_key_tile()
-            log(f'zoom_level: after recalc, self.key_tile_left={self.key_tile_left}, self.key_tile_xoffset={self.key_tile_xoffset}')
-            log(f'zoom_level: after recalc, self.key_tile_top={self.key_tile_top}, self.key_tile_yoffset={self.key_tile_yoffset}')
-            log(f'zoom_level: after zoom, .num_tiles_x={self.num_tiles_x}, .num_tiles_y={self.num_tiles_y}')
 
             # finally, pan to original map centre (updates widget)
-            log(f'zoom_level: panning to geo={geo}')
             self.pan_position(geo)
-            log(f'zoom_level: after pan, self.key_tile_left={self.key_tile_left}, self.key_tile_xoffset={self.key_tile_xoffset}')
-            log(f'zoom_level: after pan, self.key_tile_top={self.key_tile_top}, self.key_tile_yoffset={self.key_tile_yoffset}')
-
             self.events.EVT_PYSLIPQT_LEVEL.emit(PySlipQt.EVT_PYSLIPQT_LEVEL, level)
 
             # trigger an EVT_PYSLIPQT_POSITION event to update any user widget
@@ -1690,47 +1648,28 @@ class PySlipQt(QWidget):
         the X or Y directions, or both.
         """
 
-        log(f'pan_position: geo={geo}')
-        # geo=(115.0, 0.0)
         # convert the geo posn to a tile position
         (tile_x, tile_y) = self.tile_src.Geo2Tile(geo)
-        log(f'pan_position: tile_x={tile_x}, tile_y={tile_y}')
-        # tile_x=2.0, tile_y=1.0
 
         # determine what the new key tile should be
         # figure out number of tiles from centre point to edges
         tx = (self.view_width / 2) / self.tile_width
         ty = (self.view_height / 2) / self.tile_height
-        log(f'pan_position: tx={tx}, ty={ty}')
-        # tx=1.00390625, ty=1.1875
         
         # calculate tile coordinates of the top-left corner of the view
         key_tx = tile_x - tx
         key_ty = tile_y - ty
-        log(f'pan_position: key_tx={key_tx}, key_ty={key_ty}')
-        # key_tx=0.99609375, key_ty=-0.1875
-
-########
 
         (key_tile_left, x_offset) = divmod(key_tx, 1)
-        log(f'pan_position: key_tile_left={key_tile_left}, x_offset={x_offset}')
         self.key_tile_left = int(key_tile_left)
         self.key_tile_xoffset = -int(x_offset * self.tile_width)
-        log(f'pan_position: .key_tile_left={self.key_tile_left}, .key_tile_xoffset={self.key_tile_xoffset}')
-        # .key_tile_left=0, .key_tile_xoffset=255
 
         (key_tile_top, y_offset) = divmod(key_ty, 1)
         self.key_tile_top = int(key_tile_top)
         self.key_tile_yoffset = -int(y_offset * self.tile_height)
-        log(f'pan_position: .key_tile_top={self.key_tile_top}, .key_tile_yoffset={self.key_tile_yoffset}')
-        # .key_tile_top=-1, .key_tile_yoffset=208
 
         # adjust key tile, if necessary
         self.rectify_key_tile()
-        log(f'pan_position: after rectify, .key_tile_left={self.key_tile_left}, .key_tile_xoffset={self.key_tile_xoffset}')
-        # after rectify, .key_tile_left=0, .key_tile_xoffset=255
-        log(f'pan_position: after rectify, .key_tile_top={self.key_tile_top}, .key_tile_yoffset={self.key_tile_yoffset}')
-        # after rectify, .key_tile_top=0, .key_tile_yoffset=48
 
         # redraw the widget
         self.update()
@@ -1742,28 +1681,20 @@ class PySlipQt(QWidget):
         Adjusts the "key" tile variables to ensure proper presentation.
         """
 
-#        log(f'rectify_key_tile: .map_width={self.map_width}, .map_height={self.map_height}')
-#        log(f'rectify_key_tile: .view_width={self.view_width}, .view_height={self.view_height}')
-#        log(f'rectify_key_tile: .key_tile_left={self.key_tile_left}, .key_tile_xoffset={self.key_tile_xoffset}')
-#        log(f'rectify_key_tile: .key_tile_top={self.key_tile_top}, .key_tile_yoffset={self.key_tile_yoffset}')
-
         # check map in X direction
         if self.map_width < self.view_width:
-#            log(f'rectify_key_tile: MAP CENTRED IN X')
             # map < view, fits totally in view, centre in X
             self.key_tile_left = 0
             self.key_tile_xoffset = (self.view_width - self.map_width) // 2
         else:
             # if key tile out of map in X direction, rectify
             if self.key_tile_left < 0:
-#                log(f'rectify_key_tile: LEFT EDGE SHOWING')
                 self.key_tile_left = 0
                 self.key_tile_xoffset = 0
             else:
                 # if map left/right edges showing, cover them
                 show_len = (self.num_tiles_x - self.key_tile_left)*self.tile_width + self.key_tile_xoffset
                 if show_len < self.view_width:
-#                    log(f'rectify_key_tile: RIGHT EDGE SHOWING')
                     # figure out key tile X to have right edge of map and view equal
                     tiles_showing = self.view_width / self.tile_width
                     int_tiles = int(tiles_showing)
@@ -1772,30 +1703,23 @@ class PySlipQt(QWidget):
 
         # now check map in Y direction
         if self.map_height < self.view_height:
-#            log(f'rectify_key_tile: MAP CENTRED IN Y')
             # map < view, fits totally in view, centre in Y
             self.key_tile_top = 0
             self.key_tile_yoffset = (self.view_height - self.map_height) // 2
         else:
             if self.key_tile_top < 0:
                 # map top edge showing, cover
-#                log(f'rectify_key_tile: TOP EDGE SHOWING')
                 self.key_tile_top = 0
                 self.key_tile_yoffset = 0
             else:
                 # if map bottom edge showing, cover
                 show_len = (self.num_tiles_y - self.key_tile_top)*self.tile_height + self.key_tile_yoffset
-#                log(f'rectify_key_tile: show_len={show_len}, .view_height={self.view_height}')
                 if show_len < self.view_height:
-#                    log(f'rectify_key_tile: BOTTOM EDGE SHOWING')
                     # figure out key tile Y to have bottom edge of map and view equal
                     tiles_showing = self.view_height / self.tile_height
                     int_tiles = int(tiles_showing)
                     self.key_tile_top = self.num_tiles_y - int_tiles - 1
                     self.key_tile_yoffset = -int((1.0 - (tiles_showing - int_tiles)) * self.tile_height)
-
-#        log(f'rectify_key_tile: rectified .key_tile_left={self.key_tile_left}, .key_tile_xoffset={self.key_tile_xoffset}')
-#        log(f'rectify_key_tile: rectified .key_tile_top={self.key_tile_top}, .key_tile_yoffset={self.key_tile_yoffset}')
 
     def zoom_level_position(self, level, posn):
         """Zoom to a map level and pan to the given position in the map.
@@ -1902,8 +1826,6 @@ class PySlipQt(QWidget):
                          'data'       point user data object
         """
 
-        log('@@@@@: >>>>> AddPointLayer begin')
-
         # merge global and layer defaults
         if map_rel:
             default_placement = kwargs.get('placement', self.DefaultPointPlacement)
@@ -1959,8 +1881,6 @@ class PySlipQt(QWidget):
             # append another point to draw data list
             draw_data.append((float(x), float(y), placement,
                               radius, colour, offset_x, offset_y, udata))
-
-        log('@@@@@: <<<<< AddPointLayer end')
 
         return self.add_layer(self.draw_point_layer, draw_data, map_rel,
                               visible=visible, show_levels=show_levels,
@@ -2437,9 +2357,7 @@ class PySlipQt(QWidget):
         Does nothing if we can't use desired level.
         """
 
-        log(f'GotoLevelAndPosition: level={level}, geo={geo}')
         if self.GotoLevel(level):
-            log(f'GotoLevelAndPosition: went to level {level}, now going to geo={geo}')
             self.GotoPosition(geo)
 
     def ZoomToArea(self, geo, size):
@@ -2593,8 +2511,6 @@ class PySlipQt(QWidget):
         selection point, which is meaningless for point selection.
         """
 
-        log(f'sel_point_in_layer: layer={layer}, view_pt={view_pt}, map_pt={map_pt}')
-
         # TODO: speed this up?  Do we need to??
         # http://en.wikipedia.org/wiki/Kd-tree
         # would need to create kd-tree in AddLayer()
@@ -2612,14 +2528,10 @@ class PySlipQt(QWidget):
         (map_x, map_y) = map_pt
         (view_x, view_y) = view_pt
         for (x, y, place, radius, colour, x_off, y_off, udata) in layer.data:
-            log(f'sel_point_in_layer: possible point at ({x}, {y})')
             (vp, _) = pex(place, (x,y), x_off, y_off, radius)
-            log(f'sel_point_in_layer: vp for possible point = {vp}')
             if vp:
                 (vx, vy) = vp
-                log(f'sel_point_in_layer: map_x={map_x}, map_y={map_y}, vx={vx}, vy={vy}')
                 d = (vx - view_x)*(vx - view_x) + (vy - view_y)*(vy - view_y)
-                log(f'sel_point_in_layer: distance from point d={d}, dist={dist}')
                 if d < dist:
                     rpt = (x, y, {'placement': place,
                                   'radius': radius,
@@ -2627,10 +2539,7 @@ class PySlipQt(QWidget):
                                   'offset_x': x_off,
                                   'offset_y': y_off})
                     result = ([rpt], udata, None)
-                    log(f'sel_point_in_layer: close point (x={x}, y={y}), new dist={d}, result={result}')
                     dist = d
-
-        log(f'sel_point_in_layer: after loop, result={result}, dist={dist}')
 
         if dist <= layer.delta:
             return result

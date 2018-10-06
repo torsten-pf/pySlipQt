@@ -438,8 +438,6 @@ class PySlipQtDemo(QWidget):
     def pointSelectOnOff(self, event):
         """Handle SelectOnOff event for point layer control."""
 
-        log(f'pointSelectOnOff: entered')
-
         layer = self.point_layer
         if event:
             # if True, user selected "Selectable"
@@ -471,8 +469,6 @@ class PySlipQtDemo(QWidget):
         This code also shows how to combine handling of EventSelect and
         EventBoxSelect events.
         """
-
-        log(f'pointSelect: stype={stype}, layer_id={layer_id}, selection={selection}, data={data}')
 
         if selection == self.sel_point:
             # same point(s) selected again, turn point(s) off
@@ -560,14 +556,14 @@ class PySlipQtDemo(QWidget):
             self.del_select_handler(layer)
             self.pyslipqt.SetLayerSelectable(layer, False)
 
-    def pointViewSelect(self, event):
+    def pointViewSelect(self, etype, layer_id, selection, data):
         """Handle view-relative point select exception from pyslipqt.
 
-        event  the event that contains these attributes:
-                   type       the type of point selection: single or box
-                   selection  [list of] tuple (xgeo,ygeo) of selected point
-                              (if None then no point(s) selected)
-                   data       userdata object of the selected point
+        etype      the event type
+        layer_id   the ID of the layer that was selected
+        selection  [list of] tuple (xgeo,ygeo) of selected point
+                   (if None then no point(s) selected)
+        data       userdata object of the selected point
 
         The selection could be a single or box select.
 
@@ -576,14 +572,16 @@ class PySlipQtDemo(QWidget):
         and whether the same point is selected or not.
         """
 
-        selection = event.selection
+        log(f'pointViewSelect: etype-{etype}, layer_id={layer_id}, selection={selection}, data={data}')
 
         # if there is a previous selection, remove it
         if self.sel_point_view_layer:
             self.pyslipqt.DeleteLayer(self.sel_point_view_layer)
             self.sel_point_view_layer = None
 
+        log(f'pointViewSelect: selection={selection}, .sel_point_view={self.sel_point_view}')
         if selection and selection != self.sel_point_view:
+            # it's a box selection
             self.sel_point_view = selection
 
             # get selected points into form for display layer
@@ -1439,7 +1437,6 @@ class PySlipQtDemo(QWidget):
         level  the new map level
         """
 
-        log(f'level_change_event: got level change, etype={etype}, level={level}')
         self.map_level.set_text(str(level))
 
     def mouse_posn_event(self, etype, mposn, vposn):
@@ -1467,8 +1464,6 @@ class PySlipQtDemo(QWidget):
         data       the user-supplied data object for the selected object (or [] if no selection)
         relsel     relative selection point inside a single selected image (or [] if no selection)
         """
-
-        log(f'select_event: mposn={mposn}, vposn={vposn}, layer_id={layer_id}, selection={selection}, data={data}, relsel={relsel}')
 
         self.demo_select_dispatch.get(layer_id, self.null_handler)(etype, layer_id, selection, data)
 
@@ -1498,14 +1493,12 @@ class PySlipQtDemo(QWidget):
         global PolylineData, PolylineViewData
         global CR_Width, CR_Height
 
-        # create PointData
+        # create PointData - lots of it to test handling
         PointData = []
-        udata = 'point(%s,%s)' % (str(150.0), str(-20.0))
-        PointData.append((150.0, -20.0, {'data': udata}))  # DEBUG data
-#        for lon in range(-70, 290+1, 5):
-#            for lat in range(-65, 65+1, 5):
-#                udata = 'point(%s,%s)' % (str(lon), str(lat))
-#                PointData.append((lon, lat, {'data': udata}))
+        for lon in range(-70, 290+1, 5):
+            for lat in range(-65, 65+1, 5):
+                udata = 'point(%s,%s)' % (str(lon), str(lat))
+                PointData.append((lon, lat, {'data': udata}))
         PointDataColour = '#ff000080'	# semi-transparent
 
         # create PointViewData - a point-rendition of 'PYSLIP'
@@ -1706,19 +1699,11 @@ class PySlipQtDemo(QWidget):
         CR_Width = size.width()
 
         # set initial view position
-        log(f'InitViewLevel={InitViewLevel}')
         self.map_level.set_text('%d' % InitViewLevel)
 
     ######
     # Exception handlers
     ######
-
-    def handle_select_event(self, event):
-        """Handle a pySlip point/box SELECT event."""
-
-        layer_id = event.layer_id
-
-        self.demo_select_dispatch.get(layer_id, self.null_handler)(event)
 
     def null_handler(self, event):
         """Routine to handle unexpected events."""
