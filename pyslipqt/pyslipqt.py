@@ -101,6 +101,14 @@ class PySlipQt(QWidget):
     (EVT_PYSLIPQT_LEVEL, EVT_PYSLIPQT_POSITION,
      EVT_PYSLIPQT_SELECT, EVT_PYSLIPQT_POLYSELECT) = range(4)
 
+    event_name = {EVT_PYSLIPQT_LEVEL: 'EVT_PYSLIPQT_LEVEL',
+                  EVT_PYSLIPQT_POSITION: 'EVT_PYSLIPQT_POSITION',
+                  EVT_PYSLIPQT_SELECT: 'EVT_PYSLIPQT_SELECT',
+#                  EVT_PYSLIPQT_BOXSELECT: 'EVT_PYSLIPQT_BOXSELECT',
+                  EVT_PYSLIPQT_POLYSELECT: 'EVT_PYSLIPQT_POLYSELECT',
+#                  EVT_PYSLIPQT_POLYBOXSELECT: 'EVT_PYSLIPQT_POLYBOXSELECT',
+                 }
+
     # list of valid placement values
     valid_placements = ['cc', 'nw', 'cn', 'ne', 'ce',
                         'se', 'cs', 'sw', 'cw', None, False, '']
@@ -330,6 +338,17 @@ class PySlipQt(QWidget):
             for (attr, value) in kwargs.items():
                 setattr(self, attr, value)
 
+    def dump_event(self, event):
+        """Dump an event to the log.
+
+        Print attributes and values for non_dunder attributes.
+        """
+
+        log(f'dump_event: event {PySlipQt.event_name[event.type]}:')
+        for attr in dir(event):
+            if not attr.startswith('__'):
+                log(f'            event.{attr}={getattr(event, attr)}')
+
     def raise_event(self, etype, **kwargs):
         """Raise event with attributes in 'kwargs'.
         
@@ -338,6 +357,7 @@ class PySlipQt(QWidget):
         """
 
         event = PySlipQt.PySlipQtEvent(etype, **kwargs)
+        self.dump_event(event)
         self.pyslipqt_event_dict[etype](event)
 
     ######
@@ -2586,7 +2606,7 @@ class PySlipQt(QWidget):
 
         # TODO: speed this up?  Do we need to??
         # http://en.wikipedia.org/wiki/Kd-tree
-        # would need to create kd-tree in AddLayer()
+        # would need to create kd-tree in AddLayer() (slower)
 
         result = None
         delta = layer.delta
@@ -2598,8 +2618,8 @@ class PySlipQt(QWidget):
             pex = self.pex_point
 
         # find selected point on map/view
-#        (map_x, map_y) = map_pt
         (view_x, view_y) = view_pt
+        log(f'sel_point_in_layer: view_x={view_x}, view_y={view_y}')
         for (x, y, place, radius, colour, x_off, y_off, udata) in layer.data:
             (vp, _) = pex(place, (x,y), x_off, y_off, radius)
             if vp:
@@ -2676,7 +2696,8 @@ class PySlipQt(QWidget):
         of the mouse click.
 
         Note that there could conceivably be more than one image selectable in
-        the layer at the mouse click position but only the first is selected.
+        the layer at the mouse click position but only the first found is
+        returned as selected.
         """
 
         result = None

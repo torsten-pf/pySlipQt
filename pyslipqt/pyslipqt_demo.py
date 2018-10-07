@@ -1522,11 +1522,12 @@ class PySlipQtDemo(QWidget):
         global CR_Width, CR_Height
 
         # create PointData - lots of it to test handling
-        PointData = []
-        for lon in range(-70, 290+1, 5):
-            for lat in range(-65, 65+1, 5):
-                udata = 'point(%s,%s)' % (str(lon), str(lat))
-                PointData.append((lon, lat, {'data': udata}))
+        PointData = [(150.0, -20.0, {'data': 'point(150.0,-20.0)'})]
+#        PointData = []
+#        for lon in range(-70, 290+1, 5):
+#            for lat in range(-65, 65+1, 5):
+#                udata = 'point(%s,%s)' % (str(lon), str(lat))
+#                PointData.append((lon, lat, {'data': udata}))
         PointDataColour = '#ff000080'	# semi-transparent
 
         # create PointViewData - a point-rendition of 'PYSLIP'
