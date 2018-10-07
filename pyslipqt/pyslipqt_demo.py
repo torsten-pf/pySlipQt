@@ -556,14 +556,14 @@ class PySlipQtDemo(QWidget):
             self.del_select_handler(layer)
             self.pyslipqt.SetLayerSelectable(layer, False)
 
-    def pointViewSelect(self, etype, layer_id, selection, data):
+    def pointViewSelect(self, event):
         """Handle view-relative point select exception from pyslipqt.
 
-        etype      the event type
-        layer_id   the ID of the layer that was selected
-        selection  [list of] tuple (xgeo,ygeo) of selected point
-                   (if None then no point(s) selected)
-        data       userdata object of the selected point
+        event.type       the event type
+        event.layer_id   the ID of the layer that was selected
+        event.selection  [list of] tuple (xgeo,ygeo) of selected point
+                         (if None then no point(s) selected)
+        event.data       userdata object of the selected point
 
         The selection could be a single or box select.
 
@@ -572,21 +572,24 @@ class PySlipQtDemo(QWidget):
         and whether the same point is selected or not.
         """
 
-        log(f'pointViewSelect: etype-{etype}, layer_id={layer_id}, selection={selection}, data={data}')
+        log(f'pointViewSelect: type={event.type}, layer_id={event.layer_id}')
+        log(f'pointViewSelect: selection={event.selection}, data={event.data}')
 
         # if there is a previous selection, remove it
         if self.sel_point_view_layer:
             self.pyslipqt.DeleteLayer(self.sel_point_view_layer)
             self.sel_point_view_layer = None
 
-        log(f'pointViewSelect: selection={selection}, .sel_point_view={self.sel_point_view}')
-        if selection and selection != self.sel_point_view:
+        log(f'pointViewSelect: selection={event.selection}, .sel_point_view={self.sel_point_view}')
+        if event.selection and event.selection != self.sel_point_view:
+            (points, _, _) = event.selection
+
             # it's a box selection
-            self.sel_point_view = selection
+            self.sel_point_view = event.selection
 
             # get selected points into form for display layer
             highlight = []
-            for (x, y, d) in selection:
+            for (x, y, d) in points:
                 del d['colour']
                 del d['radius']
                 highlight.append((x, y, d))
@@ -649,11 +652,10 @@ class PySlipQtDemo(QWidget):
     def imageSelect(self, event):
         """Select event from pyslipqt.
 
-        event  the event that contains these attributes:
-                   type       the type of point selection: single or box
-                   selection  [list of] tuple (xgeo,ygeo) of selected point
-                              (if None then no point(s) selected)
-                   data       userdata object of the selected point
+        event.type       the type of point selection: single or box
+        event.selection  tuple (selection, data, relsel)
+                         (if None then no point(s) selected)
+        event.data       userdata object of the selected point
 
         The selection could be a single or box select.
         """
@@ -662,24 +664,29 @@ class PySlipQtDemo(QWidget):
         #relsel = event.relsel
 
         # select again, turn selection off
-        if selection == self.sel_image:
+        if event.selection == self.sel_image:
             self.pyslipqt.DeleteLayer(self.sel_image_layer)
             self.sel_image_layer = self.sel_image = None
-        elif selection:
+        elif event.selection:
+            (sel_points, _, _) = event.selection
             # new image selected, show highlight
             if self.sel_image_layer:
                 self.pyslipqt.DeleteLayer(self.sel_image_layer)
-            self.sel_image = selection
+            self.sel_image = event.selection
 
             # get selected points into form for display layer
-            points = []
-            for (x, y, f, d) in selection:
+            log(f'imageSelect: sel_points={sel_points}')
+            new_points = []
+            #for (x, y, im, d) in sel_points:
+            for p in sel_points:
+                log(f'imageSelect: p={p}')
+                (x, y, im, d) = p
                 del d['colour']
                 del d['radius']
-                points.append((x, y, d))
+                new_points.append((x, y, d))
 
             self.sel_image_layer = \
-                self.pyslipqt.AddPointLayer(points, map_rel=True,
+                self.pyslipqt.AddPointLayer(new_points, map_rel=True,
                                             colour='#0000ff',
                                             radius=5, visible=True,
                                             show_levels=[3,4],
@@ -1430,42 +1437,46 @@ class PySlipQtDemo(QWidget):
         return True
 
 
-    def level_change_event(self, etype, level):
+    def level_change_event(self, event):
         """Handle a "level change" event from the pySlipQt widget.
         
-        etype  the type of event
-        level  the new map level
+        event.type  the type of event
+        event.level  the new map level
         """
 
-        self.map_level.set_text(str(level))
+        self.map_level.set_text(str(event.level))
 
-    def mouse_posn_event(self, etype, mposn, vposn):
+    def mouse_posn_event(self, event):
         """Handle a "mouse position" event from the pySlipQt widget.
-        
-        etype  the type of event
-        mposn  the new mouse position on the map (xgeo, ygeo)
-        vposn  the new mouse position on the view (x, y)
+       
+        The 'event' object has these attributes:
+            event.etype  the type of event
+            event.mposn  the new mouse position on the map (xgeo, ygeo)
+            event.vposn  the new mouse position on the view (x, y)
         """
 
-        if mposn:
-            (lon, lat) = mposn
+        if event.mposn:
+            (lon, lat) = event.mposn
             self.mouse_position.set_text(f'{lon:.2f}/{lat:.2f}')
         else:
             self.mouse_position.set_text('')
 
-    def select_event(self, etype, mposn, vposn, layer_id, selection, data, relsel):
+    def select_event(self, event):
         """Handle a single select click.
 
-        etype      the event type number
-        mposn      select point tuple in map (geo) coordinates: (xgeo, ygeo)
-        vposn      select point tuple in view coordinates: (xview, yview)
-        layer_id   the ID of the layer containing the selected object (or None)
-        selection  a tuple (x,y,attrib) defining the position of the object selected (or [] if no selection)
-        data       the user-supplied data object for the selected object (or [] if no selection)
-        relsel     relative selection point inside a single selected image (or [] if no selection)
+        event.type       the event type number
+        event.mposn      select point tuple in map (geo) coordinates: (xgeo, ygeo)
+        event.vposn      select point tuple in view coordinates: (xview, yview)
+        event.layer_id   the ID of the layer containing the selected object (or None)
+        event.selection  a tuple (x,y,attrib) defining the position of the object selected (or [] if no selection)
+        event.data       the user-supplied data object for the selected object (or [] if no selection)
+        event.relsel     relative selection point inside a single selected image (or [] if no selection)
+
+        Just look at 'event.type' to decide what handler to call and pass
+        'event' through to the handler.
         """
 
-        self.demo_select_dispatch.get(layer_id, self.null_handler)(etype, layer_id, selection, data)
+        self.demo_select_dispatch.get(event.layer_id, self.null_handler)(event)
 
     ######
     # Small utility routines

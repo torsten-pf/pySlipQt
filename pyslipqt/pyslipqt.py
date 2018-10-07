@@ -87,19 +87,20 @@ class PySlipQt(QWidget):
 
     # events the widget will emit
     class Events(QObject):
-        EVT_PYSLIPQT_LEVEL = pyqtSignal(int, int)
-        EVT_PYSLIPQT_POSITION = pyqtSignal(int, object, tuple)
-        EVT_PYSLIPQT_SELECT = pyqtSignal(int, tuple, tuple, object, object, list, list)
-        EVT_PYSLIPQT_BOXSELECT = pyqtSignal()
-        EVT_PYSLIPQT_POLYSELECT = pyqtSignal()
-        EVT_PYSLIPQT_POLYBOXSELECT = pyqtSignal()
+        EVT_PYSLIPQT_LEVEL = pyqtSignal(object)
+        EVT_PYSLIPQT_POSITION = pyqtSignal(object)
+        EVT_PYSLIPQT_SELECT = pyqtSignal(object)
+#        EVT_PYSLIPQT_BOXSELECT = pyqtSignal(object)
+        EVT_PYSLIPQT_POLYSELECT = pyqtSignal(object)
+#        EVT_PYSLIPQT_POLYBOXSELECT = pyqtSignal(object)
 
     # event numbers
+#    (EVT_PYSLIPQT_LEVEL, EVT_PYSLIPQT_POSITION,
+#     EVT_PYSLIPQT_SELECT, EVT_PYSLIPQT_BOXSELECT,
+#     EVT_PYSLIPQT_POLYSELECT, EVT_PYSLIPQT_POLYBOXSELECT) = range(6)
     (EVT_PYSLIPQT_LEVEL, EVT_PYSLIPQT_POSITION,
-     EVT_PYSLIPQT_SELECT, EVT_PYSLIPQT_BOXSELECT,
-     EVT_PYSLIPQT_POLYSELECT, EVT_PYSLIPQT_POLYBOXSELECT) = range(6)
+     EVT_PYSLIPQT_SELECT, EVT_PYSLIPQT_POLYSELECT) = range(4)
 
-    
     # list of valid placement values
     valid_placements = ['cc', 'nw', 'cn', 'ne', 'ce',
                         'se', 'cs', 'sw', 'cw', None, False, '']
@@ -283,28 +284,61 @@ class PySlipQt(QWidget):
                                  self.TypePolygon: self.sel_polygon_in_layer,
                                  self.TypePolyline: self.sel_polyline_in_layer}
 
-        # for box select
-        self.layerBSelHandler = {self.TypePoint: self.sel_box_points_in_layer,
-                                 self.TypeImage: self.sel_box_images_in_layer,
-                                 self.TypeText: self.sel_box_texts_in_layer,
-                                 self.TypePolygon: self.sel_box_polygons_in_layer,
-                                 self.TypePolyline: self.sel_box_polylines_in_layer}
+#        # for box select
+#        self.layerBSelHandler = {self.TypePoint: self.sel_box_points_in_layer,
+#                                 self.TypeImage: self.sel_box_images_in_layer,
+#                                 self.TypeText: self.sel_box_texts_in_layer,
+#                                 self.TypePolygon: self.sel_box_polygons_in_layer,
+#                                 self.TypePolyline: self.sel_box_polylines_in_layer}
 
+        # create the events raised by PySlipQt
+        self.events = PySlipQt.Events()
+
+        # a dictionary to map event number to raising function    
+        self.pyslipqt_event_dict = {
+           PySlipQt.EVT_PYSLIPQT_LEVEL:         self.events.EVT_PYSLIPQT_LEVEL.emit,
+           PySlipQt.EVT_PYSLIPQT_POSITION:      self.events.EVT_PYSLIPQT_POSITION.emit,
+           PySlipQt.EVT_PYSLIPQT_SELECT:        self.events.EVT_PYSLIPQT_SELECT.emit,
+#           PySlipQt.EVT_PYSLIPQT_BOXSELECT:     self.events.EVT_PYSLIPQT_BOXSELECT.emit,
+           PySlipQt.EVT_PYSLIPQT_POLYSELECT:    self.events.EVT_PYSLIPQT_POLYSELECT.emit,
+#           PySlipQt.EVT_PYSLIPQT_POLYBOXSELECT: self.events.EVT_PYSLIPQT_POLYBOXSELECT.emit,
+          }
+    
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.setMinimumSize(self.tile_width, self.tile_height)
 
         tile_src.setCallback(self.update)
 
-        self.events = PySlipQt.Events()
-
         self.setMouseTracking(True)
-#        self.setEnabled(True)
+#        self.setEnabled(True)       # to receive key events?
 
         self.default_cursor = self.standard_cursor
         self.setCursor(self.standard_cursor)
 
         # do a "resize" after this function
         QTimer.singleShot(10, self.resizeEvent)
+
+    ######
+    # Code for events raised by this widget
+    ######
+
+    class PySlipQtEvent:
+        def __init__(self, etype, **kwargs):
+            """Create a PySlipQtEvent with attributes in 'kwargs'."""
+
+            self.type = etype
+            for (attr, value) in kwargs.items():
+                setattr(self, attr, value)
+
+    def raise_event(self, etype, **kwargs):
+        """Raise event with attributes in 'kwargs'.
+        
+        etype  type of event to raise
+        kwargs  a dictionary of attributes to attach to event
+        """
+
+        event = PySlipQt.PySlipQtEvent(etype, **kwargs)
+        self.pyslipqt_event_dict[etype](event)
 
     ######
     # Overide the mouse events
@@ -316,7 +350,6 @@ class PySlipQt(QWidget):
             pass
         elif b == Qt.LeftButton:
             self.left_mbutton_down = True
-
         elif b == Qt.MidButton:
             self.mid_mbutton_down = True
         elif b == Qt.RightButton:
@@ -355,24 +388,29 @@ class PySlipQt(QWidget):
             log(f'mouseReleaseEvent: clickpt_v={clickpt_v}')
             clickpt_g = self.view_to_geo(clickpt_v)
             log(f'mouseReleaseEvent: clickpt_g={clickpt_g}')
-            if clickpt_g is None:
-                log(f'mouseReleaseEvent: clicked off-map, returning')
-                return          # we clicked off the map
+#            if clickpt_g is None:
+#                log(f'mouseReleaseEvent: clicked off-map, returning')
+#                return          # we clicked off the map
 
             # check each layer for a point select handler
             # we work on a copy as user click-handler code could change order
             log(f'mouseReleaseEvent: checking layers')
-            for id in self.layer_z_order[:]:
-                log(f'mouseReleaseEvent: checking layer {id}')
-                l = self.layer_mapping[id]
+            for lid in self.layer_z_order[:]:
+                log(f'mouseReleaseEvent: checking layer {lid}')
+                l = self.layer_mapping[lid]
                 # if layer visible and selectable
                 if l.selectable and l.visible:
                     log(f'mouseReleaseEvent: layer is selectable and visible')
                     sel = self.layerPSelHandler[l.type](l, clickpt_v, clickpt_g)
                     log(f'mouseReleaseEvent: sel={sel} returned from handler')
-                    self.events.EVT_PYSLIPQT_SELECT.emit(PySlipQt.EVT_PYSLIPQT_SELECT,
-                                                         clickpt_g, clickpt_v,
-                                                         id, sel, [], [])
+                    log(f'mouseReleaseEvent: raising SELECT event, clickpt_g={clickpt_g}, clickpt_v={clickpt_v}, lid={lid}, sel={sel}')
+
+                    # raise the EVT_PYSLIPQT_SELECT event
+                    self.raise_event(PySlipQt.EVT_PYSLIPQT_SELECT,
+                                     mposn=clickpt_g, vposn=clickpt_v,
+                                     layer_id=lid, selection=sel,
+                                     data=[], relsel=[])
+
 #                    # user code possibly updated screen
 #                    delayed_paint = True
             log(f'mouseReleaseEvent: end of layer selection code')
@@ -434,17 +472,29 @@ class PySlipQt(QWidget):
             self.start_drag_y = y
 
         # emit the event for mouse position
-        mouse_map = self.view_to_geo(mouse_view)
-        self.events.EVT_PYSLIPQT_POSITION.emit(PySlipQt.EVT_PYSLIPQT_POSITION, mouse_map, mouse_view)
+        self.raise_event(PySlipQt.EVT_PYSLIPQT_POSITION,
+                         mposn=self.view_to_geo(mouse_view), vposn=mouse_view)
 
     def keyPressEvent(self, event):
-        """Capture a keyboard event."""
+        """Capture a key press."""
 
-        log(f'keyPressEvent: key pressed={event.key()}')
+        log(f'keyPressEvent: key pressed={event.key():08x}')
+        if event.key() == Qt.Key_Shift:
+            self.shift_down = True
+            self.default_cursor = self.box_select_cursor
+            self.setCursor(self.default_cursor)
+        event.accept()
 
     def keyReleaseEvent(self, event):
+        """Capture a key release."""
 
-        log(f'keyReleaseEvent: key released={event.key()}')
+        log(f'keyPressEvent: key released={event.key():08x}')
+        key = event.key()
+        if event.key() == Qt.Key_Shift:
+            self.shift_down = False
+            self.default_cursor = self.standard_cursor
+            self.setCursor(self.default_cursor)
+        event.accept()
 
     def wheelEvent(self, event):
         """Handle a mouse wheel rotation."""
@@ -469,7 +519,7 @@ class PySlipQt(QWidget):
         self.rectify_key_tile()
 
     def enterEvent(self, event):
-#        self.setFocus()
+        self.setFocus()
         pass
 
     def leaveEvent(self, event):
@@ -1631,7 +1681,9 @@ class PySlipQt(QWidget):
 
             # finally, pan to original map centre (updates widget)
             self.pan_position(geo)
-            self.events.EVT_PYSLIPQT_LEVEL.emit(PySlipQt.EVT_PYSLIPQT_LEVEL, level)
+
+            # raise the EVT_PYSLIPQT_LEVEL event
+            self.raise_event(PySlipQt.EVT_PYSLIPQT_LEVEL, level=level)
 
             # trigger an EVT_PYSLIPQT_POSITION event to update any user widget
             # TODO
@@ -2318,7 +2370,7 @@ class PySlipQt(QWidget):
         self.resizeEvent()
 
         # raise level change event
-        self.events.EVT_PYSLIPQT_LEVEL.emit(PySlipQt.EVT_PYSLIPQT_LEVEL, level)
+        self.raise_event(PySlipQt.EVT_PYSLIPQT_LEVEL, level=level)
 
         return True
 
@@ -2511,6 +2563,8 @@ class PySlipQt(QWidget):
         selection point, which is meaningless for point selection.
         """
 
+        log(f'sel_point_in_layer: layer={layer}, view_pt={view_pt}, map_pt={map_pt}')
+
         # TODO: speed this up?  Do we need to??
         # http://en.wikipedia.org/wiki/Kd-tree
         # would need to create kd-tree in AddLayer()
@@ -2525,7 +2579,7 @@ class PySlipQt(QWidget):
             pex = self.pex_point
 
         # find selected point on map/view
-        (map_x, map_y) = map_pt
+#        (map_x, map_y) = map_pt
         (view_x, view_y) = view_pt
         for (x, y, place, radius, colour, x_off, y_off, udata) in layer.data:
             (vp, _) = pex(place, (x,y), x_off, y_off, radius)
@@ -2589,15 +2643,16 @@ class PySlipQt(QWidget):
             return (selection, data, None)
         return None
 
-    def sel_image_in_layer(self, layer, point):
+    def sel_image_in_layer(self, layer, view_pt, geo_pt):
         """Decide if click location selects image object(s) in layer data.
 
-        layer  layer object we are looking in
-        point  click location tuple (geo or view)
+        layer    layer object we are looking in
+        view_pt  click location tuple (view coords)
+        geo_pt   click location (geo coords)
 
         Returns either None if no selection or a tuple (selection, data, relsel)
         where 'selection' is a tuple (xgeo,ygeo) or (xview,yview) of the object
-        placement point, 'data' is the data object associated with the selected
+        placement view_pt, 'data' is the data object associated with the selected
         object and 'relsel' is the relative position within the selected object
         of the mouse click.
 
@@ -2605,14 +2660,14 @@ class PySlipQt(QWidget):
         the layer at the mouse click position but only the first is selected.
         """
 
-        (ptx, pty) = point
         result = None
 
-        # get correct pex function and click point into view coords
-        clickpt = point
+        # get correct pex function and click view_pt into view coords
+        clickpt = view_pt
         pex = self.pex_extent_view
         if layer.map_rel:
-            clickpt = self.geo_to_view(point)
+            clickpt = view_pt
+#            clickpt = self.geo_to_view(view_pt)
             pex = self.pex_extent
         (xclick, yclick) = clickpt
 
