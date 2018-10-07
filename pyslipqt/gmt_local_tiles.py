@@ -163,27 +163,18 @@ class Tiles(tiles.BaseTiles):
         this tileset.
         """
 
-        log(f'Tile2Geo: tile={tile}')
-
         (xtile, ytile) = tile
-
-        log(f'Tile2Geo: xtile={xtile}, self.ppd_x={self.ppd_x}')
 
         # get extent information
         (min_xgeo, max_xgeo, min_ygeo, max_ygeo) = self.extent
 
-        log(f'Tile2Geo: min_xgeo={min_xgeo}, self.tile_size_x={self.tile_size_x}, self.ppd_x={self.ppd_x}')
-
         # compute tile size in degrees
         tdeg_x = self.tile_size_x / self.ppd_x
         tdeg_y = self.tile_size_y / self.ppd_y
-        log(f'Tile2Geo: tdeg_x=self.tile_size_x / self.ppd_x={tdeg_x}')
 
         # calculate the geo coordinates
         xgeo = xtile*tdeg_x + min_xgeo
         ygeo = max_ygeo - ytile*tdeg_y
-
-        log(f'Tile2Geo: xgeo={xgeo}')
 
 #        if self.wrap_x:
 #            while xgeo < min_xgeo:
@@ -195,8 +186,6 @@ class Tiles(tiles.BaseTiles):
 #                ygeo -= self.deg_span_y
 #            while ygeo < min_ygeo:
 #                ygeo += self.deg_span_y
-
-        log(f'Tile2Geo: returning xgeo={xgeo}')
 
         return (xgeo, ygeo)
 
