@@ -48,7 +48,7 @@ class _Layer(object):
 
     def __init__(self, id=0, painter=None, data=None, map_rel=True,
                  visible=False, show_levels=None, selectable=False,
-                 name="<no name given>", type=None):
+                 name="<no name given>", ltype=None):
         """Initialise the Layer object.
 
         id           unique layer ID
@@ -59,7 +59,7 @@ class _Layer(object):
         show_levels  list of levels at which to auto-show the level
         selectable   True if select operates on this layer, else False
         name         the name of the layer (for debug)
-        type         a layer 'type' flag
+        ltype        a layer 'type' flag
         """
 
         self.painter = painter          # routine to draw layer
@@ -70,7 +70,7 @@ class _Layer(object):
         self.selectable = selectable    # True if we can select on this layer
         self.delta = self.DefaultDelta  # minimum distance for selection
         self.name = name                # name of this layer
-        self.type = type                # type of layer
+        self.type = ltype               # type of layer
         self.id = id                    # ID of this layer
 
     def __str__(self):
@@ -528,9 +528,6 @@ class PySlipQt(QWidget):
     def paintEvent(self, event):
         """Draw the base map and then the layers on top."""
 
-        log(f'paintEvent: .key_tile_left={self.key_tile_left}, .key_tile_xoffset={self.key_tile_xoffset}')
-        log(f'paintEvent: .key_tile_top={self.key_tile_top}, .key_tile_yoffset={self.key_tile_yoffset}')
-
         ######
         # The "key" tile position is maintained by other code, we just
         # assume it's set.  Figure out how to draw tiles, set up 'row_list' and
@@ -911,7 +908,7 @@ class PySlipQt(QWidget):
     ######
 
     def add_layer(self, painter, data, map_rel, visible, show_levels,
-                 selectable, name, type):
+                 selectable, name, ltype):
         """Add a generic layer to the system.
 
         painter      the function used to paint the layer
@@ -921,7 +918,7 @@ class PySlipQt(QWidget):
         show_levels  list of levels at which to auto-show the layer
         selectable   True if select operates on this layer
         name         name for this layer
-        type         flag for layer 'type'
+        ltype        flag for layer 'type'
 
         Returns unique ID of the new layer.
         """
@@ -937,7 +934,7 @@ class PySlipQt(QWidget):
         # create layer, add unique ID to Z order list
         l = _Layer(id=id, painter=painter, data=data, map_rel=map_rel,
                    visible=visible, show_levels=show_levels,
-                   selectable=selectable, name=name, type=type)
+                   selectable=selectable, name=name, ltype=ltype)
 
         self.layer_mapping[id] = l
         self.layer_z_order.append(id)
@@ -1034,6 +1031,8 @@ class PySlipQt(QWidget):
         map_rel  points relative to map if True, else relative to view
         """
 
+        log(f'draw_point_layer: data={data}, map_rel={map_rel}')
+
         # get correct pex function - this handles map or view
         pex = self.pex_point_view
         if map_rel:
@@ -1044,7 +1043,9 @@ class PySlipQt(QWidget):
 
         # draw points on map/view
         for (x, y, place, radius, pcolour, x_off, y_off, udata) in data:
+            log(f'draw_point_layer: x={x}, y={y}, place={place}, radius={radius}, pcolour={pcolour}, x_off={x_off}, y_off={y_off}')
             (pt, ex) = pex(place, (x,y), x_off, y_off, radius)
+            log(f'draw_point_layer: pt={pt}, ex={ex}')
             if ex and radius:  # don't draw if not on screen or zero radius
                 if cache_pcolour != pcolour:
                     qcolour = QColor(*pcolour)
@@ -1370,11 +1371,16 @@ class PySlipQt(QWidget):
         The 'extent' here is the extent of the point+radius.
         """
 
+        log(f'pex_point_view: place={place}, view={view}, x_off={x_off}, y_off={y_off}, radius={radius}')
+        log(f'pex_point_view: .view_width={self.view_width}, .view_height={self.view_height}')
+
         # get point view coords and perturb point to placement
         (xview, yview) = view
         point = self.point_placement(place, xview, yview, x_off, y_off,
                                      self.view_width, self.view_height)
         (px, py) = point
+
+        log(f'pex_point_view: point={point}')
 
         # extent = (left, right, top, bottom) in view coords
         elx = px - radius
@@ -1382,11 +1388,15 @@ class PySlipQt(QWidget):
         ety = py - radius
         eby = py + radius
         extent = (elx, erx, ety, eby)
+        log(f'pex_point_view: extent={extent}')
 
         # decide if extent is off-view
         if erx < 0 or elx > self.view_width or eby < 0 or ety > self.view_height:
             # no extent if ALL of extent is off-view
+            log(f'pex_point_view: all of extent OFF VIEW')
             extent = None
+
+        log(f'pex_point_view: returning (point={point}, extent={extent})')
 
         return (point, extent)
 
@@ -1550,6 +1560,8 @@ class PySlipQt(QWidget):
         Returns a tuple (x, y) in view coordinates.
         """
 
+        log(f'point_placement: place={place}, x={x}, y={y}, x_off={x_off}, y_off={y_off}, dcw={dcw}, dch={dch}')
+
         dcw2 = dcw/2
         dch2 = dch/2
 
@@ -1562,6 +1574,8 @@ class PySlipQt(QWidget):
         elif place == 'cs': x+=dcw2;       y+=dch-y_off
         elif place == 'sw': x+=x_off;      y+=dch-y_off
         elif place == 'cw': x+=x_off;      y+=dch2
+
+        log(f'point_placement: returning ({x},{y})')
 
         return (x, y)
 
@@ -1878,6 +1892,8 @@ class PySlipQt(QWidget):
                          'data'       point user data object
         """
 
+        log(f'AddPointLayer: points={points}, map_rel={map_rel}, visible={visible}, show_levels={show_levels}, selectable={selectable}')
+
         # merge global and layer defaults
         if map_rel:
             default_placement = kwargs.get('placement', self.DefaultPointPlacement)
@@ -1899,7 +1915,9 @@ class PySlipQt(QWidget):
         # create draw data iterable for draw method
         draw_data = []              # list to hold draw data
 
+        log(f'AddPointLayer: points={points}')
         for pt in points:
+            log(f'AddPointLayer: pt={pt}')
             if len(pt) == 3:
                 (x, y, attributes) = pt
             elif len(pt) == 2:
@@ -1934,10 +1952,11 @@ class PySlipQt(QWidget):
             draw_data.append((float(x), float(y), placement,
                               radius, colour, offset_x, offset_y, udata))
 
+        log(f'AddPointLayer: draw_data={draw_data}')
         return self.add_layer(self.draw_point_layer, draw_data, map_rel,
                               visible=visible, show_levels=show_levels,
                               selectable=selectable, name=name,
-                              type=self.TypePoint)
+                              ltype=self.TypePoint)
 
     def AddImageLayer(self, data, map_rel=True, visible=True,
                       show_levels=None, selectable=False,
@@ -2041,7 +2060,7 @@ class PySlipQt(QWidget):
         return self.add_layer(self.draw_image_layer, draw_data, map_rel,
                              visible=visible, show_levels=show_levels,
                              selectable=selectable, name=name,
-                             type=self.TypeImage)
+                             ltype=self.TypeImage)
 
     def AddTextLayer(self, text, map_rel=True, visible=True, show_levels=None,
                      selectable=False, name='<text_layer>', **kwargs):
@@ -2133,7 +2152,7 @@ class PySlipQt(QWidget):
         return self.add_layer(self.draw_text_layer, draw_data, map_rel,
                              visible=visible, show_levels=show_levels,
                              selectable=selectable, name=name,
-                             type=self.TypeText)
+                             ltype=self.TypeText)
 
     def AddPolygonLayer(self, data, map_rel=True, visible=True,
                         show_levels=None, selectable=False,
@@ -2253,7 +2272,7 @@ class PySlipQt(QWidget):
         return self.add_layer(self.draw_polygon_layer, draw_data, map_rel,
                              visible=visible, show_levels=show_levels,
                              selectable=selectable, name=name,
-                             type=self.TypePolygon)
+                             ltype=self.TypePolygon)
 
     def AddPolylineLayer(self, data, map_rel=True, visible=True,
                         show_levels=None, selectable=False,
@@ -2343,7 +2362,7 @@ class PySlipQt(QWidget):
         return self.add_layer(self.draw_polyline_layer, draw_data, map_rel,
                              visible=visible, show_levels=show_levels,
                              selectable=selectable, name=name,
-                             type=self.TypePolyline)
+                             ltype=self.TypePolyline)
 
 ######
 # Positioning methods
@@ -2733,11 +2752,12 @@ class PySlipQt(QWidget):
             return None
         return (selection, data, None)
 
-    def sel_text_in_layer(self, layer, point):
+    def sel_text_in_layer(self, layer, view_point, geo_point):
         """Determine if clicked location selects a text object in layer data.
 
-        layer  layer object we are looking in
-        point  click location tuple (view or geo coordinates)
+        layer       layer object we are looking in
+        view_point  click location tuple (view coordinates)
+        geo_point   click location tuple (geo coordinates)
 
         Return ((x,y), data, None) for the selected text object, or None if
         no selection.  The x and y coordinates are view/geo depending on
@@ -2751,11 +2771,11 @@ class PySlipQt(QWidget):
         dist = 9999999.0
 
         # get correct pex function and mouse click in view coords
-        pex = self.pex_point_view
-        clickpt = point
+        pex = self.pex_point
+        clickpt = view_point
         if layer.map_rel:
-            pex = self.pex_point
-            clickpt = self.geo_to_view(point)
+            pex = self.pex_point_view
+            clickpt = geo_point
         (xclick, yclick) = clickpt
 
         # select text in map/view layer
@@ -2779,6 +2799,7 @@ class PySlipQt(QWidget):
 
         if dist <= delta:
             return result
+
         return None
 
     def sel_box_texts_in_layer(self, layer, ll, ur):

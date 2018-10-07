@@ -207,6 +207,10 @@ class PySlipQtDemo(QWidget):
         # selected point, if not None
         self.point_layer = None
 
+        # variables referenceing various layers
+        self.sel_text_layer = None
+        self.sel_text_highlight = None
+
         # finally, bind events to handlers
         self.pyslipqt.events.EVT_PYSLIPQT_LEVEL.connect(self.level_change_event)
         self.pyslipqt.events.EVT_PYSLIPQT_POSITION.connect(self.mouse_posn_event)
@@ -448,15 +452,14 @@ class PySlipQtDemo(QWidget):
             self.del_select_handler(layer)
             self.pyslipqt.SetLayerSelectable(layer, False)
 
-    def pointSelect(self, stype, layer_id, selection, data):
+    def pointSelect(self, event):
         """Handle map-relative point select exception from pyslipqt.
 
-        event  the event that contains these attributes:
-                   stype      the type of point selection: single or box
-                   layer_id   ID of the layer the select occurred on
-                   selection  [list of] tuple (xgeo,ygeo) of selected point
-                              (if None then no point(s) selected)
-                   data       userdata object of the selected point
+        event.type       the type of point selection: single or box
+        event.layer_id   ID of the layer the select occurred on
+        event.selection  [list of] tuple (xgeo,ygeo) of selected point
+                         (if None then no point(s) selected)
+        event.data       userdata object of the selected point
 
         The selection could be a single or box select.
 
@@ -470,29 +473,28 @@ class PySlipQtDemo(QWidget):
         EventBoxSelect events.
         """
 
-        if selection == self.sel_point:
+        if event.selection == self.sel_point:
             # same point(s) selected again, turn point(s) off
             self.pyslipqt.DeleteLayer(self.sel_point_layer)
             self.sel_point_layer = None
             self.sel_point = None
-        elif selection:
+        elif event.selection:
             # some other point(s) selected, delete previous selection, if any
             if self.sel_point_layer:
                 self.pyslipqt.DeleteLayer(self.sel_point_layer)
 
             # remember selection (need copy as highlight modifies attributes)
-            self.sel_point = copy.deepcopy(selection)
+            self.sel_point = copy.deepcopy(event.selection)
 
             # choose different highlight colour for different type of selection
             selcolour = '#00ffff'
-#            if stype == pyslipqt.EventSelect:
-            if stype == pyslipqt.PySlipQt.EVT_PYSLIPQT_SELECT: # TODO better visibility (like pySlip)
+            if event.type == pyslipqt.PySlipQt.EVT_PYSLIPQT_SELECT: # TODO better visibility (like pySlip)
                 selcolour = '#0000ff'
 
             # get selected points into form for display layer
             # delete 'colour' and 'radius' attributes as we want different values
             highlight = []
-            for (x, y, d) in selection[0]:      # TODO worry about the [0]
+            for (x, y, d) in event.selection[0]:      # TODO worry about the [0]
                 del d['colour']     # AddLayer...() ensures keys exist
                 del d['radius']
                 highlight.append((x, y, d))
@@ -572,15 +574,11 @@ class PySlipQtDemo(QWidget):
         and whether the same point is selected or not.
         """
 
-        log(f'pointViewSelect: type={event.type}, layer_id={event.layer_id}')
-        log(f'pointViewSelect: selection={event.selection}, data={event.data}')
-
         # if there is a previous selection, remove it
         if self.sel_point_view_layer:
             self.pyslipqt.DeleteLayer(self.sel_point_view_layer)
             self.sel_point_view_layer = None
 
-        log(f'pointViewSelect: selection={event.selection}, .sel_point_view={self.sel_point_view}')
         if event.selection and event.selection != self.sel_point_view:
             (points, _, _) = event.selection
 
@@ -675,11 +673,9 @@ class PySlipQtDemo(QWidget):
             self.sel_image = event.selection
 
             # get selected points into form for display layer
-            log(f'imageSelect: sel_points={sel_points}')
             new_points = []
             #for (x, y, im, d) in sel_points:
             for p in sel_points:
-                log(f'imageSelect: p={p}')
                 (x, y, im, d) = p
                 del d['colour']
                 del d['radius']
@@ -791,8 +787,15 @@ class PySlipQtDemo(QWidget):
         with debugging, as we can move the compass rose anywhere we like.
         """
 
+        log(f'imageViewSelect: event={event}')
+        for a in dir(event):
+            if not a.startswith('__'):
+                log(f'    {a}={getattr(event, a)}')
+
+        point = event.vposn
         selection = event.selection
-        relsel = event.relsel       # None if box select
+        relsel = event.relsel
+        log(f'imageViewSelect: point={point}, selection={selection}, relsel={relsel}')
 
         # only one image selectable, remove old selections (if any)
         if self.sel_image_view_layer:
@@ -802,7 +805,19 @@ class PySlipQtDemo(QWidget):
             self.pyslipqt.DeleteLayer(self.sel_imagepoint_view_layer)
             self.sel_imagepoint_view_layer = None
 
-        if selection:
+#        if selection:
+        if point:
+#            # highlight the point we clicked on in the view
+#            point = [(self.view_width-point[0], self.view_height-point[1])]
+#            log(f'imageViewSelect: adding point={point}')
+#            self.sel_imagepoint_view_layer = \
+#                self.pyslipqt.AddPointLayer(point, map_rel=False,
+#                                            colour='green',
+#                                            radius=5, visible=True,
+##                                            placement=img_placement,
+#                                            placement='ne',
+#                                            name='<sel_image_view_point>')
+
             # figure out compass rose attributes
             attr_dict = ImageViewData[0][3]
             img_placement = attr_dict['placement']
@@ -840,7 +855,7 @@ class PySlipQtDemo(QWidget):
             # add polygon outline around image
             p_dict = {'placement': img_placement, 'width': 3, 'colour': 'green', 'closed': True}
             poly_place_coords = {'ne': '(((-CR_Width,0),(0,0),(0,CR_Height),(-CR_Width,CR_Height)),p_dict)',
-                                 'ce': '(((-CR_Width,-CR_Height/2.0),(0,-CR_Height/2.0),(0,CR_Height/2.0),(-CR_Width,CR_Height/2.0)),p_dict)',
+                                'ce': '(((-CR_Width,-CR_Height/2.0),(0,-CR_Height/2.0),(0,CR_Height/2.0),(-CR_Width,CR_Height/2.0)),p_dict)',
                                  'se': '(((-CR_Width,-CR_Height),(0,-CR_Height),(0,0),(-CR_Width,0)),p_dict)',
                                  'cs': '(((-CR_Width/2.0,-CR_Height),(CR_Width/2.0,-CR_Height),(CR_Width/2.0,0),(-CR_Width/2.0,0)),p_dict)',
                                  'sw': '(((0,-CR_Height),(CR_Width,-CR_Height),(CR_Width,0),(0,0)),p_dict)',
@@ -872,24 +887,24 @@ class PySlipQtDemo(QWidget):
                                            show_levels=MRTextShowLevels,
                                            placement='ne')
         else:
-            self.pyslipqt.DeleteLayer(self.text_layer)
-            self.text_layer = None
             if self.sel_text_layer:
                 self.pyslipqt.DeleteLayer(self.sel_text_layer)
                 self.sel_text_layer = None
-                self.sel_text_point = None
+                self.sel_text_highlight = None
 
     def textShowOnOff(self, event):
         """Handle ShowOnOff event for text layer control."""
 
         if event:
-            self.pyslipqt.ShowLayer(self.text_layer)
             if self.sel_text_layer:
                 self.pyslipqt.ShowLayer(self.sel_text_layer)
+            if self.sel_text_highlight:
+                self.pyslipqt.ShowLayer(self.sel_text_highlight)
         else:
-            self.pyslipqt.HideLayer(self.text_layer)
             if self.sel_text_layer:
                 self.pyslipqt.HideLayer(self.sel_text_layer)
+            if self.sel_text_highlight:
+                self.pyslipqt.HideLayer(self.sel_text_highlight)
 
     def textSelectOnOff(self, event):
         """Handle SelectOnOff event for text layer control."""
@@ -906,10 +921,9 @@ class PySlipQtDemo(QWidget):
     def textSelect(self, event):
         """Map-relative text select event from pyslipqt.
 
-        event  the event that contains these attributes:
-                   type       the type of point selection: single or box
-                   selection  [list of] tuple (xgeo,ygeo) of selected point
-                              (if None then no point(s) selected)
+        event.type       the type of point selection: single or box
+        event.selection  [list of] tuple (xgeo,ygeo) of selected point
+                         (if None then no point(s) selected)
 
         The selection could be a single or box select.
 
@@ -917,18 +931,20 @@ class PySlipQtDemo(QWidget):
         off, selected points reselection leaves points selected.
         """
 
+        log(f'textSelect: event.type={event.type}, event.selection={event.selection}')
+
         selection = event.selection
 
         if self.sel_text_layer:
-            # turn previously selected point(s) off
-            self.sel_text = None
+            # turn previously highlighted point(s) off
             self.pyslipqt.DeleteLayer(self.sel_text_layer)
             self.sel_text_layer = None
+        if self.sel_text_highlight:
+            self.pyslipqt.DeleteLayer(self.sel_text_highlight)
+            self.sel_text_highlight = None
 
         if selection:
-            if self.sel_text_layer:
-                self.pyslipqt.DeleteLayer(self.sel_text_layer)
-            self.sel_text = selection
+            self.sel_text_layer = selection
 
             # get selected points into form for display layer
             points = []
@@ -939,14 +955,15 @@ class PySlipQtDemo(QWidget):
                 del d['offset_y']
                 points.append((x, y, d))
 
-            self.sel_text_layer = \
+            log(f'textSelect: highlight points={points}')
+            self.sel_text_highlight = \
                 self.pyslipqt.AddPointLayer(points, map_rel=True,
                                             colour='#0000ff',
                                             radius=5, visible=True,
                                             show_levels=MRTextShowLevels,
                                             name='<sel_text_layer>')
-            self.pyslipqt.PlaceLayerBelowLayer(self.sel_text_layer,
-                                               self.text_layer)
+            self.pyslipqt.PlaceLayerBelowLayer(self.sel_text_highlight,
+                                               self.sel_text_layer)
 
         return True
 
