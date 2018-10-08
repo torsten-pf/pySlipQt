@@ -580,7 +580,7 @@ class PySlipQtDemo(QWidget):
             self.sel_point_view_layer = None
 
         if event.selection and event.selection != self.sel_point_view:
-            (points, _, _) = event.selection
+            (points, _) = event.selection
 
             # it's a box selection
             self.sel_point_view = event.selection
@@ -666,7 +666,7 @@ class PySlipQtDemo(QWidget):
             self.pyslipqt.DeleteLayer(self.sel_image_layer)
             self.sel_image_layer = self.sel_image = None
         elif event.selection:
-            (sel_points, _, _) = event.selection
+            (sel_points, _) = event.selection
             # new image selected, show highlight
             if self.sel_image_layer:
                 self.pyslipqt.DeleteLayer(self.sel_image_layer)
@@ -676,7 +676,7 @@ class PySlipQtDemo(QWidget):
             new_points = []
             #for (x, y, im, d) in sel_points:
             for p in sel_points:
-                (x, y, im, d) = p
+                (x, y, d) = p
                 del d['colour']
                 del d['radius']
                 new_points.append((x, y, d))

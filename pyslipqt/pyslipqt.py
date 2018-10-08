@@ -357,7 +357,7 @@ class PySlipQt(QWidget):
         """
 
         event = PySlipQt.PySlipQtEvent(etype, **kwargs)
-        self.dump_event(event)
+#        self.dump_event(event)
         self.pyslipqt_event_dict[etype](event)
 
     ######
@@ -428,8 +428,7 @@ class PySlipQt(QWidget):
                     # raise the EVT_PYSLIPQT_SELECT event
                     self.raise_event(PySlipQt.EVT_PYSLIPQT_SELECT,
                                      mposn=clickpt_g, vposn=clickpt_v,
-                                     layer_id=lid, selection=sel,
-                                     data=[], relsel=[])
+                                     layer_id=lid, selection=sel, relsel=[])
 
 #                    # user code possibly updated screen
 #                    delayed_paint = True
@@ -2630,8 +2629,9 @@ class PySlipQt(QWidget):
                                   'radius': radius,
                                   'colour': colour,
                                   'offset_x': x_off,
-                                  'offset_y': y_off})
-                    result = ([rpt], udata, None)
+                                  'offset_y': y_off,
+                                  'data': udata})
+                    result = ([rpt], None)
                     dist = d
 
         if dist <= layer.delta:
@@ -2707,7 +2707,6 @@ class PySlipQt(QWidget):
         pex = self.pex_extent_view
         if layer.map_rel:
             clickpt = view_pt
-#            clickpt = self.geo_to_view(view_pt)
             pex = self.pex_extent
         (xclick, yclick) = clickpt
 
@@ -2718,13 +2717,14 @@ class PySlipQt(QWidget):
             if e:
                 (lx, rx, ty, by) = e
                 if lx <= xclick <= rx and ty <= yclick <= by:
-                    selection = [(x, y, bmp, {'placement': place,
-                                              'radius': radius,
-                                              'colour': colour,
-                                              'offset_x': x_off,
-                                              'offset_y': y_off})]
+                    selection = [(x, y, {'placement': place,
+                                         'radius': radius,
+                                         'colour': colour,
+                                         'offset_x': x_off,
+                                         'offset_y': y_off,
+                                         'data': udata})]
                     relsel = (int(xclick - lx), int(yclick - ty))
-                    result = (selection, udata, relsel)
+                    result = (selection, relsel)
                     break
 
         return result
@@ -2899,8 +2899,9 @@ class PySlipQt(QWidget):
             if pip(poly, point, place, x_off, y_off):
                 sel = (poly, {'placement': place,
                               'offset_x': x_off,
-                              'offset_y': y_off})
-                result = ([sel], udata, None)
+                              'offset_y': y_off,
+                              'data': udata})
+                result = ([sel], None)
                 break
 
         return result
@@ -2952,9 +2953,8 @@ class PySlipQt(QWidget):
         layer  layer object we are looking in
         point  tuple of click position (xgeo,ygeo) or (xview,yview)
 
-        Returns a tuple (sel, udata, seg) if a polyline was selected.  'sel'
-        is the tuple (poly, attrib), 'udata' is userdata attached to the
-        selected polyline and 'seg' is a tuple (pt1, pt2) of nearest segment
+        Returns a tuple (sel, seg) if a polyline was selected.  'sel' is the
+        tuple (poly, attrib) and 'seg' is a tuple (pt1, pt2) of nearest segment
         endpoints.  Returns None if no polyline selected.
         """
 
@@ -2972,8 +2972,9 @@ class PySlipQt(QWidget):
             if seg:
                 sel = (polyline, {'placement': place,
                                   'offset_x': x_off,
-                                  'offset_y': y_off})
-                result = ([sel], udata, seg)
+                                  'offset_y': y_off,
+                                  'data': udata})
+                result = ([sel], seg)
                 break
 
         return result
@@ -2991,7 +2992,6 @@ class PySlipQt(QWidget):
         """
 
         selection = []
-        data = []
 
         # get correct pex function and box limits in view coords
         pex = self.pex_polygon_view
@@ -3010,10 +3010,10 @@ class PySlipQt(QWidget):
                 if lx <= plx and prx <= rx and ty <= pty and pby <= by:
                     sel = (poly, {'placement': place,
                                   'offset_x': x_off,
-                                  'offset_y': y_off})
+                                  'offset_y': y_off,
+                                  'data': udata})
                     selection.append(sel)
-                    data.append(udata)
 
         if not selection:
             return None
-        return (selection, data, None)
+        return (selection, None)
