@@ -1649,18 +1649,22 @@ class PySlipQt(QWidget):
         self.layer_z_order.append(id)
         self.update()
 
-    def PlaceLayerBelowLayer(self, id, top_id):
+    def PlaceLayerBelowLayer(self, below, top):
         """Place a layer so it will be drawn behind another layer.
 
-        id      ID of layer to place underneath 'top_id'
-        top_id  ID of layer to be drawn *above* 'id'
+        below  ID of layer to place underneath 'top'
+        top    ID of layer to be drawn *above* 'below'
         """
 
-        self.layer_z_order.remove(id)
-        i = self.layer_z_order.index(top_id)
-        self.layer_z_order.insert(i, id)
+        log(f'PlaceLayerBelowLayer: below={below}, top={top}')
+        log(f'PlaceLayerBelowLayer: .layer_z_order={self.layer_z_order}')
+
+        self.layer_z_order.remove(below)
+        i = self.layer_z_order.index(top)
+        self.layer_z_order.insert(i, below)
         self.update()
 
+# UNUSED
     def dump_key_data(self):
         """Debug function to return string describing 'key' tile data."""
 
