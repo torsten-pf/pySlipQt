@@ -494,7 +494,7 @@ class PySlipQtDemo(QWidget):
             # get selected points into form for display layer
             # delete 'colour' and 'radius' attributes as we want different values
             highlight = []
-            for (x, y, d) in event.selection[0]:      # TODO worry about the [0]
+            for (x, y, d) in event.selection:
                 del d['colour']     # AddLayer...() ensures keys exist
                 del d['radius']
                 highlight.append((x, y, d))
@@ -580,14 +580,14 @@ class PySlipQtDemo(QWidget):
             self.sel_point_view_layer = None
 
         if event.selection and event.selection != self.sel_point_view:
-            (points, _) = event.selection
+#            (points, _) = event.selection
 
             # it's a box selection
             self.sel_point_view = event.selection
 
             # get selected points into form for display layer
             highlight = []
-            for (x, y, d) in points:
+            for (x, y, d) in event.selection:
                 del d['colour']
                 del d['radius']
                 highlight.append((x, y, d))
@@ -666,7 +666,7 @@ class PySlipQtDemo(QWidget):
             self.pyslipqt.DeleteLayer(self.sel_image_layer)
             self.sel_image_layer = self.sel_image = None
         elif event.selection:
-            (sel_points, _) = event.selection
+#            (sel_points, _) = event.selection
             # new image selected, show highlight
             if self.sel_image_layer:
                 self.pyslipqt.DeleteLayer(self.sel_image_layer)
@@ -675,7 +675,7 @@ class PySlipQtDemo(QWidget):
             # get selected points into form for display layer
             new_points = []
             #for (x, y, im, d) in sel_points:
-            for p in sel_points:
+            for p in event.selection:
                 (x, y, d) = p
                 del d['colour']
                 del d['radius']
@@ -787,15 +787,9 @@ class PySlipQtDemo(QWidget):
         with debugging, as we can move the compass rose anywhere we like.
         """
 
-        log(f'imageViewSelect: event={event}')
-        for a in dir(event):
-            if not a.startswith('__'):
-                log(f'    {a}={getattr(event, a)}')
-
         point = event.vposn
         selection = event.selection
         relsel = event.relsel
-        log(f'imageViewSelect: point={point}, selection={selection}, relsel={relsel}')
 
         # only one image selectable, remove old selections (if any)
         if self.sel_image_view_layer:
@@ -805,19 +799,7 @@ class PySlipQtDemo(QWidget):
             self.pyslipqt.DeleteLayer(self.sel_imagepoint_view_layer)
             self.sel_imagepoint_view_layer = None
 
-#        if selection:
-        if point:
-#            # highlight the point we clicked on in the view
-#            point = [(self.view_width-point[0], self.view_height-point[1])]
-#            log(f'imageViewSelect: adding point={point}')
-#            self.sel_imagepoint_view_layer = \
-#                self.pyslipqt.AddPointLayer(point, map_rel=False,
-#                                            colour='green',
-#                                            radius=5, visible=True,
-##                                            placement=img_placement,
-#                                            placement='ne',
-#                                            name='<sel_image_view_point>')
-
+        if selection:
             # figure out compass rose attributes
             attr_dict = ImageViewData[0][3]
             img_placement = attr_dict['placement']
@@ -948,7 +930,7 @@ class PySlipQtDemo(QWidget):
 
             # get selected points into form for display layer
             points = []
-            for (x, y, t, d) in selection:
+            for (x, y, d) in selection:
                 del d['colour']     # remove point attributes, want different
                 del d['radius']
                 del d['offset_x']   # remove offsets, we want point not text
@@ -1522,12 +1504,11 @@ class PySlipQtDemo(QWidget):
         global CR_Width, CR_Height
 
         # create PointData - lots of it to test handling
-        PointData = [(150.0, -20.0, {'data': 'point(150.0,-20.0)'})]
-#        PointData = []
-#        for lon in range(-70, 290+1, 5):
-#            for lat in range(-65, 65+1, 5):
-#                udata = 'point(%s,%s)' % (str(lon), str(lat))
-#                PointData.append((lon, lat, {'data': udata}))
+        PointData = []
+        for lon in range(-70, 290+1, 5):
+            for lat in range(-65, 65+1, 5):
+                udata = 'point(%s,%s)' % (str(lon), str(lat))
+                PointData.append((lon, lat, {'data': udata}))
         PointDataColour = '#ff000080'	# semi-transparent
 
         # create PointViewData - a point-rendition of 'PYSLIP'
@@ -1602,55 +1583,55 @@ class PySlipQtDemo(QWidget):
         capital = {'placement': 'se', 'fontsize': 14, 'colour': 'red',
                    'textcolour': 'red'}
         TextData = [(151.20, -33.85, 'Sydney', text_placement),
-                    (144.95, -37.84, 'Melbourne', {'placement': 'ce'}),
-                    (153.08, -27.48, 'Brisbane', text_placement),
-                    (115.86, -31.96, 'Perth', transparent_placement),
-                    (138.30, -35.52, 'Adelaide', text_placement),
-                    (130.98, -12.61, 'Darwin', text_placement),
-                    (147.31, -42.96, 'Hobart', text_placement),
-                    (174.75, -36.80, 'Auckland', text_placement),
-                    (174.75, -41.29, 'Wellington', capital),
-                    (172.61, -43.51, 'Christchurch', text_placement),
-                    (168.74, -45.01, 'Queenstown', text_placement),
-                    (147.30, -09.41, 'Port Moresby', capital),
-                    (106.822922, -6.185451, 'Jakarta', capital),
-                    (110.364444, -7.801389, 'Yogyakarta', text_placement),
-                    (120.966667, 14.563333, 'Manila', capital),
-                    (271.74, +40.11, 'Champaign', text_placement),
-                    (160.0, -30.0, 'Agnes Napier - 1855',
-                        {'placement': 'cw', 'offset_x': 20, 'colour': 'green'}),
-                    (145.0, -11.0, 'Venus - 1826',
-                        {'placement': 'sw', 'colour': 'green'}),
-                    (156.0, -23.0, 'Wolverine - 1879',
-                        {'placement': 'ce', 'colour': 'green'}),
-                    (150.0, -15.0, 'Thomas Day - 1884',
-                        {'colour': 'green'}),
-                    (165.0, -19.0, 'Sybil - 1902',
-                        {'placement': 'cw', 'colour': 'green'}),
-                    (158.55, -19.98, 'Prince of Denmark - 1863',
-                        {'placement': 'nw', 'offset_x': 20, 'colour': 'green'}),
-                    (146.867525, -19.152182, 'Moltke - 1911',
-                        {'placement': 'ce', 'offset_x': 20, 'colour': 'green'})
+#                    (144.95, -37.84, 'Melbourne', {'placement': 'ce'}),
+#                    (153.08, -27.48, 'Brisbane', text_placement),
+#                    (115.86, -31.96, 'Perth', transparent_placement),
+#                    (138.30, -35.52, 'Adelaide', text_placement),
+#                    (130.98, -12.61, 'Darwin', text_placement),
+#                    (147.31, -42.96, 'Hobart', text_placement),
+#                    (174.75, -36.80, 'Auckland', text_placement),
+#                    (174.75, -41.29, 'Wellington', capital),
+#                    (172.61, -43.51, 'Christchurch', text_placement),
+#                    (168.74, -45.01, 'Queenstown', text_placement),
+#                    (147.30, -09.41, 'Port Moresby', capital),
+#                    (106.822922, -6.185451, 'Jakarta', capital),
+#                    (110.364444, -7.801389, 'Yogyakarta', text_placement),
+#                    (120.966667, 14.563333, 'Manila', capital),
+#                    (271.74, +40.11, 'Champaign', text_placement),
+#                    (160.0, -30.0, 'Agnes Napier - 1855',
+#                        {'placement': 'cw', 'offset_x': 20, 'colour': 'green'}),
+#                    (145.0, -11.0, 'Venus - 1826',
+#                        {'placement': 'sw', 'colour': 'green'}),
+#                    (156.0, -23.0, 'Wolverine - 1879',
+#                        {'placement': 'ce', 'colour': 'green'}),
+#                    (150.0, -15.0, 'Thomas Day - 1884',
+#                        {'colour': 'green'}),
+#                    (165.0, -19.0, 'Sybil - 1902',
+#                        {'placement': 'cw', 'colour': 'green'}),
+#                    (158.55, -19.98, 'Prince of Denmark - 1863',
+#                        {'placement': 'nw', 'offset_x': 20, 'colour': 'green'}),
+#                    (146.867525, -19.152182, 'Moltke - 1911',
+#                        {'placement': 'ce', 'offset_x': 20, 'colour': 'green'})
                    ]
-        if sys.platform != 'win32':
-            TextData.extend([
-                    (110.5, 24.783333, '阳朔县 (Yangshuo)', {'placement': 'sw'}),
-                    (117.183333, 39.133333, '天津市 (Tianjin)', {'placement': 'sw'}),
-                    (106.36, +10.36, 'Mỹ Tho', {'placement': 'ne'}),
-                    (105.85, +21.033333, 'Hà Nội', capital),
-                    (106.681944, 10.769444, 'Thành phố Hồ Chí Minh',
-                        {'placement': 'sw'}),
-                    (132.47, +34.44, '広島市 (Hiroshima City)',
-                        text_placement),
-                    (114.158889, +22.278333, '香港 (Hong Kong)',
-                        {'placement': 'nw'}),
-                    (98.392, 7.888, 'ภูเก็ต (Phuket)', text_placement),
-                    ( 96.16, +16.80, 'ရန်ကုန် (Yangon)', capital),
-                    (104.93, +11.54, ' ភ្នំពេញ (Phnom Penh)',
-                        {'placement': 'ce', 'fontsize': 12, 'colour': 'red'}),
-                    (100.49, +13.75, 'กรุงเทพมหานคร (Bangkok)', capital),
-                    ( 77.56, +34.09, 'གླེ་(Leh)', text_placement),
-                    (84.991275, 24.695102, 'बोधगया (Bodh Gaya)', text_placement)])
+#        if sys.platform != 'win32':
+#            TextData.extend([
+#                    (110.5, 24.783333, '阳朔县 (Yangshuo)', {'placement': 'sw'}),
+#                    (117.183333, 39.133333, '天津市 (Tianjin)', {'placement': 'sw'}),
+#                    (106.36, +10.36, 'Mỹ Tho', {'placement': 'ne'}),
+#                    (105.85, +21.033333, 'Hà Nội', capital),
+#                    (106.681944, 10.769444, 'Thành phố Hồ Chí Minh',
+#                        {'placement': 'sw'}),
+#                    (132.47, +34.44, '広島市 (Hiroshima City)',
+#                        text_placement),
+#                    (114.158889, +22.278333, '香港 (Hong Kong)',
+#                        {'placement': 'nw'}),
+#                    (98.392, 7.888, 'ภูเก็ต (Phuket)', text_placement),
+#                    ( 96.16, +16.80, 'ရန်ကုန် (Yangon)', capital),
+#                    (104.93, +11.54, ' ភ្នំពេញ (Phnom Penh)',
+#                        {'placement': 'ce', 'fontsize': 12, 'colour': 'red'}),
+#                    (100.49, +13.75, 'กรุงเทพมหานคร (Bangkok)', capital),
+#                    ( 77.56, +34.09, 'གླེ་(Leh)', text_placement),
+#                    (84.991275, 24.695102, 'बोधगया (Bodh Gaya)', text_placement)])
 
         TextViewData = [(0, 0, '%s %s' % (DemoName, DemoVersion))]
         TextViewDataPlace = 'cn'

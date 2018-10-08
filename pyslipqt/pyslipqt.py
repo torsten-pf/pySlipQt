@@ -421,14 +421,21 @@ class PySlipQt(QWidget):
                 # if layer visible and selectable
                 if l.selectable and l.visible:
                     log(f'mouseReleaseEvent: layer is selectable and visible')
-                    sel = self.layerPSelHandler[l.type](l, clickpt_v, clickpt_g)
-                    log(f'mouseReleaseEvent: sel={sel} returned from handler')
-                    log(f'mouseReleaseEvent: raising SELECT event, clickpt_g={clickpt_g}, clickpt_v={clickpt_v}, lid={lid}, sel={sel}')
+                    result = self.layerPSelHandler[l.type](l, clickpt_v, clickpt_g)
+                    log(f'mouseReleaseEvent: result={result} returned from handler')
+                    if result:
+                        (sel, relsel) = result
+                        log(f'mouseReleaseEvent: raising SELECT event, clickpt_g={clickpt_g}, clickpt_v={clickpt_v}, lid={lid}, sel={sel}, relsel={relsel}')
 
-                    # raise the EVT_PYSLIPQT_SELECT event
-                    self.raise_event(PySlipQt.EVT_PYSLIPQT_SELECT,
-                                     mposn=clickpt_g, vposn=clickpt_v,
-                                     layer_id=lid, selection=sel, relsel=[])
+                        # raise the EVT_PYSLIPQT_SELECT event
+                        self.raise_event(PySlipQt.EVT_PYSLIPQT_SELECT,
+                                         mposn=clickpt_g, vposn=clickpt_v,
+                                         layer_id=lid, selection=sel, relsel=relsel)
+                    else:
+                        # raise an empty EVT_PYSLIPQT_SELECT event
+                        self.raise_event(PySlipQt.EVT_PYSLIPQT_SELECT,
+                                         mposn=clickpt_g, vposn=clickpt_v,
+                                         layer_id=lid, selection=None, relsel=None)
 
 #                    # user code possibly updated screen
 #                    delayed_paint = True
@@ -1050,8 +1057,6 @@ class PySlipQt(QWidget):
         map_rel  points relative to map if True, else relative to view
         """
 
-        log(f'draw_point_layer: data={data}, map_rel={map_rel}')
-
         # get correct pex function - this handles map or view
         pex = self.pex_point_view
         if map_rel:
@@ -1062,9 +1067,7 @@ class PySlipQt(QWidget):
 
         # draw points on map/view
         for (x, y, place, radius, pcolour, x_off, y_off, udata) in data:
-            log(f'draw_point_layer: x={x}, y={y}, place={place}, radius={radius}, pcolour={pcolour}, x_off={x_off}, y_off={y_off}')
             (pt, ex) = pex(place, (x,y), x_off, y_off, radius)
-            log(f'draw_point_layer: pt={pt}, ex={ex}')
             if ex and radius:  # don't draw if not on screen or zero radius
                 if cache_pcolour != pcolour:
                     qcolour = QColor(*pcolour)
@@ -1390,16 +1393,11 @@ class PySlipQt(QWidget):
         The 'extent' here is the extent of the point+radius.
         """
 
-        log(f'pex_point_view: place={place}, view={view}, x_off={x_off}, y_off={y_off}, radius={radius}')
-        log(f'pex_point_view: .view_width={self.view_width}, .view_height={self.view_height}')
-
         # get point view coords and perturb point to placement
         (xview, yview) = view
         point = self.point_placement(place, xview, yview, x_off, y_off,
                                      self.view_width, self.view_height)
         (px, py) = point
-
-        log(f'pex_point_view: point={point}')
 
         # extent = (left, right, top, bottom) in view coords
         elx = px - radius
@@ -1407,20 +1405,16 @@ class PySlipQt(QWidget):
         ety = py - radius
         eby = py + radius
         extent = (elx, erx, ety, eby)
-        log(f'pex_point_view: extent={extent}')
 
         # decide if extent is off-view
         if erx < 0 or elx > self.view_width or eby < 0 or ety > self.view_height:
             # no extent if ALL of extent is off-view
-            log(f'pex_point_view: all of extent OFF VIEW')
             extent = None
-
-        log(f'pex_point_view: returning (point={point}, extent={extent})')
 
         return (point, extent)
 
     def pex_extent(self, place, geo, x_off, y_off, w, h):
-        """Given an extent object convert point/extent coords to view coords.
+        """Convert extent geo position to position & extent in view coords.
 
         place         placement string
         geo           point position tuple (xgeo, ygeo)
@@ -1445,19 +1439,20 @@ class PySlipQt(QWidget):
         erx = px + w
         ety = py
         eby = py + h
+        extent = (elx, erx, ety, eby)
 
         # decide if extent is off-view
         if erx < 0 or elx > self.view_width or eby < 0 or ety > self.view_height:
             # no extent if ALL of extent is off-view
             extent = None
 
-        return (point, (elx, erx, ety, eby))
+        return (point, extent)
 
     def pex_extent_view(self, place, view, x_off, y_off, w, h):
         """Given a view object convert point/extent coords to view coords.
 
         place         placement string
-        view          point position tuple (xview, yview)
+        view          point position tuple (xview, yview) (view coords)
         x_off, y_off  X and Y offsets
         w, h          width and height of extent in pixels
 
@@ -1477,16 +1472,17 @@ class PySlipQt(QWidget):
         (px, py) = point
 
         # extent = (left, right, top, bottom) in view coords
-        elx = xview
-        erx = xview + w
-        ety = yview
-        eby = yview + h
+        elx = px
+        erx = px + w
+        ety = py
+        eby = py + h
+        extent = (elx, erx, ety, eby)
 
         if erx < 0 or elx > self.view_width or eby < 0 or ety > self.view_height:
             # no extent if ALL of extent is off-view
             extent = None
 
-        return (point, (elx, erx, ety, eby))
+        return (point, extent)
 
     def pex_polygon(self, place, poly, x_off, y_off):
         """Given a polygon/line obj (geo coords) get points/extent in view coords.
@@ -1579,8 +1575,6 @@ class PySlipQt(QWidget):
         Returns a tuple (x, y) in view coordinates.
         """
 
-        log(f'point_placement: place={place}, x={x}, y={y}, x_off={x_off}, y_off={y_off}, dcw={dcw}, dch={dch}')
-
         dcw2 = dcw/2
         dch2 = dch/2
 
@@ -1593,8 +1587,6 @@ class PySlipQt(QWidget):
         elif place == 'cs': x+=dcw2;       y+=dch-y_off
         elif place == 'sw': x+=x_off;      y+=dch-y_off
         elif place == 'cw': x+=x_off;      y+=dch2
-
-        log(f'point_placement: returning ({x},{y})')
 
         return (x, y)
 
@@ -1911,8 +1903,6 @@ class PySlipQt(QWidget):
                          'data'       point user data object
         """
 
-        log(f'AddPointLayer: points={points}, map_rel={map_rel}, visible={visible}, show_levels={show_levels}, selectable={selectable}')
-
         # merge global and layer defaults
         if map_rel:
             default_placement = kwargs.get('placement', self.DefaultPointPlacement)
@@ -1934,9 +1924,7 @@ class PySlipQt(QWidget):
         # create draw data iterable for draw method
         draw_data = []              # list to hold draw data
 
-        log(f'AddPointLayer: points={points}')
         for pt in points:
-            log(f'AddPointLayer: pt={pt}')
             if len(pt) == 3:
                 (x, y, attributes) = pt
             elif len(pt) == 2:
@@ -1971,7 +1959,6 @@ class PySlipQt(QWidget):
             draw_data.append((float(x), float(y), placement,
                               radius, colour, offset_x, offset_y, udata))
 
-        log(f'AddPointLayer: draw_data={draw_data}')
         return self.add_layer(self.draw_point_layer, draw_data, map_rel,
                               visible=visible, show_levels=show_levels,
                               selectable=selectable, name=name,
@@ -2601,8 +2588,6 @@ class PySlipQt(QWidget):
         selection point, which is meaningless for point selection.
         """
 
-        log(f'sel_point_in_layer: layer={layer}, view_pt={view_pt}, map_pt={map_pt}')
-
         # TODO: speed this up?  Do we need to??
         # http://en.wikipedia.org/wiki/Kd-tree
         # would need to create kd-tree in AddLayer() (slower)
@@ -2618,7 +2603,6 @@ class PySlipQt(QWidget):
 
         # find selected point on map/view
         (view_x, view_y) = view_pt
-        log(f'sel_point_in_layer: view_x={view_x}, view_y={view_y}')
         for (x, y, place, radius, colour, x_off, y_off, udata) in layer.data:
             (vp, _) = pex(place, (x,y), x_off, y_off, radius)
             if vp:
@@ -2689,11 +2673,10 @@ class PySlipQt(QWidget):
         view_pt  click location tuple (view coords)
         geo_pt   click location (geo coords)
 
-        Returns either None if no selection or a tuple (selection, data, relsel)
+        Returns either None if no selection or a tuple (selection, relsel)
         where 'selection' is a tuple (xgeo,ygeo) or (xview,yview) of the object
-        placement view_pt, 'data' is the data object associated with the selected
-        object and 'relsel' is the relative position within the selected object
-        of the mouse click.
+        placement view_pt and 'relsel' is the relative position within the
+        selected object of the mouse click.
 
         Note that there could conceivably be more than one image selectable in
         the layer at the mouse click position but only the first found is
@@ -2706,17 +2689,19 @@ class PySlipQt(QWidget):
         clickpt = view_pt
         pex = self.pex_extent_view
         if layer.map_rel:
-            clickpt = view_pt
+            clickpt = geo_pt
             pex = self.pex_extent
         (xclick, yclick) = clickpt
 
-        # select image
+        (view_x, view_y) = view_pt
+
+        # selected an image?
         for (x, y, bmp, w, h, place,
                 x_off, y_off, radius, colour, udata) in layer.data:
             (_, e) = pex(place, (x,y), x_off, y_off, w, h)
             if e:
                 (lx, rx, ty, by) = e
-                if lx <= xclick <= rx and ty <= yclick <= by:
+                if lx <= view_x <= rx and ty <= view_y <= by:
                     selection = [(x, y, {'placement': place,
                                          'radius': radius,
                                          'colour': colour,
@@ -2780,47 +2765,64 @@ class PySlipQt(QWidget):
         view_point  click location tuple (view coordinates)
         geo_point   click location tuple (geo coordinates)
 
-        Return ((x,y), data, None) for the selected text object, or None if
+        Return ([(x, y, attr)], None) for the selected text object, or None if
         no selection.  The x and y coordinates are view/geo depending on
         the layer.map_rel value.
 
         ONLY SELECTS ON POINT, NOT EXTENT.
         """
 
+        log(f'sel_text_in_layer: layer={layer}')
+        log(f'sel_text_in_layer: view_point={view_point}, geo_point={geo_point}')
+
         result = None
         delta = layer.delta
         dist = 9999999.0
 
         # get correct pex function and mouse click in view coords
-        pex = self.pex_point
+        pex = self.pex_point_view
+        log(f'sel_text_in_layer: assuming use of pex_point_view()')
         clickpt = view_point
         if layer.map_rel:
-            pex = self.pex_point_view
+            log(f'sel_text_in_layer: using pex_point()')
+            pex = self.pex_point
             clickpt = geo_point
         (xclick, yclick) = clickpt
+        log(f'sel_text_in_layer: xclick={xclick}, yclick={yclick}')
+
+        (view_x, view_y) = view_point
 
         # select text in map/view layer
         for (x, y, text, place, radius, colour,
-                 tcolour, fname, fsize, x_off, y_off, data) in layer.data:
+                 tcolour, fname, fsize, x_off, y_off, udata) in layer.data:
             (vp, ex) = pex(place, (x,y), 0, 0, radius)
+            log(f'sel_text_in_layer: pex() returned {(vp, ex)}')
             if vp:
                 (px, py) = vp
-                d = (px - xclick)**2 + (py - yclick)**2
+                log(f'sel_text_in_layer: px={px}, xclick={xclick}, py={py}, yclick={yclick}')
+#                d = (px - xclick)**2 + (py - yclick)**2
+                d = (px - view_x)**2 + (py - view_y)**2
+                log(f'sel_text_in_layer: possible, d={d}, dist={dist}')
                 if d < dist:
-                    selection = (x, y, text, {'placement': place,
-                                              'radius': radius,
-                                              'colour': colour,
-                                              'textcolour': tcolour,
-                                              'fontname': fname,
-                                              'fontsize': fsize,
-                                              'offset_x': x_off,
-                                              'offset_y': y_off})
-                    result = ([selection], data, None)
+                    selection = (x, y, {'placement': place,
+                                        'radius': radius,
+                                        'colour': colour,
+                                        'textcolour': tcolour,
+                                        'fontname': fname,
+                                        'fontsize': fsize,
+                                        'offset_x': x_off,
+                                        'offset_y': y_off,
+                                        'data': udata})
+                    result = ([selection], None)
+                    log(f'sel_text_in_layer: hit, result={result}')
                     dist = d
 
+        log(f'sel_text_in_layer: dist={dist}, delta={delta}')
         if dist <= delta:
+            log(f'sel_text_in_layer: returning {result}')
             return result
 
+        log(f'sel_text_in_layer: no close hits, returning None')
         return None
 
     def sel_box_texts_in_layer(self, layer, ll, ur):
