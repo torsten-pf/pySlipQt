@@ -3091,6 +3091,8 @@ class PySlipQt(QWidget):
         Returns True if point is inside the polygon.
         """
 
+        log(f'point_in_polygon_view: poly={poly}, view={view}, place={place}, x_off={x_off}, y_off={y_off}')
+
         # convert polygon and placement into list of (x,y) tuples
         view_poly = []
         for (x, y) in poly:

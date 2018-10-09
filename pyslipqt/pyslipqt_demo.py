@@ -1093,6 +1093,9 @@ class PySlipQtDemo(QWidget):
         it off, unless previous selection again selected.
         """
 
+        log(f'polySelect: event:')
+        self.dump_event(event)
+
         # .seletion: [(poly,attr), ...]
         selection = event.selection
 
@@ -1179,6 +1182,9 @@ class PySlipQtDemo(QWidget):
 
         The selection could be a single or box select.
         """
+
+        log(f'polyViewSelect: event:')
+        self.dump_event(event)
 
         selection = event.selection
 
@@ -1488,6 +1494,16 @@ class PySlipQtDemo(QWidget):
 
         self.pyslipqt.warn('Sorry, %s is not implemented at the moment.' % msg)
 
+    def dump_event(self, event):
+        """Dump an event to the log.
+
+        Print attributes and values for non_dunder attributes.
+        """
+
+        log(f'dump_event: event:')
+        for attr in dir(event):
+            if not attr.startswith('__'):
+                log(f'            event.{attr}={getattr(event, attr)}')
 
     ######
     # Finish initialization of data, etc
