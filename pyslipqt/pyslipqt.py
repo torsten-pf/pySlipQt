@@ -1393,16 +1393,11 @@ class PySlipQt(QWidget):
         The 'extent' here is the extent of the point+radius.
         """
 
-        log(f'pex_point_view: place={place}, view={view}, x_off={x_off}, y_off={y_off}, radius={radius}')
-        log(f'pex_point_view: .view_width={self.view_width}, .view_height={self.view_height}')
-
         # get point view coords and perturb point to placement
         (xview, yview) = view
         point = self.point_placement(place, xview, yview, x_off, y_off,
                                      self.view_width, self.view_height)
         (px, py) = point
-
-        log(f'pex_point_view: point={point}')
 
         # extent = (left, right, top, bottom) in view coords
         elx = px - radius
@@ -1411,14 +1406,10 @@ class PySlipQt(QWidget):
         eby = py + radius
         extent = (elx, erx, ety, eby)
 
-        log(f'pex_point_view: extent={extent}')
-
         # decide if extent is off-view
         if erx < 0 or elx > self.view_width or eby < 0 or ety > self.view_height:
             # no extent if ALL of extent is off-view
             extent = None
-
-        log(f'pex_point_view: returning (point={point}, extent={extent})')
 
         return (point, extent)
 
@@ -1664,9 +1655,6 @@ class PySlipQt(QWidget):
         below  ID of layer to place underneath 'top'
         top    ID of layer to be drawn *above* 'below'
         """
-
-        log(f'PlaceLayerBelowLayer: below={below}, top={top}')
-        log(f'PlaceLayerBelowLayer: .layer_z_order={self.layer_z_order}')
 
         self.layer_z_order.remove(below)
         i = self.layer_z_order.index(top)
@@ -2785,23 +2773,17 @@ class PySlipQt(QWidget):
         ONLY SELECTS ON POINT, NOT EXTENT.
         """
 
-        log(f'sel_text_in_layer: layer={layer}')
-        log(f'sel_text_in_layer: view_point={view_point}, geo_point={geo_point}')
-
         result = None
         delta = layer.delta
         dist = 9999999.0
 
         # get correct pex function and mouse click in view coords
         pex = self.pex_point_view
-        log(f'sel_text_in_layer: assuming use of pex_point_view()')
         clickpt = view_point
         if layer.map_rel:
-            log(f'sel_text_in_layer: using pex_point()')
             pex = self.pex_point
             clickpt = geo_point
         (xclick, yclick) = clickpt
-        log(f'sel_text_in_layer: xclick={xclick}, yclick={yclick}')
 
         (view_x, view_y) = view_point
 
@@ -2809,14 +2791,9 @@ class PySlipQt(QWidget):
         for (x, y, text, place, radius, colour,
                  tcolour, fname, fsize, x_off, y_off, udata) in layer.data:
             (vp, ex) = pex(place, (x,y), 0, 0, radius)
-            log(f'sel_text_in_layer: pex() returned {(vp, ex)}')
             if vp:
                 (px, py) = vp
-                log(f'sel_text_in_layer: px={px}, view_x={view_x}, py={py}, view_y={view_y}')
-                log(f'sel_text_in_layer: px - view_x={px - view_x}')
-                log(f'sel_text_in_layer: py - view_y={py - view_y}')
                 d = (px - view_x)**2 + (py - view_y)**2
-                log(f'sel_text_in_layer: possible, d={d}, dist={dist}')
                 if d < dist:
                     selection = (x, y, {'placement': place,
                                         'radius': radius,
@@ -2828,15 +2805,11 @@ class PySlipQt(QWidget):
                                         'offset_y': y_off,
                                         'data': udata})
                     result = ([selection], None)
-                    log(f'sel_text_in_layer: hit, result={result}')
                     dist = d
 
-        log(f'sel_text_in_layer: dist={dist}, delta={delta}')
         if dist <= delta:
-            log(f'sel_text_in_layer: returning {result}')
             return result
 
-        log(f'sel_text_in_layer: no close hits, returning None')
         return None
 
     def sel_box_texts_in_layer(self, layer, ll, ur):
@@ -2892,27 +2865,34 @@ class PySlipQt(QWidget):
             return (selection, data, None)
         return None
 
-    def sel_polygon_in_layer(self, layer, point):
+    def sel_polygon_in_layer(self, layer, view_pt, map_pt):
         """Get first polygon object clicked in layer data.
 
-        layer  layer object we are looking in
-        point  tuple of click position (xgeo,ygeo) or (xview,yview)
+        layer    layer object we are looking in
+        view_pt  tuple of click position (xview,yview)
+        map_pt   tuple of click position (xgeo,ygeo)
 
         Returns an iterable: ((x,y), udata) of the first polygon selected.
         Returns None if no polygon selected.
         """
 
+        log(f'sel_polygon_in_layer: layer={layer}, view_pt={view_pt}, map_pt={map_pt}')
+
         result = None
 
-        # get correct 'point in polygon' routine
+        # get correct 'view_pt in polygon' routine
+        log(f'sel_polygon_in_layer: assuming point_in_polygon_view()')
+        sel_pt = view_pt
         pip = self.point_in_polygon_view
         if layer.map_rel:
+            log(f'sel_polygon_in_layer: using point_in_polygon_geo()')
+            sel_pt = map_pt
             pip = self.point_in_polygon_geo
 
-        # check polyons in layer, choose first point is inside
+        # check polyons in layer, choose first view_pt is inside
         for (poly, place, width, colour, close,
                  filled, fcolour, x_off, y_off, udata) in layer.data:
-            if pip(poly, point, place, x_off, y_off):
+            if pip(poly, sel_pt, place, x_off, y_off):
                 sel = (poly, {'placement': place,
                               'offset_x': x_off,
                               'offset_y': y_off,
@@ -3033,3 +3013,423 @@ class PySlipQt(QWidget):
         if not selection:
             return None
         return (selection, None)
+
+######
+# Polygon/polyline utility routines
+######
+
+    @staticmethod
+    def point_inside_polygon(point, poly):
+        """Decide if point is inside polygon.
+
+        point  tuple of (x,y) coordnates of point in question (geo or view)
+        poly   polygon in form [(x1,y1), (x2,y2), ...]
+
+        Returns True if point is properly inside polygon.
+        May return True or False if point on edge of polygon.
+
+        Slightly modified version of the 'published' algorithm found on the 'net.
+        Instead of indexing into the poly, create a new poly that 'wraps around'.
+        Even with the extra code, it runs in 2/3 the time.
+        """
+
+        log(f'point_inside_polygon: point={point}, poly={poly}')
+
+        (x, y) = point
+
+        # we want a *copy* of original iterable plus extra wraparound point
+        l_poly = list(poly)
+        l_poly.append(l_poly[0])  # ensure poly wraps around
+
+        inside = False
+
+        (p1x, p1y) = l_poly[0]
+
+        for (p2x, p2y) in l_poly:
+            if y > min(p1y, p2y):
+                if y <= max(p1y, p2y):
+                    if x <= max(p1x, p2x):
+                        if p1y != p2y:
+                            xinters = (y-p1y)*(p2x-p1x)/(p2y-p1y) + p1x
+                        if p1x == p2x or x <= xinters:
+                            inside = not inside
+            (p1x, p1y) = (p2x, p2y)
+
+        log(f'point_inside_polygon: returning {inside}')
+
+        return inside
+
+    def point_in_polygon_geo(self, poly, geo, placement, offset_x, offset_y):
+        """Decide if a point is inside a map-relative polygon.
+
+        poly       an iterable of (x,y) where x,y are in geo coordinates
+        geo        tuple (xgeo, ygeo) of point position
+        placement  a placement string
+        offset_x   X offset in pixels
+        offset_y   Y offset in pixels
+
+        The 'geo' point, while in geo coordinates, must be a click point
+        within the view.
+
+        Returns True if point is inside the polygon.
+        """
+
+        log(f'point_in_polygon_geo: poly={poly}, geo={geo}, placement={placement}, offset_x={offset_x}, offset_y={offset_y}')
+
+        return self.point_inside_polygon(geo, poly)
+
+    def point_in_polygon_view(self, poly, view, place, x_off, y_off):
+        """Decide if a point is inside a view-relative polygon.
+
+        poly      an iterable of (x,y) where x,y are in view (pixel) coordinates
+        ptx       point X coordinate (view)
+        pty       point Y coordinate (view)
+        place     a placement string
+        offset_x  X offset in pixels
+        offset_y  Y offset in pixels
+
+        Returns True if point is inside the polygon.
+        """
+
+        # convert polygon and placement into list of (x,y) tuples
+        view_poly = []
+        for (x, y) in poly:
+            (x, y) = self.point_placement(place, x, y, x_off, y_off,
+                                          self.view_width, self.view_height)
+            view_poly.append((x, y))
+
+        # decide if (ptx,pty) is inside polygon
+        return self.point_inside_polygon(view, view_poly)
+
+    def point_near_polyline_geo(self, point, poly, placement,
+                                offset_x, offset_y, delta):
+        """Decide if a point is near a map-relative polyline.
+
+        point      tuple (xgeo, ygeo) of point position
+        poly       an iterable of (x,y) where x,y are in geo coordinates
+        placement  a placement string
+        offset_x   X offset in pixels
+        offset_y   Y offset in pixels
+        delta      distance (squared) before selection allowed
+
+        The 'geo' point, while in geo coordinates, must be a click point
+        within the view.
+
+        Returns nearest line segment of polyline that is 'close enough'
+        to the point.  Returns None if no segment close enough.
+        """
+
+        return self.point_near_polyline(point, poly, delta=delta)
+
+    def point_near_polyline_view(self, point, polyline, place,
+                                 x_off, y_off, delta):
+        """Decide if a point is near a view-relative polyline.
+
+        point     a tuple (viewx, viewy) of selection point in view coordinates
+        polyline  an iterable of (x,y) where x,y are in view (pixel) coordinates
+        place     a placement string
+        offset_x  X offset in pixels
+        offset_y  Y offset in pixels
+        delta     distance (squared) before selection allowed
+
+        Returns nearest line segment of polyline that is 'close enough'
+        to the point.  Returns None if no segment close enough.
+        """
+
+        # dict to convert selected segment back to orig coords
+        back_to_orig = {}
+
+        # convert polyline and placement into list of (x,y) tuples
+        view_poly = []
+        for (x, y) in polyline:
+            (vx, vy) = self.point_placement(place, x, y, x_off, y_off,
+                                            self.view_width, self.view_height)
+            view_poly.append((vx, vy))
+            back_to_orig[(vx, vy)] = (x, y)
+
+        # decide if (ptx,pty) is inside polyline (gets nearest segment)
+        seg = self.point_near_polyline(point, view_poly, delta=delta)
+
+        if seg:
+            (s1, s2) = seg
+            s1 = back_to_orig[s1]
+            s2 = back_to_orig[s2]
+            return (s1, s2)
+        return None
+
+    def point_near_polyline(self, point, polyline, delta=50):
+        """Decide if point is within 'delta' of the given polyline.
+
+        point     point (x, y)
+        polyline  iterable of (x, y) point tuples
+        delta     maximum distance before 'not close enough'
+
+        Returns nearest line segment of polyline that is 'close enough'
+        to the point.  Returns None if no segment close enough.
+        """
+
+        result = None
+        last_delta = delta + 1
+
+        last_pp = polyline[0]
+        for pp in polyline[1:]:
+            d = self.point_segment_distance(point, last_pp, pp)
+            if d < last_delta:
+                result = (last_pp, pp)
+                last_delta = d
+            last_pp = pp
+
+        if last_delta > delta:
+            result = None
+
+        return result
+
+    def point_segment_distance(self, point, s1, s2):
+        """Get distance from a point to segment (s1, s2).
+
+        point   tuple (x, y)
+        s1, s2  tuples (x, y) of segment endpoints
+
+        Returns the distance squared.
+        """
+
+        (ptx, pty) = point
+        (s1x, s1y) = s1
+        (s2x, s2y) = s2
+
+        px = s2x - s1x
+        py = s2y - s1y
+
+        u = ((ptx - s1x)*px + (pty - s1y)*py) / float(px**2 + py**2)
+
+        if u > 1:
+            u = 1
+        elif u < 0:
+            u = 0
+
+        dx = s1x + u*px - ptx
+        dy = s1y + u*py - pty
+
+        return dx**2 + dy**2
+#            return None
+#
+#        # return geo extent
+#        (llon, tlat) = self.View2Geo((tlvx, tlvy))
+#        (rlon, blat) = self.View2Geo((brvx, brvy))
+#
+#        return (llon, rlon, tlat, blat)
+
+    def ViewExtent(self, place, view, w, h, x_off, y_off, dcw=0, dch=0):
+        """Get view extent of area.
+
+        place         placement string ('cc', 'se', etc)
+        view          tuple (xview,yview) of view coordinates of object point
+        w, h          area width and height (pixels)
+        x_off, y_off  x and y offset (pixels)
+
+        Return the view extent of the area: (left, right, top, bottom)
+        where:
+            left    pixel coords of left side of area
+            right   pixel coords of right side of area
+            top     pixel coords of top of area
+            bottom  pixel coords of bottom of area
+
+        Return a tuple (left, right, top, bottom) of the view coordinates of
+        the extent rectangle.
+        """
+
+        # top left corner
+        (x, y) = view
+        (left, top) = self.extent_placement(place, x, y, x_off, y_off,
+                                            w, h, dcw, dch)
+
+        # bottom right corner
+        right = left + w
+        bottom = top + h
+
+        return (left, right, top, bottom)
+
+    def PositionIsOnMap(self, posn):
+        """Return True if 'posn' is actually on map (not just view).
+
+        posn  a tuple (x,y) position in view pixel coordinates
+        """
+
+        if not posn:
+            return False
+
+        (x, y) = posn
+
+        if self.view_offset_x < 0:
+            if x < -self.view_offset_x:
+                return False
+            if x > self.view_width + self.view_offset_x:
+                return False
+
+        if self.view_offset_y < 0:
+            if y < -self.view_offset_y:
+                return False
+            if y > self.view_height + self.view_offset_y:
+                return False
+
+        return True
+
+    def get_i18n_kw(self, kwargs, kws, default):
+        """Get alternate international keyword value.
+
+        kwargs   dictionary to look for keyword value
+        kws      iterable of keyword spelling strings
+        default  default value if no keyword found
+
+        Returns the keyword value.
+        """
+
+        result = None
+        for kw_str in kws[:-1]:
+            result = kwargs.get(kw_str, None)
+            if result:
+                break
+        else:
+            result = kwargs.get(kws[-1], default)
+
+        return result
+
+    def info(self, msg):
+        """Display an information message, log and graphically."""
+
+        log_msg = '# ' + msg
+        length = len(log_msg)
+        prefix = '#### Information '
+        banner = prefix + '#'*(80 - len(log_msg) - len(prefix))
+        log(banner)
+        log(log_msg)
+        log(banner)
+
+        wx.MessageBox(msg, 'Warning', wx.OK | wx.ICON_INFORMATION)
+
+    def warn(self, msg):
+        """Display a warning message, log and graphically."""
+
+        log_msg = '# ' + msg
+        length = len(log_msg)
+        prefix = '#### Warning '
+        banner = prefix + '#'*(80 - len(log_msg) - len(prefix))
+        log(banner)
+        log(log_msg)
+        log(banner)
+
+        wx.MessageBox(msg, 'Warning', wx.OK | wx.ICON_ERROR)
+
+    def sel_box_canonical(self):
+        """'Canonicalize' a selection box limits.
+
+        Uses instance variables (all in view coordinates):
+            self.sbox_1_x    X position of box select start
+            self.sbox_1_y    Y position of box select start
+            self.sbox_w      width of selection box (start to finish)
+            self.sbox_h      height of selection box (start to finish)
+
+        Four ways to draw the selection box (starting in each of the four
+        corners), so four cases.
+
+        The sign of the width/height values are decided with respect to the
+        origin at view top-left corner.  That is, a negative width means
+        the box was started at the right and swept to the left.  A negative
+        height means the selection started low and swept high in the view.
+
+        Returns a tuple (llx, llr, urx, ury) where llx is lower left X, ury is
+        upper right corner Y, etc.  All returned values in view coordinates.
+        """
+
+        if self.sbox_h >= 0:
+            if self.sbox_w >= 0:
+                # 2
+                ll_corner_vx = self.sbox_1_x
+                ll_corner_vy = self.sbox_1_y + self.sbox_h
+                tr_corner_vx = self.sbox_1_x + self.sbox_w
+                tr_corner_vy = self.sbox_1_y
+            else:
+                # 1
+                ll_corner_vx = self.sbox_1_x + self.sbox_w
+                ll_corner_vy = self.sbox_1_y + self.sbox_h
+                tr_corner_vx = self.sbox_1_x
+                tr_corner_vy = self.sbox_1_y
+        else:
+            if self.sbox_w >= 0:
+                # 3
+                ll_corner_vx = self.sbox_1_x
+                ll_corner_vy = self.sbox_1_y
+                tr_corner_vx = self.sbox_1_x + self.sbox_w
+                tr_corner_vy = self.sbox_1_y + self.sbox_h
+            else:
+                # 4
+                ll_corner_vx = self.sbox_1_x + self.sbox_w
+                ll_corner_vy = self.sbox_1_y
+                tr_corner_vx = self.sbox_1_x
+                tr_corner_vy = self.sbox_1_y + self.sbox_h
+
+        return (ll_corner_vx, ll_corner_vy, tr_corner_vx, tr_corner_vy)
+
+######
+# Placement routines instead of original 'exec' code.
+# Code in test_assumptions.py shows this is faster.
+######
+
+    @staticmethod
+    def point_placement(place, x, y, x_off, y_off, dcw=0, dch=0):
+        """Perform map- or view-relative placement for a single point.
+
+        place         placement key string
+        x, y          point relative to placement origin
+        x_off, y_off  offset from point
+        dcw, dch      width, height of the view draw context (0 if map-rel)
+
+        Returns a tuple (x, y) in view coordinates.
+        """
+
+        dcw2 = dcw/2
+        dch2 = dch/2
+
+        if place == 'cc':   x+=dcw2;       y+=dch2
+        elif place == 'nw': x+=x_off;      y+=y_off
+        elif place == 'cn': x+=dcw2;       y+=y_off
+        elif place == 'ne': x+=dcw-x_off;  y+=y_off
+        elif place == 'ce': x+=dcw-x_off;  y+=dch2
+        elif place == 'se': x+=dcw-x_off;  y+=dch-y_off
+        elif place == 'cs': x+=dcw2;       y+=dch-y_off
+        elif place == 'sw': x+=x_off;      y+=dch-y_off
+        elif place == 'cw': x+=x_off;      y+=dch2
+
+        return (x, y)
+
+    @staticmethod
+    def extent_placement(place, x, y, x_off, y_off, w, h, dcw=0, dch=0):
+        """Perform map- and view-relative placement for an extent object.
+
+        place         placement key string
+        x, y          point relative to placement origin
+        x_off, y_off  offset from point
+        w, h          width, height of the image
+        dcw, dcw      width/height of the view draw context
+
+        Returns a tuple (x, y).
+        """
+
+        w2 = w/2
+        h2 = h/2
+
+        dcw2 = dcw/2
+        dch2 = dch/2
+
+        if place == 'cc':   x+=dcw2-w2;       y+=dch2-h2
+        elif place == 'nw': x+=x_off;         y+=y_off
+        elif place == 'cn': x+=dcw2-w2;       y+=y_off
+        elif place == 'ne': x+=dcw-w-x_off;   y+=y_off
+        elif place == 'ce': x+=dcw-w-x_off;   y+=dch2-h2
+        elif place == 'se': x+=dcw-w-x_off;   y+=dch-h-y_off
+        elif place == 'cs': x+=dcw2-w2;       y+=dch-h-y_off
+        elif place == 'sw': x+=x_off;         y+=dch-h-y_off
+        elif place == 'cw': x+=x_off;         y+=dch2-h2
+
+        return (x, y)
+
