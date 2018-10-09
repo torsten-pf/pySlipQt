@@ -913,8 +913,6 @@ class PySlipQtDemo(QWidget):
         off, selected points reselection leaves points selected.
         """
 
-        log(f'textSelect: event.type={event.type}, event.selection={event.selection}')
-
         selection = event.selection
 
 #        if self.text_layer:
@@ -938,14 +936,12 @@ class PySlipQtDemo(QWidget):
                 del d['offset_y']
                 points.append((x, y, d))
 
-            log(f'textSelect: highlight points={points}')
             self.sel_text_layer = \
                 self.pyslipqt.AddPointLayer(points, map_rel=True,
                                             colour='#0000ff',
                                             radius=5, visible=True,
                                             show_levels=MRTextShowLevels,
                                             name='<sel_text_layer>')
-            log(f'textSelect: .sel_text_layer={self.sel_text_layer}, .text_layer={self.text_layer}')
             self.pyslipqt.PlaceLayerBelowLayer(self.sel_text_layer,
                                                self.text_layer)
 
@@ -1093,7 +1089,6 @@ class PySlipQtDemo(QWidget):
         it off, unless previous selection again selected.
         """
 
-        log(f'polySelect: event:')
         self.dump_event(event)
 
         # .seletion: [(poly,attr), ...]
@@ -1183,7 +1178,6 @@ class PySlipQtDemo(QWidget):
         The selection could be a single or box select.
         """
 
-        log(f'polyViewSelect: event:')
         self.dump_event(event)
 
         selection = event.selection

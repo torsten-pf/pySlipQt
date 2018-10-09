@@ -2876,16 +2876,12 @@ class PySlipQt(QWidget):
         Returns None if no polygon selected.
         """
 
-        log(f'sel_polygon_in_layer: layer={layer}, view_pt={view_pt}, map_pt={map_pt}')
-
         result = None
 
         # get correct 'view_pt in polygon' routine
-        log(f'sel_polygon_in_layer: assuming point_in_polygon_view()')
         sel_pt = view_pt
         pip = self.point_in_polygon_view
         if layer.map_rel:
-            log(f'sel_polygon_in_layer: using point_in_polygon_geo()')
             sel_pt = map_pt
             pip = self.point_in_polygon_geo
 
@@ -2943,26 +2939,29 @@ class PySlipQt(QWidget):
             return None
         return (selection, data, None)
 
-    def sel_polyline_in_layer(self, layer, point):
+    def sel_polyline_in_layer(self, layer, view_pt, map_pt):
         """Get first polyline object clicked in layer data.
 
-        layer  layer object we are looking in
-        point  tuple of click position (xgeo,ygeo) or (xview,yview)
+        layer    layer object we are looking in
+        view_pt  tuple of click position in view coords
+        map_pt   tuple of click position in geo coords
 
         Returns a tuple (sel, seg) if a polyline was selected.  'sel' is the
         tuple (poly, attrib) and 'seg' is a tuple (pt1, pt2) of nearest segment
-        endpoints.  Returns None if no polyline selected.
+        endview_pts.  Returns None if no polyline selected.
         """
 
         result = None
         delta = layer.delta
 
-        # get correct 'point in polyline' routine
+        # get correct 'view_pt in polyline' routine
         pip = self.point_near_polyline_view
+        point = view_pt
         if layer.map_rel:
             pip = self.point_near_polyline_geo
+            point = map_pt
 
-        # check polyons in layer, choose first where point is close enough
+        # check polyons in layer, choose first where view_pt is close enough
         for (polyline, place, width, colour, x_off, y_off, udata) in layer.data:
             seg = pip(point, polyline, place, x_off, y_off, delta=delta)
             if seg:
@@ -3033,8 +3032,6 @@ class PySlipQt(QWidget):
         Even with the extra code, it runs in 2/3 the time.
         """
 
-        log(f'point_inside_polygon: point={point}, poly={poly}')
-
         (x, y) = point
 
         # we want a *copy* of original iterable plus extra wraparound point
@@ -3055,8 +3052,6 @@ class PySlipQt(QWidget):
                             inside = not inside
             (p1x, p1y) = (p2x, p2y)
 
-        log(f'point_inside_polygon: returning {inside}')
-
         return inside
 
     def point_in_polygon_geo(self, poly, geo, placement, offset_x, offset_y):
@@ -3074,8 +3069,6 @@ class PySlipQt(QWidget):
         Returns True if point is inside the polygon.
         """
 
-        log(f'point_in_polygon_geo: poly={poly}, geo={geo}, placement={placement}, offset_x={offset_x}, offset_y={offset_y}')
-
         return self.point_inside_polygon(geo, poly)
 
     def point_in_polygon_view(self, poly, view, place, x_off, y_off):
@@ -3090,8 +3083,6 @@ class PySlipQt(QWidget):
 
         Returns True if point is inside the polygon.
         """
-
-        log(f'point_in_polygon_view: poly={poly}, view={view}, place={place}, x_off={x_off}, y_off={y_off}')
 
         # convert polygon and placement into list of (x,y) tuples
         view_poly = []
