@@ -19,6 +19,11 @@ Constructor:
 
     lc = LayerControl(parent, title, selectable=False, editable=False)
 
+Methods:
+
+    lc.set_show(state)      set 'show' checkbox to 'state'
+    lc.set_select(state)    set 'select' checkbox to 'state'
+
 Events:
 
     .change_add      the "add layer" checkbox was toggled
@@ -126,3 +131,19 @@ class LayerControl(QWidget):
         """
 
         self.change_select.emit(state)
+
+    def set_show(self, state):
+        """Set the 'show' checkbox state.
+
+        state  new state of the checkbox, True or False
+        """
+
+        self.cb_show.setChecked(state)
+
+    def set_select(self, state):
+        """Set the 'select' checkbox state.
+
+        state  new state of the checkbox, True or False
+        """
+
+        self.cb_select.setChecked(state)

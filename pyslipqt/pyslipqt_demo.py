@@ -167,6 +167,7 @@ class PySlipQtDemo(QWidget):
     def __init__(self):
         super().__init__()
 
+# TODO: add the menu system
         # menus
 #        #exitAct = QAction(QIcon('exit.png'), '&Exit', self)
 #        exitAct = QAction('&Exit', self)
@@ -283,83 +284,83 @@ class PySlipQtDemo(QWidget):
         grid_row += 1
 
         # controls for map-relative points layer
-        point = LayerControl(self, title='Points, map relative %s' % str(MRPointShowLevels), selectable=True)
-        point.change_add.connect(self.pointOnOff)   # tie to event handler(s)
-        point.change_show.connect(self.pointShowOnOff)
-        point.change_select.connect(self.pointSelectOnOff)
-        grid.addWidget(point, grid_row, 1, 1, 3)
+        self.lc_point = LayerControl(self, title='Points, map relative %s' % str(MRPointShowLevels), selectable=True)
+        self.lc_point.change_add.connect(self.pointOnOff)   # tie to event handler(s)
+        self.lc_point.change_show.connect(self.pointShowOnOff)
+        self.lc_point.change_select.connect(self.pointSelectOnOff)
+        grid.addWidget(self.lc_point, grid_row, 1, 1, 3)
         grid_row += 1
 
         # controls for view-relative points layer
-        point_v = LayerControl(self, 'Points, view relative', selectable=True)
-        point_v.change_add.connect(self.pointViewOnOff)   # tie to event handler(s)
-        point_v.change_show.connect(self.pointViewShowOnOff)
-        point_v.change_select.connect(self.pointViewSelectOnOff)
-        grid.addWidget(point_v, grid_row, 1, 1, 3)
+        self.lc_point_v = LayerControl(self, 'Points, view relative', selectable=True)
+        self.lc_point_v.change_add.connect(self.pointViewOnOff)   # tie to event handler(s)
+        self.lc_point_v.change_show.connect(self.pointViewShowOnOff)
+        self.lc_point_v.change_select.connect(self.pointViewSelectOnOff)
+        grid.addWidget(self.lc_point_v, grid_row, 1, 1, 3)
         grid_row += 1
 
         # controls for map-relative image layer
-        image = LayerControl(self, 'Images, map relative %s' % str(MRImageShowLevels), selectable=True)
-        image.change_add.connect(self.imageOnOff)   # tie to event handler(s)
-        image.change_show.connect(self.imageShowOnOff)
-        image.change_select.connect(self.imageSelectOnOff)
-        grid.addWidget(image, grid_row, 1, 1, 3)
+        self.lc_image = LayerControl(self, 'Images, map relative %s' % str(MRImageShowLevels), selectable=True)
+        self.lc_image.change_add.connect(self.imageOnOff)   # tie to event handler(s)
+        self.lc_image.change_show.connect(self.imageShowOnOff)
+        self.lc_image.change_select.connect(self.imageSelectOnOff)
+        grid.addWidget(self.lc_image, grid_row, 1, 1, 3)
         grid_row += 1
 
         # controls for map-relative image layer
-        image_v = LayerControl(self, 'Images, view relative', selectable=True) 
-        image_v.change_add.connect(self.imageViewOnOff)   # tie to event handler(s)
-        image_v.change_show.connect(self.imageViewShowOnOff)
-        image_v.change_select.connect(self.imageViewSelectOnOff)
-        grid.addWidget(image_v, grid_row, 1, 1, 3)
+        self.lc_image_v = LayerControl(self, 'Images, view relative', selectable=True) 
+        self.lc_image_v.change_add.connect(self.imageViewOnOff)   # tie to event handler(s)
+        self.lc_image_v.change_show.connect(self.imageViewShowOnOff)
+        self.lc_image_v.change_select.connect(self.imageViewSelectOnOff)
+        grid.addWidget(self.lc_image_v, grid_row, 1, 1, 3)
         grid_row += 1
 
         # controls for map-relative text layer
-        text = LayerControl(self, 'Text, map relative %s' % str(MRTextShowLevels), selectable=True)
-        text.change_add.connect(self.textOnOff)     # tie to event handler(s)
-        text.change_show.connect(self.textShowOnOff)
-        text.change_select.connect(self.textSelectOnOff)
-        grid.addWidget(text, grid_row, 1, 1, 3)
+        self.lc_text = LayerControl(self, 'Text, map relative %s' % str(MRTextShowLevels), selectable=True)
+        self.lc_text.change_add.connect(self.textOnOff)     # tie to event handler(s)
+        self.lc_text.change_show.connect(self.textShowOnOff)
+        self.lc_text.change_select.connect(self.textSelectOnOff)
+        grid.addWidget(self.lc_text, grid_row, 1, 1, 3)
         grid_row += 1
 
         # controls for view-relative text layer
-        text_v = LayerControl(self, 'Text, view relative', selectable=True)
-        text_v.change_add.connect(self.textViewOnOff)    # tie to event handler(s)
-        text_v.change_show.connect(self.textViewShowOnOff)
-        text_v.change_select.connect(self.textViewSelectOnOff)
-        grid.addWidget(text_v, grid_row, 1, 1, 3)
+        self.lc_text_v = LayerControl(self, 'Text, view relative', selectable=True)
+        self.lc_text_v.change_add.connect(self.textViewOnOff)    # tie to event handler(s)
+        self.lc_text_v.change_show.connect(self.textViewShowOnOff)
+        self.lc_text_v.change_select.connect(self.textViewSelectOnOff)
+        grid.addWidget(self.lc_text_v, grid_row, 1, 1, 3)
         grid_row += 1
 
         # controls for map-relative polygon layer
-        poly = LayerControl(self, 'Polygon, map relative %s' % str(MRPolyShowLevels), selectable=True)
-        poly.change_add.connect(self.polyOnOff)     # tie to event handler(s)
-        poly.change_show.connect(self.polyShowOnOff)
-        poly.change_select.connect(self.polySelectOnOff)
-        grid.addWidget(poly, grid_row, 1, 1, 3)
+        self.lc_poly = LayerControl(self, 'Polygon, map relative %s' % str(MRPolyShowLevels), selectable=True)
+        self.lc_poly.change_add.connect(self.polyOnOff)     # tie to event handler(s)
+        self.lc_poly.change_show.connect(self.polyShowOnOff)
+        self.lc_poly.change_select.connect(self.polySelectOnOff)
+        grid.addWidget(self.lc_poly, grid_row, 1, 1, 3)
         grid_row += 1
 
         # controls for view-relative polygon layer
-        poly_v = LayerControl(self, 'Polygon, view relative', selectable=True)
-        poly_v.change_add.connect(self.polyViewOnOff)    # tie to event handler(s)
-        poly_v.change_show.connect(self.polyViewShowOnOff)
-        poly_v.change_select.connect(self.polyViewSelectOnOff)
-        grid.addWidget(poly_v, grid_row, 1, 1, 3)
+        self.lc_poly_v = LayerControl(self, 'Polygon, view relative', selectable=True)
+        self.lc_poly_v.change_add.connect(self.polyViewOnOff)    # tie to event handler(s)
+        self.lc_poly_v.change_show.connect(self.polyViewShowOnOff)
+        self.lc_poly_v.change_select.connect(self.polyViewSelectOnOff)
+        grid.addWidget(self.lc_poly_v, grid_row, 1, 1, 3)
         grid_row += 1
 
         # controls for map-relative polyline layer
-        poll = LayerControl(self, 'Polyline, map relative %s' % str(MRPolyShowLevels), selectable=True)
-        poll.change_add.connect(self.polylineOnOff)     # tie to event handler(s)
-        poll.change_show.connect(self.polylineShowOnOff)
-        poll.change_select.connect(self.polylineSelectOnOff)
-        grid.addWidget(poll, grid_row, 1, 1, 3)
+        self.lc_poll = LayerControl(self, 'Polyline, map relative %s' % str(MRPolyShowLevels), selectable=True)
+        self.lc_poll.change_add.connect(self.polylineOnOff)     # tie to event handler(s)
+        self.lc_poll.change_show.connect(self.polylineShowOnOff)
+        self.lc_poll.change_select.connect(self.polylineSelectOnOff)
+        grid.addWidget(self.lc_poll, grid_row, 1, 1, 3)
         grid_row += 1
 
         # controls for view-relative polyline layer
-        poll_v = LayerControl(self, 'Polyline, view relative', selectable=True)
-        poll_v.change_add.connect(self.polylineViewOnOff)    # tie to event handler(s)
-        poll_v.change_show.connect(self.polylineViewShowOnOff)
-        poll_v.change_select.connect(self.polylineViewSelectOnOff)
-        grid.addWidget(poll_v, grid_row, 1, 1, 3)
+        self.lc_poll_v = LayerControl(self, 'Polyline, view relative', selectable=True)
+        self.lc_poll_v.change_add.connect(self.polylineViewOnOff)    # tie to event handler(s)
+        self.lc_poll_v.change_show.connect(self.polylineViewShowOnOff)
+        self.lc_poll_v.change_select.connect(self.polylineViewSelectOnOff)
+        grid.addWidget(self.lc_poll_v, grid_row, 1, 1, 3)
         grid_row += 1
 
         return grid_row
@@ -418,8 +419,12 @@ class PySlipQtDemo(QWidget):
                                             name='<pt_layer>')
         else:
             # event is False, so we are removing the maprel point layer
+            self.lc_point.set_show(True)       # set control state to 'normal'
+            self.lc_point.set_select(False)
+
             self.pyslipqt.DeleteLayer(self.point_layer)
             self.point_layer = None
+
             if self.sel_point_layer:
                 self.pyslipqt.DeleteLayer(self.sel_point_layer)
                 self.sel_point_layer = None
@@ -528,6 +533,9 @@ class PySlipQtDemo(QWidget):
                                             visible=True,
                                             name='<point_view_layer>')
         else:
+            self.lc_point_v.set_show(True)       # set control state to 'normal'
+            self.lc_point_v.set_select(False)
+
             self.pyslipqt.DeleteLayer(self.point_view_layer)
             self.point_view_layer = None
             if self.sel_point_view_layer:
@@ -617,6 +625,9 @@ class PySlipQtDemo(QWidget):
                                             show_levels=MRImageShowLevels,
                                             name='<image_layer>')
         else:
+            self.lc_image.set_show(True)       # set control state to 'normal'
+            self.lc_image.set_select(False)
+
             self.pyslipqt.DeleteLayer(self.image_layer)
             self.image_layer = None
             if self.sel_image_layer:
@@ -731,6 +742,9 @@ class PySlipQtDemo(QWidget):
                                             visible=True,
                                             name='<image_view_layer>')
         else:
+            self.lc_image_v.set_show(True)       # set control state to 'normal'
+            self.lc_image_v.set_select(False)
+
             self.pyslipqt.DeleteLayer(self.image_view_layer)
             self.image_view_layer = None
             if self.sel_image_view_layer:
@@ -869,6 +883,10 @@ class PySlipQtDemo(QWidget):
                                            show_levels=MRTextShowLevels,
                                            placement='ne')
         else:
+            self.lc_text.set_show(True)       # set control state to 'normal'
+            self.lc_text.set_select(False)
+
+            self.pyslipqt.DeleteLayer(self.text_layer)
             if self.sel_text_layer:
                 self.pyslipqt.DeleteLayer(self.sel_text_layer)
                 self.sel_text_layer = None
@@ -963,6 +981,9 @@ class PySlipQtDemo(QWidget):
                                            offset_x=TextViewDataOffX,
                                            offset_y=TextViewDataOffY)
         else:
+            self.lc_text_v.set_show(True)       # set control state to 'normal'
+            self.lc_text_v.set_select(False)
+
             self.pyslipqt.DeleteLayer(self.text_view_layer)
             self.text_view_layer = None
             if self.sel_text_view_layer:
@@ -1045,8 +1066,12 @@ class PySlipQtDemo(QWidget):
                                               show_levels=MRPolyShowLevels,
                                               name='<poly_layer>')
         else:
+            self.lc_poly.set_show(True)       # set control state to 'normal'
+            self.lc_poly.set_select(False)
+
             self.pyslipqt.DeleteLayer(self.poly_layer)
             self.poly_layer = None
+
             if self.sel_poly_layer:
                 self.pyslipqt.DeleteLayer(self.sel_poly_layer)
                 self.sel_poly_layer = None
@@ -1137,8 +1162,12 @@ class PySlipQtDemo(QWidget):
                                               placement='cn', visible=True,
                                               fontsize=24, colour='#0000ff')
         else:
+            self.lc_poly_v.set_show(True)       # set control state to 'normal'
+            self.lc_poly_v.set_select(False)
+
             self.pyslipqt.DeleteLayer(self.poly_view_layer)
             self.poly_view_layer = None
+
             if self.sel_poly_view_layer:
                 self.pyslipqt.DeleteLayer(self.sel_poly_view_layer)
                 self.sel_poly_view_layer = None
@@ -1225,8 +1254,12 @@ class PySlipQtDemo(QWidget):
                                                show_levels=MRPolyShowLevels,
                                                name='<polyline_layer>')
         else:
+            self.lc_poll.set_show(True)       # set control state to 'normal'
+            self.lc_poll.set_select(False)
+
             self.pyslipqt.DeleteLayer(self.polyline_layer)
             self.polyline_layer = None
+
             if self.sel_polyline_layer:
                 self.pyslipqt.DeleteLayer(self.sel_polyline_layer)
                 self.sel_polyline_layer = None
@@ -1335,12 +1368,17 @@ class PySlipQtDemo(QWidget):
                                                placement='cn', visible=True,
                                                fontsize=24, colour='#0000ff')
         else:
+            self.lc_poll_v.set_show(True)       # set control state to 'normal'
+            self.lc_poll_v.set_select(False)
+
             self.pyslipqt.DeleteLayer(self.polyline_view_layer)
             self.polyline_view_layer = None
+
             if self.sel_polyline_view_layer:
                 self.pyslipqt.DeleteLayer(self.sel_polyline_view_layer)
                 self.sel_polyline_view_layer = None
                 self.sel_polyline_view_point = None
+
             if self.sel_polyline_view_layer2:
                 self.pyslipqt.DeleteLayer(self.sel_polyline_view_layer2)
                 self.sel_polyline_view_layer2 = None
