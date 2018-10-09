@@ -1393,11 +1393,16 @@ class PySlipQt(QWidget):
         The 'extent' here is the extent of the point+radius.
         """
 
+        log(f'pex_point_view: place={place}, view={view}, x_off={x_off}, y_off={y_off}, radius={radius}')
+        log(f'pex_point_view: .view_width={self.view_width}, .view_height={self.view_height}')
+
         # get point view coords and perturb point to placement
         (xview, yview) = view
         point = self.point_placement(place, xview, yview, x_off, y_off,
                                      self.view_width, self.view_height)
         (px, py) = point
+
+        log(f'pex_point_view: point={point}')
 
         # extent = (left, right, top, bottom) in view coords
         elx = px - radius
@@ -1406,10 +1411,14 @@ class PySlipQt(QWidget):
         eby = py + radius
         extent = (elx, erx, ety, eby)
 
+        log(f'pex_point_view: extent={extent}')
+
         # decide if extent is off-view
         if erx < 0 or elx > self.view_width or eby < 0 or ety > self.view_height:
             # no extent if ALL of extent is off-view
             extent = None
+
+        log(f'pex_point_view: returning (point={point}, extent={extent})')
 
         return (point, extent)
 
@@ -2803,8 +2812,9 @@ class PySlipQt(QWidget):
             log(f'sel_text_in_layer: pex() returned {(vp, ex)}')
             if vp:
                 (px, py) = vp
-                log(f'sel_text_in_layer: px={px}, xclick={xclick}, py={py}, yclick={yclick}')
-#                d = (px - xclick)**2 + (py - yclick)**2
+                log(f'sel_text_in_layer: px={px}, view_x={view_x}, py={py}, view_y={view_y}')
+                log(f'sel_text_in_layer: px - view_x={px - view_x}')
+                log(f'sel_text_in_layer: py - view_y={py - view_y}')
                 d = (px - view_x)**2 + (py - view_y)**2
                 log(f'sel_text_in_layer: possible, d={d}, dist={dist}')
                 if d < dist:

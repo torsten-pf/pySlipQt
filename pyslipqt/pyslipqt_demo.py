@@ -1020,7 +1020,7 @@ class PySlipQtDemo(QWidget):
         if selection:
             # get selected points into form for point display layer
             points = []
-            for (x, y, t, d) in selection:
+            for (x, y, d) in selection:
                 del d['colour']     # want to override colour, radius
                 del d['radius']
                 points.append((x, y, d))
