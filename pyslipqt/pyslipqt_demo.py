@@ -23,6 +23,7 @@ where <options> is zero or more of:
 import os
 import sys
 import copy
+from functools import partial
 from tkinter_error import tkinter_error
 try:
     import pyslipqt
@@ -135,21 +136,18 @@ LogSym2Num = {'CRITICAL': 50,
               'DEBUG': 10,
               'NOTSET': 0}
 
-# list of modules containing tile sources
-# list of (<long_name>, <module_name>)
-# the <long_name>s go into the Tileselect menu
+# associate the display name and module filename for each tileset used
 TileSources = [
-               ('BlueMarble tiles', 'pyslipqt.bm_tiles'),
-               ('GMT tiles', 'pyslipqt.gmt_local_tiles'),
-               ('ModestMaps tiles', 'pyslipqt.mm_tiles'),
-               ('MapQuest tiles', 'pyslipqt.mq_tiles'),
-               ('OpenStreetMap tiles', 'pyslipqt.osm_tiles'),
-               ('Stamen Toner tiles', 'pyslipqt.stmt_tiles'),
-               ('Stamen Transport tiles', 'pyslipqt.stmtr_tiles'),
-               ('Stamen Watercolor tiles', 'pyslipqt.stmw_tiles'),
+               ('BlueMarble tiles', 'bm_tiles'),
+               ('GMT tiles', 'gmt_local_tiles'),
+               ('ModestMaps tiles', 'mm_tiles'),
+               ('MapQuest tiles', 'mq_tiles'),
+               ('OpenStreetMap tiles', 'osm_tiles'),
+               ('Stamen Toner tiles', 'stmt_tiles'),
+               ('Stamen Transport tiles', 'stmtr_tiles'),
+               ('Stamen Watercolor tiles', 'stmw_tiles'),
               ]
-DefaultTileset = 'GMT tiles'
-
+DefaultTileset = 'GMT tiles'    # the initial selected tileset
 
 ######
 # Various GUI layout constants
@@ -163,30 +161,22 @@ PackBorder = 0
 # The main application frame
 ###############################################################################
 
-class PySlipQtDemo(QWidget):
+#class PySlipQtDemo(QWidget):
+class PySlipQtDemo(QMainWindow):
     def __init__(self):
         super().__init__()
 
-# TODO: add the menu system
-        # menus
-#        #exitAct = QAction(QIcon('exit.png'), '&Exit', self)
-#        exitAct = QAction('&Exit', self)
-#        exitAct.setShortcut('Ctrl+Q')
-#        exitAct.setStatusTip('Exit application')
-#        exitAct.triggered.connect(qApp.quit)
-
-#        menubar = self.menuBar()
-#        fileMenu = menubar.addMenu('&File')
-#        fileMenu.addAction(exitAct)
-
-        self.tile_source = tiles.Tiles()
-
         # build the GUI
         grid = QGridLayout()
-        self.setLayout(grid)
-
+#        self.setLayout(grid)
         grid.setColumnStretch(0, 1)
         grid.setContentsMargins(2, 2, 2, 2)
+
+        qwidget = QWidget(self)
+        qwidget.setLayout(grid)
+        self.setCentralWidget(qwidget)
+
+        self.tile_source = tiles.Tiles()
 
         # build the 'controls' part of GUI
         num_rows = self.make_gui_controls(grid)
@@ -194,8 +184,11 @@ class PySlipQtDemo(QWidget):
         self.pyslipqt = pyslipqt.PySlipQt(self, tile_src=self.tile_source, start_level=0)
         grid.addWidget(self.pyslipqt, 0, 0, num_rows, 1)
 
+        # add the menus
+        self.initMenu()
+
         # do initialisation stuff - all the application stuff
-        self.init()
+        self.initData()
 
         # create select event dispatch directory
         self.demo_select_dispatch = {}
@@ -223,35 +216,6 @@ class PySlipQtDemo(QWidget):
 #        def hovered():
 #            self.labelOnlineHelp.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
 #        self.labelOnlineHelp.linkHovered.connect(hovered)
-
-#        # create tileset menuitems
-#        menuBar = wx.MenuBar()
-#        tile_menu = wx.Menu()
-#
-#        # initialise tileset handling
-#        self.tile_source = None
-#        # a dict of "gui_id: (name, module_name, object)" tuples
-#        self.id2tiledata = {}
-#        # a dict of "name: gui_id"
-#        self.name2guiid = {}
-#
-#        self.default_tileset_name = None
-#        for (name, module_name) in TileSources:
-#            new_id = wx.NewId()
-#            tile_menu.Append(new_id, name, name, wx.ITEM_RADIO)
-#            self.Bind(wx.EVT_MENU, self.onTilesetSelect)
-#            self.id2tiledata[new_id] = (name, module_name, None)
-#            self.name2guiid[name] = new_id
-#            if name == DefaultTileset:
-#                self.default_tileset_name = name
-#
-#        if self.default_tileset_name is None:
-#            raise Exception('Bad DefaultTileset (%s) or TileSources (%s)'
-#                            % (DefaultTileset, str(TileSources)))
-
-#        # select the required tileset
-#        item_id = self.name2guiid[self.default_tileset_name]
-#        tile_menu.Check(item_id, True)
 
     def final_setup(self):
         """Perform final setup.
@@ -365,29 +329,62 @@ class PySlipQtDemo(QWidget):
 
         return grid_row
 
-    def onTilesetSelect(self, event):
-        """User selected a tileset from the menu.
+    def initMenu(self):
+        """Add the 'Tilesets' menu to the app."""
 
-        event  the menu select event
+        menubar = self.menuBar()
+        tilesets = menubar.addMenu('Tilesets')
+
+        # this dict: id -> (display_name, module_name, action, tileset_obj)
+        self.id2tiledata = {}
+
+        # create the tileset menuitems, add to menu and connect to handler
+        for (action_id, (name, module_name)) in enumerate(TileSources):
+            new_action = QAction(name, self, checkable=True)
+            tilesets.addAction(new_action)
+            self.id2tiledata[action_id] = (name, module_name, new_action, None)
+            action_plus_menuid = partial(self.change_tileset, action_id)
+            new_action.triggered.connect(action_plus_menuid)
+
+            # check the default tileset
+            if name == DefaultTileset:
+                # put a check on the default tileset
+                new_action.setChecked(True)
+
+    def change_tileset(self, menu_id):
+        """Handle a tileset selection.
+
+        menu_id  the index in self.id2tiledata of the required tileset
         """
 
-        menu_id = event.GetId()
+        log(f'change_tileset: menu_id={menu_id}')
+
+        # ensure only one tileset is checked, the required one
+        for (key, tiledata) in self.id2tiledata.items():
+            (name, module_name, action, tile_obj) = tiledata
+            action.setChecked(key == menu_id)
+
+        # get information for the required tileset
         try:
-            (name, module_name, new_tile_obj) = self.id2tiledata[menu_id]
+            log(f'change_tileset: dict value={self.id2tiledata[menu_id]}')
+            (name, module_name, action, new_tile_obj) = self.id2tiledata[menu_id]
         except KeyError:
             # badly formed self.id2tiledata element
-            raise Exception('self.id2tiledata is badly formed:\n%s'
-                            % str(self.id2tiledata))
+            raise RuntimeError('self.id2tiledata is badly formed:\n%s'
+                               % str(self.id2tiledata))
+
+        log(f'change_tileset: name={name}, module_name={module_name}, action={action}, new_tile_obj={new_tile_obj}')
 
         if new_tile_obj is None:
             # haven't seen this tileset before, import and instantiate
-            module_name = self.id2tiledata[menu_id][1]
+            log(f"change_tileset: importing module {module_name} as 'tiles'")
             exec('import %s as tiles' % module_name)
+            log(f"change_tileset: new tiles module is '{tiles.TilesetName}'")
             new_tile_obj = tiles.Tiles()
 
             # update the self.id2tiledata element
-            self.id2tiledata[menu_id] = (name, module_name, new_tile_obj)
-
+            self.id2tiledata[menu_id] = (name, module_name, action, new_tile_obj)
+        log(f'change_tileset: changing to new tileset {new_tile_obj}')
         self.pyslipqt.ChangeTileset(new_tile_obj)
 
     def onClose(self):
@@ -1541,7 +1538,7 @@ class PySlipQtDemo(QWidget):
     # Finish initialization of data, etc
     ######
 
-    def init(self):
+    def initData(self):
         global PointData, PointDataColour, PointViewDataPlacement
         global PointViewData, PointViewDataColour
         global ImageData

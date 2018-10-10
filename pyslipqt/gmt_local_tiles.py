@@ -36,9 +36,9 @@ except ImportError as e:
 
 # attributes used for tileset introspection
 # names must be unique amongst tile modules
-tileset_name = 'GMT local tiles'
-tileset_shortname = 'GMT tiles'
-tileset_version = '1.0'
+TilesetName = 'GMT local tiles'
+TilesetShortName = 'GMT tiles'
+TilesetVersion = '1.0'
 
 # the pool of tile servers used
 TileServers = None

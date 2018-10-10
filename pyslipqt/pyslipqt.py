@@ -1842,6 +1842,21 @@ class PySlipQt(QWidget):
 
         return result
 
+    def GetLevelAndPosition(self, place='cc'):
+        """Get the level and geo position of a cardinal point within the view.
+
+        place  a placement string specifying the point in the view
+               for which we require the geo position
+
+        Returns a tuple (level, geo) where 'geo' is (geo_x, geo_y).
+        """
+
+        view_coords = self.point_placement(place, 0, 0, 0, 0,
+                                           self.view_width, self.view_height)
+        geo = self.view_to_geo(view_coords)
+
+        return (self.level, geo)
+
 # UNUSED
     def info(self, msg):
         """Display an information message, log and graphically."""
@@ -2465,6 +2480,94 @@ class PySlipQt(QWidget):
                 break
 
         self.GotoLevelAndPosition(level, geo)
+
+    ######
+    # Change the tileset
+    ######
+
+    def ChangeTileset(self, tile_src):
+        """Change the source of tiles.
+
+        tile_src  the tileset object to use
+
+        Returns the old tileset object, None if none.
+        Refreshes the display and tries to maintain the same position
+        and zoom level.
+        """
+
+        log(f'ChangeTileset: new tile_src={tile_src}')
+
+        # get level and geo position of view centre
+        (level, geo) = self.GetLevelAndPosition()
+
+        log(f'ChangeTileset: level={level}, geo-{geo}')
+
+        # remember old tileset
+        result = self.tile_src
+
+        log(f'ChangeTileset: old tile source={result}')
+
+        # set the new zoom level to the old
+        if not tile_src.UseLevel(self.level):
+            log(f"ChangeTileset: can't level {level} in new tile source {tile_src}")
+            # can't use old level, make sensible choice
+            if self.level < self.tiles_min_level:
+                self.level = self.tiles_min_level
+            elif self.level > self.tiles_max_level:
+                self.level = self.tiles_max_level
+
+            # if we can't change level now, raise an error exception
+            if not tile_src.UseLevel(self.level):
+                raise Exception('Trying to use level %s in tile obj %s, '
+                                'levels available are %s'
+                                % (str(self.level),
+                                   str(tile_src), str(tile_src.levels)))
+
+        # set new tile source and set some state
+        self.tile_src = tile_src
+        self.tile_size_x = tile_src.tile_size_x
+        self.tile_size_y = tile_src.tile_size_y
+
+        log(f'ChangeTileset: NEW .tile_size_x={self.tile_size_x}, .tile_size_y={self.tile_size_y}')
+
+        (num_tiles_x, num_tiles_y, ppd_x, ppd_y) = tile_src.GetInfo(self.level)
+        self.map_width = self.tile_size_x * num_tiles_x
+        self.map_height = self.tile_size_y * num_tiles_y
+        self.ppd_x = ppd_x
+        self.ppd_y = ppd_y
+
+        log(f'ChangeTileset: NEW .map_width={self.map_width}, .map_height={self.map_height}')
+
+        # set tile levels stuff - allowed levels, etc
+        self.tiles_max_level = max(tile_src.levels)
+        self.tiles_min_level = min(tile_src.levels)
+
+        # set callback from Tile source object when tile(s) available
+        log(f'ChangeTileset: dir(self.tile_src)={dir(self.tile_src)}')
+        self.tile_src.setCallback(self.OnTileAvailable)
+
+        # back to old level+centre, and refresh the display
+        self.GotoLevelAndPosition(level, geo)
+
+        log(f'ChangeTileset: returning result={result}')
+
+        return result
+
+    def OnTileAvailable(self, level, x, y, img, bmp):
+        """Callback routine: tile level/x/y is available.
+
+        level  the map zoom level the image is for
+        x, y   tile coordinates of new tile
+        img    tile image
+        bmp    tile bitmap
+
+        We don't use any of the above - just redraw the entire canvas.
+        This is because the new tile is already in the in-memory cache.
+
+        On a slow display we could just redraw the new tile.
+        """
+
+        self.Update()
 
 ######
 #
