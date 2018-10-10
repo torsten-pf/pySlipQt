@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 """
 A tile source that serves BlueMarble tiles from the internet.
 
@@ -80,11 +77,15 @@ class Tiles(tiles.BaseTiles):
         and provide the Geo2Tile() and Tile2Geo() methods.
         """
 
-        super(Tiles, self).__init__(TileLevels, TileWidth, TileHeight,
+#    def __init__(self, levels, tile_width, tile_height, tiles_dir, max_lru,
+#                 servers, url_path, max_server_requests, display,
+#                 http_proxy, refetch_days=RefreshTilesAfterDays):
+
+        super(Tiles, self).__init__(levels=TileLevels, tile_width=TileWidth, tile_height=TileHeight,
+                                    tiles_dir=tiles_dir, max_lru=MaxLRU,
                                     servers=TileServers, url_path=TileURLPath,
                                     max_server_requests=MaxServerRequests,
-                                    max_lru=MaxLRU, tiles_dir=tiles_dir,
-                                    http_proxy=http_proxy)
+                                    display=TilesetName, http_proxy=http_proxy)
 
     def Geo2Tile(self, geo):
         """Convert geo to tile fractional coordinates for level in use.

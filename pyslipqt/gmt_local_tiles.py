@@ -84,7 +84,8 @@ class Tiles(tiles.BaseTiles):
 
         super(Tiles, self).__init__(TileLevels,
                                     Tiles.TileWidth, Tiles.TileHeight,
-                                    max_lru=MaxLRU, tiles_dir=tiles_dir)
+                                    max_lru=MaxLRU, display=TilesetName,
+                                    tiles_dir=tiles_dir)
 
 # TODO: implement map wrap-around
 #        # we *can* wrap tiles in X direction, but not Y

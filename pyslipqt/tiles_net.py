@@ -144,7 +144,7 @@ class Tiles(tiles.BaseTiles):
     SecondsInADay = 60 * 60 * 24
 
     def __init__(self, levels, tile_width, tile_height, tiles_dir, max_lru,
-                 servers, url_path, max_server_requests,
+                 servers, url_path, max_server_requests, display,
                  http_proxy, refetch_days=RefreshTilesAfterDays):
         """Initialise a Tiles instance.
 
@@ -156,6 +156,7 @@ class Tiles(tiles.BaseTiles):
         servers              list of tile servers
         url_path             path on server to each tile
         max_server_requests  maximum number of requests per server
+        display              the display name of these tiles
         http_proxy           proxy to use if required
         refetch_days         fetch new server tile if older than this in days
                              (0 means don't ever update tiles)
@@ -170,7 +171,7 @@ class Tiles(tiles.BaseTiles):
 
         # perform the base class initialization
         super(Tiles, self).__init__(levels, tile_width, tile_height,
-                                    tiles_dir, max_lru)
+                                    tiles_dir, max_lru, servers)
 
         # save params not saved in super()
         self.servers = servers

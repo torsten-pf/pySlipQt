@@ -23,6 +23,7 @@ where <options> is zero or more of:
 import os
 import sys
 import copy
+import importlib
 from functools import partial
 from tkinter_error import tkinter_error
 try:
@@ -168,7 +169,6 @@ class PySlipQtDemo(QMainWindow):
 
         # build the GUI
         grid = QGridLayout()
-#        self.setLayout(grid)
         grid.setColumnStretch(0, 1)
         grid.setContentsMargins(2, 2, 2, 2)
 
@@ -377,12 +377,19 @@ class PySlipQtDemo(QMainWindow):
 
         if new_tile_obj is None:
             # haven't seen this tileset before, import and instantiate
-            log(f"change_tileset: importing module {module_name} as 'tiles'")
-            exec('import %s as tiles' % module_name)
-            log(f"change_tileset: new tiles module is '{tiles.TilesetName}'")
-            new_tile_obj = tiles.Tiles()
+            m_name = 'tiles_%02d' % menu_id
+            log(f'm_name={m_name}')
+            module_obj = importlib.import_module(module_name)
+            log(f'module_obj={module_obj}')
+#            import_cmd = 'import %s as %s' % (module_name, m_name)
+#            log(f'import_cmd={import_cmd}')
+#            exec(import_cmd)
+            tile_name = module_obj.TilesetName
+            log(f"change_tileset: new tiles module is '{tile_name}'")
+            new_tile_obj = module_obj.Tiles()
 
             # update the self.id2tiledata element
+            log(f'Updating dict: {menu_id}: ({name}, {module_name}, {action}, {new_tile_obj})')
             self.id2tiledata[menu_id] = (name, module_name, action, new_tile_obj)
         log(f'change_tileset: changing to new tileset {new_tile_obj}')
         self.pyslipqt.ChangeTileset(new_tile_obj)

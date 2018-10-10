@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 """
 A tile source that serves Stamen Toner tiles from the internet.
 
@@ -86,7 +83,7 @@ class Tiles(tiles.BaseTiles):
                                     servers=TileServers, url_path=TileURLPath,
                                     max_server_requests=MaxServerRequests,
                                     max_lru=MaxLRU, tiles_dir=tiles_dir,
-                                    http_proxy=http_proxy)
+                                    display=TilesetName, http_proxy=http_proxy)
 
     def Geo2Tile(self, geo):
         """Convert geo to tile fractional coordinates for level in use.
