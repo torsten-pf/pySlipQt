@@ -111,15 +111,14 @@ class BaseTiles(object):
     # maximum number of in-memory cached tiles
     MaxLRU = 1000
 
-    def __init__(self, levels, tile_width,
-                 tile_height, tiles_dir, display, max_lru=MaxLRU):
+    def __init__(self, levels, tile_width, tile_height,
+                       tiles_dir, max_lru=MaxLRU):
         """Initialise a Tiles instance.
 
         levels       a list of level numbers that are to be served
         tile_width   width of each tile in pixels
         tile_height  height of each tile in pixels
         tiles_dir    path to on-disk tile cache directory
-        display      the tileset display name
         max_lru      maximum number of cached in-memory tiles
         """
 
@@ -128,7 +127,6 @@ class BaseTiles(object):
         self.tile_size_x = tile_width
         self.tile_size_y = tile_height
         self.tiles_dir = tiles_dir
-        self.display = display
         self.max_lru = max_lru
 
         # set min and max tile levels and current level

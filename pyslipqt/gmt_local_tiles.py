@@ -84,8 +84,7 @@ class Tiles(tiles.BaseTiles):
 
         super(Tiles, self).__init__(TileLevels,
                                     Tiles.TileWidth, Tiles.TileHeight,
-                                    max_lru=MaxLRU, display=TilesetName,
-                                    tiles_dir=tiles_dir)
+                                    tiles_dir=tiles_dir, max_lru=MaxLRU)
 
 # TODO: implement map wrap-around
 #        # we *can* wrap tiles in X direction, but not Y
@@ -118,6 +117,7 @@ class Tiles(tiles.BaseTiles):
 
         # see if we can open the tile info file.
         info_file = os.path.join(self.tiles_dir, '%d' % level, TileInfoFilename)
+        log(f'GetInfo: info_file={info_file}')
         try:
             with open(info_file, 'rb') as fd:
                 info = pickle.load(fd)
@@ -125,6 +125,7 @@ class Tiles(tiles.BaseTiles):
             log(f'GetInfo: problem reading info file {info_file}')
             info = None
 
+        log(f'GetInfo: returning info={info}')
         return info
 
     def Geo2Tile(self, geo):

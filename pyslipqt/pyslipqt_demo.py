@@ -138,31 +138,63 @@ LogSym2Num = {'CRITICAL': 50,
               'NOTSET': 0}
 
 # associate the display name and module filename for each tileset used
-TileSources = [
-               ('BlueMarble tiles', 'bm_tiles'),
-               ('GMT tiles', 'gmt_local_tiles'),
-               ('ModestMaps tiles', 'mm_tiles'),
-               ('MapQuest tiles', 'mq_tiles'),
-               ('OpenStreetMap tiles', 'osm_tiles'),
-               ('Stamen Toner tiles', 'stmt_tiles'),
-               ('Stamen Transport tiles', 'stmtr_tiles'),
-               ('Stamen Watercolor tiles', 'stmw_tiles'),
-              ]
-DefaultTileset = 'GMT tiles'    # the initial selected tileset
+Tilesets = [
+            ('BlueMarble tiles', 'bm_tiles'),
+            ('GMT tiles', 'gmt_local_tiles'),
+            ('ModestMaps tiles', 'mm_tiles'),
+            ('MapQuest tiles', 'mq_tiles'),
+            ('OpenStreetMap tiles', 'osm_tiles'),
+            ('Stamen Toner tiles', 'stmt_tiles'),
+            ('Stamen Transport tiles', 'stmtr_tiles'),
+            ('Stamen Watercolor tiles', 'stmw_tiles'),
+           ]
 
-######
-# Various GUI layout constants
-######
+# index into Tilesets above to set default tileset
+#DefaultTilesetIndex = 1
+DefaultTilesetIndex = 4
 
-# border width when packing GUI elements
-PackBorder = 0
+###############################################################################
+# A small class to manage tileset sources.
+###############################################################################
 
+class TilesetManager:
+    """A class to manage multiple tileset objects.
+    
+    Features 'lazy' importing, only imports when the tileset is used
+    the first time.
+    """
+
+    def __init__(self, mod_list):
+        """Create a set of tile sources.
+        
+        mod_list  list of module filenames to manage
+
+        We can access tilesets using the index of the module in the 'mod_list'.
+        """
+        
+        self.modules = []
+        for fname in mod_list:
+            self.modules.append([fname, os.path.splitext(fname)[0], None])
+    
+    def get_tile_source(self, mod_index):
+        """Get an open tileset source for given name.
+
+        mod_index  index into self.modules of tileset to use
+        """
+        
+        tileset_data = self.modules[mod_index]
+        (filename, modulename, tile_obj) = tileset_data
+        if not tile_obj:
+            # have never used this tileset, import and instantiate
+            obj = __import__(modulename)
+            tile_obj = obj.Tiles()
+            tileset_data[2] = tile_obj
+        return tile_obj
 
 ###############################################################################
 # The main application frame
 ###############################################################################
 
-#class PySlipQtDemo(QWidget):
 class PySlipQtDemo(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -176,7 +208,10 @@ class PySlipQtDemo(QMainWindow):
         qwidget.setLayout(grid)
         self.setCentralWidget(qwidget)
 
-        self.tile_source = tiles.Tiles()
+        # initialize the tileset handler
+        self.tileset_manager = self.init_tiles()
+        self.tile_source = self.tileset_manager.get_tile_source(DefaultTilesetIndex)
+        log(f'PySlipQtDemo: self.tile_source={self.tile_source}')
 
         # build the 'controls' part of GUI
         num_rows = self.make_gui_controls(grid)
@@ -339,17 +374,34 @@ class PySlipQtDemo(QMainWindow):
         self.id2tiledata = {}
 
         # create the tileset menuitems, add to menu and connect to handler
-        for (action_id, (name, module_name)) in enumerate(TileSources):
+        for (action_id, (name, module_name)) in enumerate(Tilesets):
+            # create menu, connect to handler
             new_action = QAction(name, self, checkable=True)
             tilesets.addAction(new_action)
-            self.id2tiledata[action_id] = (name, module_name, new_action, None)
             action_plus_menuid = partial(self.change_tileset, action_id)
             new_action.triggered.connect(action_plus_menuid)
 
+            # prepare the dict that handles importing tileset object
+            self.id2tiledata[action_id] = (name, module_name, new_action, None)
+
             # check the default tileset
-            if name == DefaultTileset:
+            if action_id == DefaultTilesetIndex:
                 # put a check on the default tileset
                 new_action.setChecked(True)
+
+        log(f'initMenu: .id2tiledata={self.id2tiledata}')
+
+    def init_tiles(self):
+        """Initialize the tileset manager.
+        
+        Return a reference to the manager object.
+        """
+
+        modules = []
+        for (action_id, (name, module_name)) in enumerate(Tilesets):
+            modules.append(module_name)
+
+        return TilesetManager(modules)
 
     def change_tileset(self, menu_id):
         """Handle a tileset selection.
@@ -391,6 +443,7 @@ class PySlipQtDemo(QMainWindow):
             # update the self.id2tiledata element
             log(f'Updating dict: {menu_id}: ({name}, {module_name}, {action}, {new_tile_obj})')
             self.id2tiledata[menu_id] = (name, module_name, action, new_tile_obj)
+
         log(f'change_tileset: changing to new tileset {new_tile_obj}')
         self.pyslipqt.ChangeTileset(new_tile_obj)
 

@@ -86,7 +86,7 @@ class Tiles(tiles.BaseTiles):
                                     servers=TileServers, url_path=TileURLPath,
                                     max_server_requests=MaxServerRequests,
                                     max_lru=MaxLRU, tiles_dir=tiles_dir,
-                                    display=TilesetName, http_proxy=http_proxy)
+                                    http_proxy=http_proxy)
 
     def Geo2Tile(self, geo):
         """Convert geo to tile fractional coordinates for level in use.

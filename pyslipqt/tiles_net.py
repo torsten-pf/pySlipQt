@@ -8,18 +8,14 @@ For example, see osm_tiles.py.
 import os
 import time
 import math
-import threading
 import traceback
 import urllib
 from urllib import request
 import queue
-import functools
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import QThread, QTimer
 import tiles
-import pycacheback
 import sys_tile_data as std
-import utils
 
 
 # if we don't have log.py, don't crash
@@ -144,8 +140,8 @@ class Tiles(tiles.BaseTiles):
     SecondsInADay = 60 * 60 * 24
 
     def __init__(self, levels, tile_width, tile_height, tiles_dir, max_lru,
-                 servers, url_path, max_server_requests, display,
-                 http_proxy, refetch_days=RefreshTilesAfterDays):
+                 servers, url_path, max_server_requests, http_proxy,
+                 refetch_days=RefreshTilesAfterDays):
         """Initialise a Tiles instance.
 
         levels               a list of level numbers that are to be served
@@ -156,7 +152,6 @@ class Tiles(tiles.BaseTiles):
         servers              list of tile servers
         url_path             path on server to each tile
         max_server_requests  maximum number of requests per server
-        display              the display name of these tiles
         http_proxy           proxy to use if required
         refetch_days         fetch new server tile if older than this in days
                              (0 means don't ever update tiles)
@@ -171,7 +166,7 @@ class Tiles(tiles.BaseTiles):
 
         # perform the base class initialization
         super(Tiles, self).__init__(levels, tile_width, tile_height,
-                                    tiles_dir, max_lru, servers)
+                                    tiles_dir, max_lru)
 
         # save params not saved in super()
         self.servers = servers

@@ -2488,7 +2488,7 @@ class PySlipQt(QWidget):
     def ChangeTileset(self, tile_src):
         """Change the source of tiles.
 
-        tile_src  the tileset object to use
+        tile_src  the new tileset object to use
 
         Returns the old tileset object, None if none.
         Refreshes the display and tries to maintain the same position
@@ -2500,28 +2500,12 @@ class PySlipQt(QWidget):
         # get level and geo position of view centre
         (level, geo) = self.GetLevelAndPosition()
 
-        log(f'ChangeTileset: level={level}, geo-{geo}')
+        log(f'ChangeTileset: old tiles level={level}, geo={geo}')
 
         # remember old tileset
         result = self.tile_src
 
         log(f'ChangeTileset: old tile source={result}')
-
-        # set the new zoom level to the old
-        if not tile_src.UseLevel(self.level):
-            log(f"ChangeTileset: can't level {level} in new tile source {tile_src}")
-            # can't use old level, make sensible choice
-            if self.level < self.tiles_min_level:
-                self.level = self.tiles_min_level
-            elif self.level > self.tiles_max_level:
-                self.level = self.tiles_max_level
-
-            # if we can't change level now, raise an error exception
-            if not tile_src.UseLevel(self.level):
-                raise Exception('Trying to use level %s in tile obj %s, '
-                                'levels available are %s'
-                                % (str(self.level),
-                                   str(tile_src), str(tile_src.levels)))
 
         # set new tile source and set some state
         self.tile_src = tile_src
@@ -2530,7 +2514,9 @@ class PySlipQt(QWidget):
 
         log(f'ChangeTileset: NEW .tile_size_x={self.tile_size_x}, .tile_size_y={self.tile_size_y}')
 
-        (num_tiles_x, num_tiles_y, ppd_x, ppd_y) = tile_src.GetInfo(self.level)
+        result = self.tile_src.GetInfo(self.level)
+        log(f'ChangeTileset: GetInfo returned {result}')
+        (num_tiles_x, num_tiles_y, ppd_x, ppd_y) = result
         self.map_width = self.tile_size_x * num_tiles_x
         self.map_height = self.tile_size_y * num_tiles_y
         self.ppd_x = ppd_x
@@ -2545,6 +2531,24 @@ class PySlipQt(QWidget):
         # set callback from Tile source object when tile(s) available
         log(f'ChangeTileset: dir(self.tile_src)={dir(self.tile_src)}')
         self.tile_src.setCallback(self.OnTileAvailable)
+
+        # set the new zoom level to the old
+        if not tile_src.UseLevel(self.level):
+            log(f"ChangeTileset: can't level {level} in new tile source {tile_src}")
+            log(f'self.tiles_min_level={self.tiles_min_level}, self.tiles_max_level={self.tiles_max_level}')
+            # can't use old level, make sensible choice
+            if self.level < self.tiles_min_level:
+                self.level = self.tiles_min_level
+            elif self.level > self.tiles_max_level:
+                self.level = self.tiles_max_level
+
+            # if we can't change level now, raise an error exception
+            log(f'Try level {self.level} in new tiles')
+            if not tile_src.UseLevel(self.level):
+                raise Exception('Trying to use level %s in tile obj %s, '
+                                'levels available are %s'
+                                % (str(self.level),
+                                   str(tile_src), str(tile_src.levels)))
 
         # back to old level+centre, and refresh the display
         self.GotoLevelAndPosition(level, geo)

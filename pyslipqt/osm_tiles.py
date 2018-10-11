@@ -91,8 +91,7 @@ class Tiles(tiles.Tiles):
                                     tiles_dir=tiles_dir,
                                     servers=TileServers, url_path=TileURLPath,
                                     max_server_requests=MaxServerRequests,
-                                    display=TilesetName, max_lru=MaxLRU,
-                                    http_proxy=http_proxy)
+                                    max_lru=MaxLRU, http_proxy=http_proxy)
 # TODO: implement map wrap-around
 #        self.wrap_x = True
 #        self.wrap_y = False
