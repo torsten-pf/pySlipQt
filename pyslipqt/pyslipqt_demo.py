@@ -411,14 +411,13 @@ class PySlipQtDemo(QMainWindow):
 
         log(f'change_tileset: menu_id={menu_id}')
 
-        # ensure only one tileset is checked, the required one
+        # ensure only one tileset is checked in the menu, the required one
         for (key, tiledata) in self.id2tiledata.items():
             (name, module_name, action, tile_obj) = tiledata
             action.setChecked(key == menu_id)
 
         # get information for the required tileset
         try:
-            log(f'change_tileset: dict value={self.id2tiledata[menu_id]}')
             (name, module_name, action, new_tile_obj) = self.id2tiledata[menu_id]
         except KeyError:
             # badly formed self.id2tiledata element
@@ -429,13 +428,8 @@ class PySlipQtDemo(QMainWindow):
 
         if new_tile_obj is None:
             # haven't seen this tileset before, import and instantiate
-            m_name = 'tiles_%02d' % menu_id
-            log(f'm_name={m_name}')
             module_obj = importlib.import_module(module_name)
             log(f'module_obj={module_obj}')
-#            import_cmd = 'import %s as %s' % (module_name, m_name)
-#            log(f'import_cmd={import_cmd}')
-#            exec(import_cmd)
             tile_name = module_obj.TilesetName
             log(f"change_tileset: new tiles module is '{tile_name}'")
             new_tile_obj = module_obj.Tiles()

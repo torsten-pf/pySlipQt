@@ -411,7 +411,7 @@ class Tiles(tiles.BaseTiles):
 
         # tell the world a new tile is available
         if self.callback:
-            self.callback()
+            self.callback(level, x, y, image, True)
         else:
             msg = f'tile_is_available: self.callback is NOT SET!'
             log.error(msg)

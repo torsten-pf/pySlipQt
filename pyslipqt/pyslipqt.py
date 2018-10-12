@@ -540,8 +540,6 @@ class PySlipQt(QWidget):
         self.view_height = self.height()
 
         # recalculate the "key" tile stuff
-#        self.recalc_wrap_limits()
-#        self.normalize_key_after_drag(0, 0)
         self.rectify_key_tile()
 
     def enterEvent(self, event):
@@ -1312,6 +1310,8 @@ class PySlipQt(QWidget):
 
         Returns a tuple of geo coords (xgeo, ygeo) if the cursor is over map
         tiles, else returns None.
+
+        Note: the 'key' tile information must be correct.
         """
 
         (xview, yview) = view
@@ -1328,9 +1328,11 @@ class PySlipQt(QWidget):
 
         if self.wrap_x and self.wrap_y:
             return result
+
         if not self.wrap_x:
             if not (min_xgeo <= xgeo <= max_xgeo):
                 return None
+
         if not self.wrap_y:
             if not (min_ygeo <= ygeo <= max_ygeo):
                 return None
@@ -1689,6 +1691,8 @@ class PySlipQt(QWidget):
         y = self.view_height / 2
         geo = self.view_to_geo((x, y))
 
+        log(f'zoom_level: level={level}, x={x}, y={y}, geo={geo}')
+
         # get tile source to use the new level
         result = self.tile_src.UseLevel(level)
 
@@ -1726,6 +1730,8 @@ class PySlipQt(QWidget):
         the X or Y directions, or both.
         """
 
+        log(f'pan_position: geo={geo}')
+
         # convert the geo posn to a tile position
         (tile_x, tile_y) = self.tile_src.Geo2Tile(geo)
 
@@ -1757,6 +1763,8 @@ class PySlipQt(QWidget):
         view.  Otherwise don't allow edges to be exposed.
        
         Adjusts the "key" tile variables to ensure proper presentation.
+
+        Relies on .map_width, .map_height and .key_tile_* being set.
         """
 
         # check map in X direction
@@ -2398,14 +2406,17 @@ class PySlipQt(QWidget):
         Returns True if all went well.
         """
 
+        log(f'GotoLevel: level={level}')
+
         if not self.tile_src.UseLevel(level):
+            log(f"GotoLevel: couldn't change to level {level}")
             return False        # couldn't change level
 
         self.level = level
         self.map_width = self.tile_src.num_tiles_x * self.tile_width
         self.map_height = self.tile_src.num_tiles_y * self.tile_height
         (self.map_llon, self.map_rlon,
-         self.map_blat, self.map_tlat) = self.tile_src.extent
+             self.map_blat, self.map_tlat) = self.tile_src.extent
 
         # to set some state variables
         self.resizeEvent()
@@ -2420,12 +2431,30 @@ class PySlipQt(QWidget):
 
         geo  a tuple (xgeo,ygeo) to centre view on
 
-        Sets self.view_offset_x and self.view_offset_y and then calls
-        RecalcViewLimits(), redraws widget.
+        Recalculates the key tile info.
         """
 
         # get fractional tile coords of required centre of view
         (xtile, ytile) = self.tile_src.Geo2Tile(geo)
+
+        # calculate pixels from view edges to centre tile edges
+        half_width = self.view_width / 2
+        half_height = self.view_height / 2
+
+        int_xtile = int(xtile)
+        int_ytile = int(ytile)
+
+        frac_xtile = xtile - int_xtile
+        frac_ytile = ytile - int_ytile
+
+        pix_xtile = frac_xtile * self.tile_width
+        piy_ytile = frac_ytile * self.tile_height
+
+        tile_xoff = half_width - pix_xtile
+        tile_yoff = half_height - piy_ytile
+
+
+
 
         # now calculate view offsets, top, left, bottom and right
         half_width = self.view_width / 2
@@ -2436,9 +2465,9 @@ class PySlipQt(QWidget):
         centre_pixels_from_map_top = int(ytile * self.tile_height)
         self.view_offset_y = centre_pixels_from_map_top - half_height
 
-        # set the left/right/top/bottom lon/lat extents and redraw view
-#        self.RecalcViewLimits()
-# TODO: update routine to set 'key' tile stuff.
+        # reset the key tile info
+
+
         self.update()
 
     def GotoLevelAndPosition(self, level, geo):
@@ -2449,6 +2478,8 @@ class PySlipQt(QWidget):
 
         Does nothing if we can't use desired level.
         """
+
+        log(f'GotoLevelAndPosition: level={level}, geo={geo}')
 
         if self.GotoLevel(level):
             self.GotoPosition(geo)
@@ -2491,8 +2522,10 @@ class PySlipQt(QWidget):
         tile_src  the new tileset object to use
 
         Returns the old tileset object, None if none.
+
         Refreshes the display and tries to maintain the same position
-        and zoom level.
+        and zoom level.  May change the zoom level if the current level doesn't
+        exist in the new tileset.
         """
 
         log(f'ChangeTileset: new tile_src={tile_src}')
@@ -2503,19 +2536,32 @@ class PySlipQt(QWidget):
         log(f'ChangeTileset: old tiles level={level}, geo={geo}')
 
         # remember old tileset
-        result = self.tile_src
+        old_tileset = self.tile_src
 
-        log(f'ChangeTileset: old tile source={result}')
+        log(f'ChangeTileset: old tile source={old_tileset}')
+
+        # get levels in new tileset and see if we can display at the current level
+        new_levels = tile_src.levels
+        new_max_level = tile_src.max_level
+        new_min_level = tile_src.min_level
+        log(f'ChangeTileset: new_levels={new_levels}, new_max_level={new_max_level}, new_min_level={new_min_level}')
+        log(f'ChangeTileset: old levels={old_tileset.levels}, max_level={old_tileset.max_level}, min_level={old_tileset.min_level}')
+        if level > new_max_level:
+            level = new_max_level
+        if level < new_min_level:
+            level = new_min_level
+        log(f'ChangeTileset: After checking, level={level}')
 
         # set new tile source and set some state
         self.tile_src = tile_src
         self.tile_size_x = tile_src.tile_size_x
         self.tile_size_y = tile_src.tile_size_y
+        self.level = level
 
         log(f'ChangeTileset: NEW .tile_size_x={self.tile_size_x}, .tile_size_y={self.tile_size_y}')
 
-        result = self.tile_src.GetInfo(self.level)
-        log(f'ChangeTileset: GetInfo returned {result}')
+        result = self.tile_src.GetInfo(level)
+        log(f'ChangeTileset: GetInfo({level}) returned {result}')
         (num_tiles_x, num_tiles_y, ppd_x, ppd_y) = result
         self.map_width = self.tile_size_x * num_tiles_x
         self.map_height = self.tile_size_y * num_tiles_y
@@ -2529,12 +2575,12 @@ class PySlipQt(QWidget):
         self.tiles_min_level = min(tile_src.levels)
 
         # set callback from Tile source object when tile(s) available
-        log(f'ChangeTileset: dir(self.tile_src)={dir(self.tile_src)}')
         self.tile_src.setCallback(self.OnTileAvailable)
 
         # set the new zoom level to the old
+        log(f'ChangeTileset: calling tile_src.UseLevel({self.level})')
         if not tile_src.UseLevel(self.level):
-            log(f"ChangeTileset: can't level {level} in new tile source {tile_src}")
+            log(f"ChangeTileset: can't use level {level} in new tile source {tile_src}")
             log(f'self.tiles_min_level={self.tiles_min_level}, self.tiles_max_level={self.tiles_max_level}')
             # can't use old level, make sensible choice
             if self.level < self.tiles_min_level:
@@ -2550,12 +2596,67 @@ class PySlipQt(QWidget):
                                 % (str(self.level),
                                    str(tile_src), str(tile_src.levels)))
 
+# TODO: MUST SET KEY TILE STUFF HERE
+        self.set_key_from_centre(geo)
+
         # back to old level+centre, and refresh the display
-        self.GotoLevelAndPosition(level, geo)
+        log(f'ChangeTileset: setting level {level} and position {geo}')
+#        self.GotoLevelAndPosition(level, geo)
+        self.zoom_level_position(level, geo)
 
-        log(f'ChangeTileset: returning result={result}')
+        log(f'ChangeTileset: returning old_tileset={old_tileset}')
 
-        return result
+        return old_tileset
+
+    def set_key_from_centre(self, geo):
+        """Set 'key' tile stuff from given geo at view centre.
+
+        geo  geo coords of centre of view
+
+        We need to assume little about which state variables are set.
+        Only assume these are set:
+            self.tile_width
+            self.tile_height
+        """
+
+        log(f'set_key_from_centre: geo={geo}')
+
+        (ctile_tx, ctile_ty) = self.tile_src.Geo2Tile(geo)
+
+        int_ctile_tx = int(ctile_tx)
+        int_ctile_ty = int(ctile_ty)
+
+        frac_ctile_tx = ctile_tx - int_ctile_tx
+        frac_ctile_ty = ctile_ty - int_ctile_ty
+
+        ctile_xoff = self.view_width // 2 - self.tile_width * frac_ctile_tx
+        ctile_yoff = self.view_height // 2 - self.tile_height * frac_ctile_ty
+
+        num_whole_x = ctile_xoff // self.tile_width
+        num_whole_y = ctile_yoff // self.tile_height
+
+        xmargin = ctile_xoff - num_whole_x*self.tile_width
+        ymargin = ctile_yoff - num_whole_y*self.tile_height
+
+        # update the 'key' tile state variables
+        self.key_tile_left = int_ctile_tx - num_whole_x - 1
+        self.key_tile_top = int_ctile_ty - num_whole_y - 1
+        self.key_tile_xoffset = self.tile_width - xmargin
+        self.key_tile_yoffset = self.tile_height - ymargin
+
+        # centre map in view if map < view
+        if self.key_tile_left < 0:
+            log(f'set_key_from_centre: centreing in X, .view_width={self.view_width}, .map_width={self.map_width}')
+            self.key_tile_left = 0
+            self.key_tile_xoffset = (self.view_width - self.map_width) // 2
+
+        if self.key_tile_top < 0:
+            log(f'set_key_from_centre: centreing in Y, .view_height={self.view_height}, .map_height={self.map_height}')
+            self.key_tile_top = 0
+            self.key_tile_yoffset = (self.view_height - self.map_height) // 2
+
+        log(f'set_key_from_centre: AFTER, .key_tile_left={self.key_tile_left}, .key_tile_xoffset={self.key_tile_xoffset}')
+        log(f'set_key_from_centre: AFTER, .key_tile_top={self.key_tile_top}, .key_tile_yoffset={self.key_tile_yoffset}')
 
     def OnTileAvailable(self, level, x, y, img, bmp):
         """Callback routine: tile level/x/y is available.
@@ -2571,7 +2672,7 @@ class PySlipQt(QWidget):
         On a slow display we could just redraw the new tile.
         """
 
-        self.Update()
+        self.update()
 
 ######
 #

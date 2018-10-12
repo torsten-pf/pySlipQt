@@ -169,17 +169,20 @@ class BaseTiles(object):
 
         # first, CAN we zoom to this level?
         if level not in self.levels:
+            log(f'UseLevel: returning False, level {level} not in .levels {self.levels}')
             return False
 
         # get tile info
         info = self.GetInfo(level)
         if info is None:
+            log(f'UseLevel: returning False, .GetInfo({level}) returned False')
             return False
 
         # OK, save new level
         self.level = level
         (self.num_tiles_x, self.num_tiles_y, self.ppd_x, self.ppd_y) = info
 
+        log(f'UseLevel: returning True for level {level}')
         return True
 
     def GetTile(self, x, y):

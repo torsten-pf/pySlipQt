@@ -111,8 +111,11 @@ class Tiles(tiles.BaseTiles):
         doesn't exist.
         """
 
+        log(f'GetInfo: level={level}')
+
         # is required level available?
         if level not in self.levels:
+            log(f'GetInfo: returning None, {level} not in {self.levels}')
             return None
 
         # see if we can open the tile info file.
@@ -138,6 +141,8 @@ class Tiles(tiles.BaseTiles):
         This is an easy transformation as geo coordinates are Cartesian
         for this tileset.
         """
+
+        log(f'Geo2Tile: geo={geo}')
 
         # unpack the 'geo' tuple
         (xgeo, ygeo) = geo
