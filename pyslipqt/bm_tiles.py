@@ -67,7 +67,6 @@ TilesDir = 'bm_tiles'
 # Class for these tiles.   Builds on tiles.BaseTiles.
 ################################################################################
 
-#class Tiles(tiles.BaseTiles):
 class Tiles(tiles.Tiles):
     """An object to source internet tiles for pySlip."""
 

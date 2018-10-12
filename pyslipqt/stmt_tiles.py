@@ -8,7 +8,7 @@ Uses pyCacheBack to provide in-memory and on-disk caching.
 
 import math
 
-import tiles
+import tiles_net as tiles
 
 
 # if we don't have log.py, don't crash
@@ -69,7 +69,7 @@ TilesDir = 'stmt_tiles'
 # Class for these tiles.   Builds on tiles.BaseTiles.
 ################################################################################
 
-class Tiles(tiles.BaseTiles):
+class Tiles(tiles.Tiles):
     """An object to source internet tiles for pySlip."""
 
     def __init__(self, tiles_dir=TilesDir, http_proxy=None):

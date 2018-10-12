@@ -142,7 +142,7 @@ Tilesets = [
             ('BlueMarble tiles', 'bm_tiles'),
             ('GMT tiles', 'gmt_local_tiles'),
             ('ModestMaps tiles', 'mm_tiles'),
-            ('MapQuest tiles', 'mq_tiles'),
+#            ('MapQuest tiles', 'mq_tiles'),    # can't access?
             ('OpenStreetMap tiles', 'osm_tiles'),
             ('Stamen Toner tiles', 'stmt_tiles'),
             ('Stamen Transport tiles', 'stmtr_tiles'),
@@ -150,8 +150,7 @@ Tilesets = [
            ]
 
 # index into Tilesets above to set default tileset
-#DefaultTilesetIndex = 1
-DefaultTilesetIndex = 4
+DefaultTilesetIndex = 1
 
 ###############################################################################
 # A small class to manage tileset sources.
