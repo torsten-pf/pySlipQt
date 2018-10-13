@@ -733,38 +733,6 @@ class PySlipQt(QWidget):
     #
     ######
 
-# UNUSED
-    def use_level(self, level):
-        """Use new map level.
-
-        level  the new level to use
-
-        This code will try to maintain the centre of the view at the same
-        GEO coordinates, if possible.  The "key" tile is updated.
-
-        Returns True if level change is OK, else False.
-        """
-
-        return self.zoom_level(level)
-
-    def recalc_wrap_limits(self):
-        """Recalculate the maximum "key" tile information.
-        
-        Called if widget changes level or resized.
-        .map_width, .map_height, .view_width and .view_height have been set.
-        """
-
-        # figure out the maximum 'key' tile coordinates
-        tiles_in_view = self.view_width // self.tile_width
-        left_margin = self.view_width - tiles_in_view*self.tile_width
-        self.max_key_xoffset = -(self.tile_width - left_margin)
-        self.max_key_left = self.num_tiles_x - tiles_in_view - 1
-
-        tiles_in_view = self.view_height // self.tile_height
-        margin = self.view_height - tiles_in_view*self.tile_height
-        self.max_key_yoffset = -(self.tile_height - margin)
-        self.max_key_top = self.num_tiles_y - tiles_in_view - 1
-
     def tile_frac_to_parts(self, t_frac, length):
         """Split a tile coordinate into integer and fractional parts.
 
@@ -847,86 +815,6 @@ class PySlipQt(QWidget):
         zy_frac = self.tile_parts_to_frac(tile_top, tile_yoff, self.tile_height)
 
         return (zx_frac, zy_frac)
-
-# UNUSED
-    def tile_to_key(self, z_point, x, y):
-        """Get new 'key' tile data given a zoom point and a view point.
-
-        z_point  the tile coordinates of the zoom point (zx_tile, zy_tile)
-        x, y     the view coordinates of the zoom point
-
-        Returns (key_tile_left, key_tile_xoffset, key_tile.top, key_tile_yoffset)
-        which define the new 'key' tile values after a zoom.
-        """
-
-        # split out X and Y fractional coordinates
-        (zx_tile, zy_tile) = z_point
-
-        # get tile fractions from the view point to the view edges
-        x_off = x / self.tile_width
-        y_off = y / self.tile_height
-
-        # get the fractional coordinates of the left and top edges
-        left_coord = zx_tile - x_off/self.tile_width
-        top_coord = zy_tile - y_off/self.tile_height
-
-        # get 'key' tile coordinates
-        (l_int, l_frac) = self.tile_frac_to_parts(left_coord, self.tile_width)
-        key_tile_left = l_int
-        key_tile_xoffset = -l_frac # * self.tile_width
-
-        (r_int, r_frac) = self.tile_frac_to_parts(top_coord, self.tile_height)
-        key_tile_top = r_int
-        key_tile_yoffset = -r_frac # * self.tile_height
-
-        return (key_tile_left, key_tile_xoffset, key_tile_top, key_tile_yoffset)
-
-# UNUSED
-    def view_to_tile(self, x=None, y=None):
-        """Convert view coordinates to the fractional tile coordinates.
-
-        x, y  view point coordinates in pixels (view centre is default)
-
-        Returns a tuple (tile_x, tile_y) of fraction tile coordinates of
-        the given point in the view.
-
-            map bounds
-           +---------------------------------
-           |    view bounds     |
-           |   +----------------+--------
-           |   |     centre tile|
-           |   |     +------------------+
-           |   |     |          |       |
-           |   |     |          | tile_y|
-           |   |     |          v       |
-           |---+-----+--------->o       |
-           |   |     | tile_x    \      |
-           |   |     |         position |
-           |         |                  |
-                     |                  |
-                     +------------------+
-
-        This method is the reverse of self.tile_to_view().
-        """
-
-        # handle the default - centre of the view
-        if x is None:
-            x = self.view_width // 2
-        if y is None:
-            y = self.view_height // 2
-
-        # work out X tile coordinate
-        dx = x - self.key_tile_xoffset     # pixels from key tile left to point
-        (dx_whole, dx_off) = divmod(dx, self.tile_width)   # (a // b, a % b)
-        tile_x = self.key_tile_left + dx_whole + dx_off/self.tile_width
-
-        # work out Y tile coordinate
-        d_y = y - self.key_tile_yoffset     # pixels from key tile top to point
-        dy_whole = d_y // self.tile_height  # number of complete tiles to point
-        dy_off = d_y % self.tile_height     # left over piyels
-        tile_y = self.key_tile_top + dy_whole + dy_off/self.tile_height
-
-        return (tile_x, tile_y)
 
     ######
     # Layer manipulation routines.
@@ -1176,36 +1064,6 @@ class PySlipQt(QWidget):
                     cache_colour_width = (colour, width)
                 qpoly = [QPoint(*p) for p in poly]
                 dc.drawPolyline(QPolygon(qpoly))
-
-#UNUSED?
-    def view_extent(self, place, view, w, h, x_off, y_off, dcw=0, dch=0):
-        """Get view extent of area.
-
-        place         placement string ('cc', 'se', etc)
-        view          tuple (xview,yview) of view coordinates of object point
-        w, h          area width and height (pixels)
-        x_off, y_off  x and y offset (pixels)
-
-        Return the view extent of the area: (left, right, top, bottom)
-        where:
-            left    pixel coords of left side of area
-            right   pixel coords of right side of area
-            top     pixel coords of top of area
-            bottom  pixel coords of bottom of area
-
-        Return a tuple (left, right, top, bottom) of the view coordinates of
-        the extent rectangle.
-        """
-
-        # top left corner
-        (x, y) = view
-        (left, top) = self.extent_placement(place, x, y, x_off, y_off, w, h, dcw, dch)
-
-        # bottom right corner
-        right = left + w
-        bottom = top + h
-
-        return (left, right, top, bottom)
 
 ######
 # Convert between geo and view coordinates
@@ -1577,23 +1435,59 @@ class PySlipQt(QWidget):
 
         return (x, y)
 
-#####
+#    def zoom_level(self, level):
+#        """Zoom to a map level.
+#
+#        level  map level to zoom to
+#
+#        Change the map zoom level to that given. Returns True if the zoom
+#        succeeded, else False. If False is returned the method call has no effect.
+#        """
+#
+#        # get geo coords of view centre point
+#        x = self.view_width / 2
+#        y = self.view_height / 2
+#        geo = self.view_to_geo((x, y))
+#
+#        # get tile source to use the new level
+#        result = self.tile_src.UseLevel(level)
+#
+#        if result:
+#            # zoom worked, adjust state variables
+#            self.level = level
+#
+#            # move to new level
+#            (self.num_tiles_x, self.num_tiles_y, _, _) = self.tile_src.GetInfo(level)
+#            self.map_width = self.num_tiles_x * self.tile_width
+#            self.map_height = self.num_tiles_y * self.tile_height
+#
+#            # finally, pan to original map centre (updates widget)
+#            self.pan_position(geo)
+#
+#            # raise the EVT_PYSLIPQT_LEVEL event
+#            self.raise_event(PySlipQt.EVT_PYSLIPQT_LEVEL, level=level)
+#
+#            # trigger an EVT_PYSLIPQT_POSITION event to update any user widget
+#            # TODO
+#
+#        return result
 
     def zoom_level(self, level):
+
         """Zoom to a map level.
 
         level  map level to zoom to
 
         Change the map zoom level to that given. Returns True if the zoom
         succeeded, else False. If False is returned the method call has no effect.
+        Same operation as .GotoLevel() except we try to maintain the centre of
+        the view.
         """
 
         # get geo coords of view centre point
         x = self.view_width / 2
         y = self.view_height / 2
         geo = self.view_to_geo((x, y))
-
-        log(f'zoom_level: level={level}, x={x}, y={y}, geo={geo}')
 
         # get tile source to use the new level
         result = self.tile_src.UseLevel(level)
@@ -1606,19 +1500,17 @@ class PySlipQt(QWidget):
             (self.num_tiles_x, self.num_tiles_y, _, _) = self.tile_src.GetInfo(level)
             self.map_width = self.num_tiles_x * self.tile_width
             self.map_height = self.num_tiles_y * self.tile_height
-
-#            self.recalc_wrap_limits()
-#            self.normalize_key_after_drag(0, 0)
-###            self.rectify_key_tile()
+            (self.map_llon, self.map_rlon,
+                 self.map_blat, self.map_tlat) = self.tile_src.extent
 
             # finally, pan to original map centre (updates widget)
             self.pan_position(geo)
 
+            # to set some state variables
+            self.resizeEvent()
+
             # raise the EVT_PYSLIPQT_LEVEL event
             self.raise_event(PySlipQt.EVT_PYSLIPQT_LEVEL, level=level)
-
-            # trigger an EVT_PYSLIPQT_POSITION event to update any user widget
-            # TODO
 
         return result
 
@@ -1752,7 +1644,7 @@ class PySlipQt(QWidget):
 
         return result
 
-    def GetLevelAndPosition(self, place='cc'):
+    def get_level_and_position(self, place='cc'):
         """Get the level and geo position of a cardinal point within the view.
 
         place  a placement string specifying the point in the view
@@ -1766,34 +1658,6 @@ class PySlipQt(QWidget):
         geo = self.view_to_geo(view_coords)
 
         return (self.level, geo)
-
-# UNUSED
-    def info(self, msg):
-        """Display an information message, log and graphically."""
-
-        log_msg = '# ' + msg
-        length = len(log_msg)
-        prefix = '#### Information '
-        banner = prefix + '#'*(80 - len(log_msg) - len(prefix))
-        log(banner)
-        log(log_msg)
-        log(banner)
-
-        wx.MessageBox(msg, 'Warning', wx.OK | wx.ICON_INFORMATION)
-
-# UNUSED
-    def warn(self, msg):
-        """Display a warning message, in the log and graphically."""
-
-        log_msg = '# ' + msg
-        length = len(log_msg)
-        prefix = '#### Warning '
-        banner = prefix + '#'*(80 - len(log_msg) - len(prefix))
-        log(banner)
-        log(log_msg)
-        log(banner)
-
-        wx.MessageBox(msg, 'Warning', wx.OK | wx.ICON_ERROR)
 
     def set_key_from_centre(self, geo):
         """Set 'key' tile stuff from given geo at view centre.
@@ -2599,70 +2463,6 @@ class PySlipQt(QWidget):
         dy = s1y + u*py - pty
 
         return dx**2 + dy**2
-#            return None
-#
-#        # return geo extent
-#        (llon, tlat) = self.View2Geo((tlvx, tlvy))
-#        (rlon, blat) = self.View2Geo((brvx, brvy))
-#
-#        return (llon, rlon, tlat, blat)
-
-# UNUSED!?
-    def ViewExtent(self, place, view, w, h, x_off, y_off, dcw=0, dch=0):
-        """Get view extent of area.
-
-        place         placement string ('cc', 'se', etc)
-        view          tuple (xview,yview) of view coordinates of object point
-        w, h          area width and height (pixels)
-        x_off, y_off  x and y offset (pixels)
-
-        Return the view extent of the area: (left, right, top, bottom)
-        where:
-            left    pixel coords of left side of area
-            right   pixel coords of right side of area
-            top     pixel coords of top of area
-            bottom  pixel coords of bottom of area
-
-        Return a tuple (left, right, top, bottom) of the view coordinates of
-        the extent rectangle.
-        """
-
-        # top left corner
-        (x, y) = view
-        (left, top) = self.extent_placement(place, x, y, x_off, y_off,
-                                            w, h, dcw, dch)
-
-        # bottom right corner
-        right = left + w
-        bottom = top + h
-
-        return (left, right, top, bottom)
-
-# UNUSED
-    def PositionIsOnMap(self, posn):
-        """Return True if 'posn' is actually on map (not just view).
-
-        posn  a tuple (x,y) position in view pixel coordinates
-        """
-
-        if not posn:
-            return False
-
-        (x, y) = posn
-
-        if self.view_offset_x < 0:
-            if x < -self.view_offset_x:
-                return False
-            if x > self.view_width + self.view_offset_x:
-                return False
-
-        if self.view_offset_y < 0:
-            if y < -self.view_offset_y:
-                return False
-            if y > self.view_height + self.view_offset_y:
-                return False
-
-        return True
 
     def get_i18n_kw(self, kwargs, kws, default):
         """Get alternate international keyword value.
@@ -2759,20 +2559,6 @@ class PySlipQt(QWidget):
                 tr_corner_vy = self.sbox_1_y + self.sbox_h
 
         return (ll_corner_vx, ll_corner_vy, tr_corner_vx, tr_corner_vy)
-
-# UNUSED
-    def dump_key_data(self):
-        """Debug function to return string describing 'key' tile data."""
-
-        return (f'\t.key_tile_left={self.key_tile_left}\n'
-                f'\t.key_tile_top={self.key_tile_top}\n'
-                f'\t.key_tile_xoffset={self.key_tile_xoffset}\n'
-                f'\t.key_tile_yoffset={self.key_tile_yoffset}\n'
-                f'\t.view_width={self.view_width}\n'
-                f'\t.view_height={self.view_height}\n'
-                f'\t.map_width={self.map_width}\n'
-                f'\t.map_height={self.map_height}\n'
-               )
 
 ################################################################################
 # Below are the "external" API methods.
@@ -3380,6 +3166,31 @@ class PySlipQt(QWidget):
     # Zoom and pan
     ######
 
+#    def GotoLevel(self, level):
+#        """Use a new tile level.
+#
+#        level  the new tile level to use.
+#
+#        Returns True if all went well.
+#        """
+#
+#        if not self.tile_src.UseLevel(level):
+#            return False        # couldn't change level
+#
+#        self.level = level
+#        self.map_width = self.tile_src.num_tiles_x * self.tile_width
+#        self.map_height = self.tile_src.num_tiles_y * self.tile_height
+#        (self.map_llon, self.map_rlon,
+#             self.map_blat, self.map_tlat) = self.tile_src.extent
+#
+#        # to set some state variables
+#        self.resizeEvent()
+#
+#        # raise level change event
+#        self.raise_event(PySlipQt.EVT_PYSLIPQT_LEVEL, level=level)
+#
+#        return True
+
     def GotoLevel(self, level):
         """Use a new tile level.
 
@@ -3392,8 +3203,9 @@ class PySlipQt(QWidget):
             return False        # couldn't change level
 
         self.level = level
-        self.map_width = self.tile_src.num_tiles_x * self.tile_width
-        self.map_height = self.tile_src.num_tiles_y * self.tile_height
+        (self.num_tiles_x, self.num_tiles_y, _, _) = self.tile_src.GetInfo(level)
+        self.map_width = self.num_tiles_x * self.tile_width
+        self.map_height = self.num_tiles_y * self.tile_height
         (self.map_llon, self.map_rlon,
              self.map_blat, self.map_tlat) = self.tile_src.extent
 
@@ -3506,7 +3318,7 @@ class PySlipQt(QWidget):
         """
 
         # get level and geo position of view centre
-        (level, geo) = self.GetLevelAndPosition()
+        (level, geo) = self.get_level_and_position()
 
         # remember old tileset
         old_tileset = self.tile_src
