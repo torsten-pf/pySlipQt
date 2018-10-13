@@ -29,22 +29,25 @@ from tkinter_error import tkinter_error
 try:
     import pyslipqt
 except ImportError:
-    print('*'*60 + '\nSorry, you must install pySlipQt first\n' + '*'*60)
-    raise
+    msg = '*'*60 + '\nSorry, you must install pySlipQt first\n' + '*'*60
+    print(msg)
+    tkinter_error(msg)
+    sys.exit(1)
 try:
-    import PyQt5
+    from PyQt5.QtCore import QTimer
+    from PyQt5.QtGui import QPixmap
+    from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QLabel,
+                                 QSpinBox, QVBoxLayout, QVBoxLayout, QAction,
+                                 QHBoxLayout, QVBoxLayout, QGridLayout,
+                                 QErrorMessage)
 except ImportError:
-    msg = 'Sorry, you must install PyQt5'
+    msg = '*'*60 + '\nSorry, you must install PyQt5\n' + '*'*60
     print(msg)
     tkinter_error(msg)
     sys.exit(1)
 
-from PyQt5.QtCore import QTimer
-from PyQt5.QtGui import QPixmap
-from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QLabel,
-                             QSpinBox, QVBoxLayout, QVBoxLayout, QAction,
-                             QHBoxLayout, QVBoxLayout, QGridLayout,
-                             QErrorMessage)
+import getopt
+import traceback
 
 import log
 import gmt_local_tiles as tiles
@@ -73,7 +76,7 @@ InitViewLevel = 0
 # this will eventually be selectable within the app
 # a selection of cities, position from WikiPedia, etc
 #InitViewPosition = (0.0, 51.48)             # Greenwich, England
-InitViewPosition = (0.0, 0.0)                #"Null" Island
+#InitViewPosition = (0.0, 0.0)                #"Null" Island
 #InitViewPosition = (5.33, 60.389444)        # Bergen, Norway
 #InitViewPosition = (153.033333, -27.466667) # Brisbane, Australia
 #InitViewPosition = (98.3786761, 7.8627326)  # Phuket (ภูเก็ต), Thailand
@@ -85,7 +88,7 @@ InitViewPosition = (0.0, 0.0)                #"Null" Island
 #InitViewPosition = (-70.933333, -53.166667) # Punta Arenas, Chile
 #InitViewPosition = (168.3475, -46.413056)   # Invercargill, New Zealand
 #InitViewPosition = (-147.723056, 64.843611) # Fairbanks, AK, USA
-#InitViewPosition = (103.851959, 1.290270)   # Singapore
+InitViewPosition = (103.851959, 1.290270)   # Singapore
 
 # levels on which various layers show
 MRPointShowLevels = [3, 4]
@@ -141,7 +144,7 @@ LogSym2Num = {'CRITICAL': 50,
 Tilesets = [
             ('BlueMarble tiles', 'bm_tiles'),
             ('GMT tiles', 'gmt_local_tiles'),
-            ('ModestMaps tiles', 'mm_tiles'),
+#            ('ModestMaps tiles', 'mm_tiles'),  # can't access?
 #            ('MapQuest tiles', 'mq_tiles'),    # can't access?
             ('OpenStreetMap tiles', 'osm_tiles'),
             ('Stamen Toner tiles', 'stmt_tiles'),
@@ -210,7 +213,6 @@ class PySlipQtDemo(QMainWindow):
         # initialize the tileset handler
         self.tileset_manager = self.init_tiles()
         self.tile_source = self.tileset_manager.get_tile_source(DefaultTilesetIndex)
-        log(f'PySlipQtDemo: self.tile_source={self.tile_source}')
 
         # build the 'controls' part of GUI
         num_rows = self.make_gui_controls(grid)
@@ -246,10 +248,6 @@ class PySlipQtDemo(QMainWindow):
 
         # set initial view position
         QTimer.singleShot(1, self.final_setup)
-
-#        def hovered():
-#            self.labelOnlineHelp.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
-#        self.labelOnlineHelp.linkHovered.connect(hovered)
 
     def final_setup(self):
         """Perform final setup.
@@ -388,8 +386,6 @@ class PySlipQtDemo(QMainWindow):
                 # put a check on the default tileset
                 new_action.setChecked(True)
 
-        log(f'initMenu: .id2tiledata={self.id2tiledata}')
-
     def init_tiles(self):
         """Initialize the tileset manager.
         
@@ -408,8 +404,6 @@ class PySlipQtDemo(QMainWindow):
         menu_id  the index in self.id2tiledata of the required tileset
         """
 
-        log(f'change_tileset: menu_id={menu_id}')
-
         # ensure only one tileset is checked in the menu, the required one
         for (key, tiledata) in self.id2tiledata.items():
             (name, module_name, action, tile_obj) = tiledata
@@ -423,21 +417,15 @@ class PySlipQtDemo(QMainWindow):
             raise RuntimeError('self.id2tiledata is badly formed:\n%s'
                                % str(self.id2tiledata))
 
-        log(f'change_tileset: name={name}, module_name={module_name}, action={action}, new_tile_obj={new_tile_obj}')
-
         if new_tile_obj is None:
             # haven't seen this tileset before, import and instantiate
             module_obj = importlib.import_module(module_name)
-            log(f'module_obj={module_obj}')
             tile_name = module_obj.TilesetName
-            log(f"change_tileset: new tiles module is '{tile_name}'")
             new_tile_obj = module_obj.Tiles()
 
             # update the self.id2tiledata element
-            log(f'Updating dict: {menu_id}: ({name}, {module_name}, {action}, {new_tile_obj})')
             self.id2tiledata[menu_id] = (name, module_name, action, new_tile_obj)
 
-        log(f'change_tileset: changing to new tileset {new_tile_obj}')
         self.pyslipqt.ChangeTileset(new_tile_obj)
 
     def onClose(self):
@@ -448,7 +436,7 @@ class PySlipQtDemo(QMainWindow):
         #self.Close(True)
 
     ######
-    # pySlip demo control event handlers
+    # pySlipQt demo control event handlers
     ######
 
 ##### map-relative point layer
@@ -522,7 +510,7 @@ class PySlipQtDemo(QMainWindow):
         point(s) again for off.  Clicking away from the already selected point
         doesn't remove previously selected point(s) if nothing is selected.  We
         do this to show the selection/deselection of point(s) is up to the user,
-        not pySlip.
+        not pySlipQt.
 
         This code also shows how to combine handling of EventSelect and
         EventBoxSelect events.
@@ -1821,7 +1809,7 @@ class PySlipQtDemo(QMainWindow):
         print('ERROR: null_handler!?')
 
     def handle_position_event(self, event):
-        """Handle a pySlip POSITION event."""
+        """Handle a pySlipQt POSITION event."""
 
         posn_str = ''
         if event.mposn:
@@ -1832,7 +1820,7 @@ class PySlipQtDemo(QMainWindow):
         self.mouse_position.SetValue(posn_str)
 
     def handle_level_change(self, event):
-        """Handle a pySlip LEVEL event."""
+        """Handle a pySlipQt LEVEL event."""
 
         self.map_level.SetValue('%d' % event.level)
 
@@ -1883,63 +1871,60 @@ class PySlipQtDemo(QMainWindow):
         warn_dialog.showMessage(msg)
 
 ###############################################################################
+# Main code below
+###############################################################################
 
-if __name__ == '__main__':
-    import sys
-    import getopt
-    import traceback
+def usage(msg=None):
+    if msg:
+        print(('*'*80 + '\n%s\n' + '*'*80) % msg)
+    print(__doc__)
 
-    def usage(msg=None):
-        if msg:
-            print(('*'*80 + '\n%s\n' + '*'*80) % msg)
-        print(__doc__)
+# our own handler for uncaught exceptions
+def excepthook(type, value, tback):
+    msg = '\n' + '=' * 80
+    msg += '\nUncaught exception:\n'
+    msg += ''.join(traceback.format_exception(type, value, tback))
+    msg += '=' * 80 + '\n'
+    log(msg)
+    print(msg)
+#        tkinter_error(msg)     # doesn't work while PyQt5 is running
+    sys.exit(1)
 
-    # our own handler for uncaught exceptions
-    def excepthook(type, value, tb):
-        msg = '\n' + '=' * 80
-        msg += '\nUncaught exception:\n'
-        msg += ''.join(traceback.format_exception(type, value, tb))
-        msg += '=' * 80 + '\n'
-        log(msg)
-        print(msg)
-        tkinter_error(msg)
-#        sys.exit(1)
+# plug our handler into the python system
+sys.excepthook = excepthook
 
-    # plug our handler into the python system
-    sys.excepthook = excepthook
+# parse the CLI params
+argv = sys.argv[1:]
 
-    # parse the CLI params
-    argv = sys.argv[1:]
+try:
+    (opts, args) = getopt.getopt(argv, 'd:h', ['debug=', 'help'])
+except getopt.error:
+    usage()
+    sys.exit(1)
 
-    try:
-        (opts, args) = getopt.getopt(argv, 'd:h', ['debug=', 'help'])
-    except getopt.error:
+debug = 10              # no logging
+
+for (opt, param) in opts:
+    if opt in ['-d', '--debug']:
+        debug = param
+    elif opt in ['-h', '--help']:
         usage()
-        sys.exit(1)
+        sys.exit(0)
 
-    debug = 10              # no logging
-
-    for (opt, param) in opts:
-        if opt in ['-d', '--debug']:
-            debug = param
-        elif opt in ['-h', '--help']:
-            usage()
-            sys.exit(0)
-
-    # convert any symbolic debug level to a number
+# convert any symbolic debug level to a number
+try:
+    debug = int(debug)
+except ValueError:
+    # possibly a symbolic debug name
     try:
-        debug = int(debug)
-    except ValueError:
-        # possibly a symbolic debug name
-        try:
-            debug = LogSym2Num[debug.upper()]
-        except KeyError:
-            usage('Unrecognized debug name: %s' % debug)
-            sys.exit(1)
-    log.set_level(debug)
+        debug = LogSym2Num[debug.upper()]
+    except KeyError:
+        usage('Unrecognized debug name: %s' % debug)
+        sys.exit(1)
+log.set_level(debug)
 
-    # start wxPython app
-    app = QApplication(args)
-    ex = PySlipQtDemo()
-    sys.exit(app.exec_())
+# start the app
+app = QApplication(args)
+ex = PySlipQtDemo()
+sys.exit(app.exec_())
 
