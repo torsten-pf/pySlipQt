@@ -196,7 +196,7 @@ class Tiles(tiles.BaseTiles):
             raise TypeError("Bad tile_extension value, got '%s', "
                             "expected one of %s"
                             % (str(tile_extension),
-                               str(self.AllowedFileTypes.keys())))
+                               str(self.AllowedFileTypes.keys()))) from None
 
         # compose the expected 'Content-Type' string on request result
         # if we get here we know the extension is in self.AllowedFileTypes
@@ -217,12 +217,12 @@ class Tiles(tiles.BaseTiles):
 
         # test for firewall - use proxy (if supplied)
         test_url = self.servers[0] + self.url_path.format(Z=0, X=0, Y=0)
-        log(f'test_url={test_url}')
         try:
             request.urlopen(test_url)
         except urllib.error.HTTPError as e:
             status_code = e.code
-#            log('status_code=%s' % str(status_code))
+            log('Error: test_url=%s, status_code=%s'
+                    % (test_url, str(status_code)))
             if status_code == 404:
                 msg = ['',
                        'You got a 404 error from: %s' % test_url,
@@ -232,27 +232,23 @@ class Tiles(tiles.BaseTiles):
                 log(msg)
                 raise RuntimeError(msg) from None
             log('%s exception doing simple connection to: %s'
-                % (type(e).__name__, test_url))
+                    % (type(e).__name__, test_url))
             log(''.join(traceback.format_exc()))
 
             if http_proxy:
                 proxy = urllib2.ProxyHandler({'http': http_proxy})
-                #proxy = urllib.ProxyHandler({'http': http_proxy})
                 opener = urllib2.build_opener(proxy)
-                #opener = urllib.build_opener(proxy)
                 urllib2.install_opener(opener)
-                #urllib.install_opener(opener)
                 try:
                     urllib2.urlopen(test_url)
-                    #urllib.urlopen(test_url)
                 except:
                     msg = ("Using HTTP proxy %s, "
                            "but still can't get through a firewall!")
-                    raise Exception(msg)
+                    raise Exception(msg) from None
             else:
                 msg = ("There is a firewall but you didn't "
                        "give me an HTTP proxy to get through it?")
-                raise Exception(msg)
+                raise Exception(msg) from None
 
         # set up the request queue and worker threads
         self.request_queue = queue.Queue()  # entries are (level, x, y)
@@ -415,7 +411,7 @@ class Tiles(tiles.BaseTiles):
         else:
             msg = f'tile_is_available: self.callback is NOT SET!'
             log.error(msg)
-            raise RuntimeError(msg)
+            raise RuntimeError(msg) from None
 
     def SetAgeThresholdDays(self, num_days):
         """Set the tile refetch threshold time.
