@@ -547,6 +547,7 @@ class PySlipQt(QWidget):
         pass
 
     def leaveEvent(self, event):
+        self.raise_event(PySlipQt.EVT_PYSLIPQT_POSITION, mposn=None, vposn=None)
         pass
 
     def paintEvent(self, event):
@@ -932,7 +933,7 @@ class PySlipQt(QWidget):
     ######
 
     def add_layer(self, painter, data, map_rel, visible, show_levels,
-                 selectable, name, ltype):
+                  selectable, name, ltype):
         """Add a generic layer to the system.
 
         painter      the function used to paint the layer
@@ -968,67 +969,6 @@ class PySlipQt(QWidget):
             self.update()
 
         return id
-
-    def ShowLayer(self, id):
-        """Show a layer.
-
-        id  the layer id
-        """
-
-        self.layer_mapping[id].visible = True
-        self.update()
-
-    def HideLayer(self, id):
-        """Hide a layer.
-
-        id  the layer id
-        """
-
-        self.layer_mapping[id].visible = False
-        self.update()
-
-    def DeleteLayer(self, id):
-        """Delete a layer.
-
-        id  the layer id
-        """
-
-        # just in case we got None
-        if id:
-            # see if what we are about to remove might be visible
-            layer = self.layer_mapping[id]
-            visible = layer.visible
-
-            del layer
-            self.layer_z_order.remove(id)
-
-            # if layer was visible, refresh display
-            if visible:
-                self.update()
-
-    def SetLayerShowLevels(self, id, show_levels=None):
-        """Update the show_levels list for a layer.
-
-        id           ID of the layer we are going to update
-        show_levels  new layer show list
-
-        If 'show_levels' is None reset the displayable levels to
-        all levels in the current tileset.
-        """
-
-        # if we actually got an 'id' change the .show_levels value
-        if id:
-            layer = self.layer_mapping[id]
-
-            # if not given a 'show_levels' show all levels available
-            if not show_levels:
-                show_levels = range(self.tiles_min_level,
-                                    self.tiles_max_level+1)[:]
-
-            layer.show_levels = show_levels
-
-            # always update the display, there may be a change
-            self.update()
 
     def SetLayerSelectable(self, id, selectable=False):
         """Update the .selectable attribute for a layer.
@@ -1066,7 +1006,8 @@ class PySlipQt(QWidget):
         # draw points on map/view
         for (x, y, place, radius, pcolour, x_off, y_off, udata) in data:
             (pt, ex) = pex(place, (x,y), x_off, y_off, radius)
-            if ex and radius:  # don't draw if not on screen or zero radius
+
+            if pt and radius:  # don't draw if not on screen or zero radius
                 if cache_pcolour != pcolour:
                     qcolour = QColor(*pcolour)
                     pen = QPen(qcolour, radius, Qt.SolidLine)
@@ -1097,12 +1038,8 @@ class PySlipQt(QWidget):
         for (lon, lat, pmap, w, h, place,
                  x_off, y_off, pradius, pcolour, idata) in images:
             (pt, ex) = pex(place, (lon, lat), x_off, y_off, w, h)
-            if ex:
-                (ix, iy) = pt
-                size = pmap.size()
-                dc.drawPixmap(QPoint(ix, iy), pmap)
 
-            if pradius:
+            if pt and pradius:
                 if cache_pcolour != pcolour:
                     pen = QPen(pcolour, pradius, Qt.SolidLine)
                     painter.setPen(pen)
@@ -1110,6 +1047,10 @@ class PySlipQt(QWidget):
                     cache_pcolour = pcolour
                 (px, py) = pt
                 dc.drawEllipse(QPoint(px, py), pradius, pradius)
+
+            if ex:
+                (ix, _, iy, _) = ex
+                dc.drawPixmap(QPoint(ix, iy), pmap)
 
     def draw_text_layer(self, dc, text, map_rel):
         """Draw a text Layer on the view.
@@ -1135,7 +1076,7 @@ class PySlipQt(QWidget):
         for (lon, lat, tdata, place, radius, colour,
                 textcolour, fontname, fontsize, x_off, y_off, data) in text:
 
-            # set font characteristics so we calculate text width/height
+            # set font characteristics so we can calculate text width/height
             if cache_textcolour != textcolour:
                 qcolour = QColor(*textcolour)
                 pen = QPen(qcolour, radius, Qt.SolidLine)
@@ -1149,24 +1090,25 @@ class PySlipQt(QWidget):
                 font_metrics = QFontMetrics(font)
 
             qrect = font_metrics.boundingRect(tdata)
-            w = qrect.width()
+            w = qrect.width()       # text string width and height
             h = qrect.height()
 
             # get point + extent information (each can be None if off-view)
             (pt, ex) = pex(place, (lon, lat), x_off, y_off, w, h)
-            if ex:              # don't draw text if off screen
-                (lx, _, ty, _) = ex
-                dc.drawText(QPointF(lx, ty), tdata)
+            (pt_x, pt_y) = pt
 
             if pt and radius:   # don't draw point if off screen or zero radius
-                (x, y) = pt
                 if cache_colour != colour:
                     qcolour = QColor(*colour)
                     pen = QPen(qcolour, radius, Qt.SolidLine)
                     dc.setPen(pen)
                     dc.setBrush(qcolour)
                     cache_colour = colour
-                dc.drawEllipse(QPoint(x, y), radius, radius)
+                dc.drawEllipse(QPoint(pt_x, pt_y), radius, radius)
+
+            if ex:              # don't draw text if off screen
+                (lx, _, ty, _) = ex
+                dc.drawText(QPointF(lx, ty), tdata)
 
     def draw_polygon_layer(self, dc, data, map_rel):
         """Draw a polygon layer.
@@ -1235,6 +1177,7 @@ class PySlipQt(QWidget):
                 qpoly = [QPoint(*p) for p in poly]
                 dc.drawPolyline(QPolygon(qpoly))
 
+#UNUSED?
     def view_extent(self, place, view, w, h, x_off, y_off, dcw=0, dch=0):
         """Get view extent of area.
 
@@ -1349,11 +1292,12 @@ class PySlipQt(QWidget):
 ######
 
     def pex_point(self, place, geo, x_off, y_off, radius):
-        """Given a point object (geo coords) get point/extent in view coords.
+        """Convert point object geo position to point & extent in view coords.
 
         place         placement string
         geo           point position tuple (xgeo, ygeo)
         x_off, y_off  X and Y offsets
+        radius        radius of the point
 
         Return a tuple of point and extent origins (point, extent) where 'point'
         is (px, py) and extent is (elx, erx, ety, eby) (both in view coords).
@@ -1374,15 +1318,14 @@ class PySlipQt(QWidget):
         eby = py + radius
         extent = (elx, erx, ety, eby)
 
-        # decide if extent is off-view
+        # decide if point extent is off-view
         if erx < 0 or elx > self.view_width or eby < 0 or ety > self.view_height:
-            # no extent if ALL of extent is off-view
             extent = None
 
         return (point, extent)
 
     def pex_point_view(self, place, view, x_off, y_off, radius):
-        """Given a point object (view coords) get point/extent in view coords.
+        """Convert point object view position to point & extent in view coords.
 
         place         placement string
         view          point position tuple (xview, yview)
@@ -1410,13 +1353,12 @@ class PySlipQt(QWidget):
 
         # decide if extent is off-view
         if erx < 0 or elx > self.view_width or eby < 0 or ety > self.view_height:
-            # no extent if ALL of extent is off-view
             extent = None
 
         return (point, extent)
 
     def pex_extent(self, place, geo, x_off, y_off, w, h):
-        """Convert extent geo position to position & extent in view coords.
+        """Convert object geo position to position & extent in view coords.
 
         place         placement string
         geo           point position tuple (xgeo, ygeo)
@@ -1427,21 +1369,30 @@ class PySlipQt(QWidget):
         data where '(px, py)' is the point and '(elx, erx, ety, eby)' is the
         extent.  Both point and extent are in view coordinates.
 
-        Return None for extent if extent is completely off-view.
+        Return None for point or extent if either is completely off-view.
 
         An extent object can be either an image object or a text object.
         """
 
         # get point view coords
-        point = self.geo_to_view(geo)
-        (px, py) = point
+        vpoint = self.geo_to_view(geo)
+        (vpx, vpy) = vpoint
 
         # get extent limits
+        # must take into account 'place', 'x_off' and 'y_off'
+        point = self.extent_placement(place, vpx, vpy, x_off, y_off, w, h)
+        (px, py) = point
+
+        # extent = (left, right, top, bottom) in view coords
         elx = px
         erx = px + w
         ety = py
         eby = py + h
         extent = (elx, erx, ety, eby)
+
+        # decide if point is off-view
+        if px < 0 or px > self.view_width or py < 0 or py > self.view_height:
+            point = None
 
         # decide if extent is off-view
         if erx < 0 or elx > self.view_width or eby < 0 or ety > self.view_height:
@@ -1451,7 +1402,7 @@ class PySlipQt(QWidget):
         return (point, extent)
 
     def pex_extent_view(self, place, view, x_off, y_off, w, h):
-        """Given a view object convert point/extent coords to view coords.
+        """Convert object view position to point & extent in view coords.
 
         place         placement string
         view          point position tuple (xview, yview) (view coords)
@@ -1480,14 +1431,18 @@ class PySlipQt(QWidget):
         eby = py + h
         extent = (elx, erx, ety, eby)
 
+        # decide if point is off-view
+        if px < 0 or px > self.view_width or py < 0 or py > self.view_height:
+            point = None
+            
+        # decide if extent is off-view
         if erx < 0 or elx > self.view_width or eby < 0 or ety > self.view_height:
-            # no extent if ALL of extent is off-view
             extent = None
 
         return (point, extent)
 
     def pex_polygon(self, place, poly, x_off, y_off):
-        """Given a polygon/line obj (geo coords) get points/extent in view coords.
+        """Convert polygon/line obj geo position to points & extent in view coords.
 
         place         placement string
         poly          list of point position tuples (xgeo, ygeo)
@@ -1505,7 +1460,6 @@ class PySlipQt(QWidget):
             point = self.point_placement(place, xview, yview, x_off, y_off)
             view_points.append(point)
 
-        # get extent - max/min x and y
         # extent = (left, right, top, bottom) in view coords
         elx = min(view_points, key=lambda x: x[0])[0]
         erx = max(view_points, key=lambda x: x[0])[0]
@@ -1524,7 +1478,7 @@ class PySlipQt(QWidget):
         return (view_points, res_ex)
 
     def pex_polygon_view(self, place, poly, x_off, y_off):
-        """Given a polygon/line obj (view coords) get point/extent in view coords.
+        """Convert polygon/line obj view position to points & extent in view coords.
 
         place         placement string
         poly          list of point position tuples (xview, yview)
@@ -1597,10 +1551,10 @@ class PySlipQt(QWidget):
         """Perform map- and view-relative placement for an extent object.
 
         place         placement key string
-        x, y          point relative to placement origin
-        x_off, y_off  offset from point
-        w, h          width, height of the image
-        dcw, dcw      width/height of the view draw context (zero if map-rel)
+        x, y          point relative to placement origin (pixels)
+        x_off, y_off  offset from point (pixels)
+        w, h          width, height of the extent (pixels)
+        dcw, dcw      width/height of the view draw context (zero if map-rel) (pixels)
 
         Returns a tuple (x, y).
         """
@@ -1623,59 +1577,7 @@ class PySlipQt(QWidget):
 
         return (x, y)
 
-################################################################################
-# Below are the "external" API methods.
-################################################################################
-
-    ######
-    # Play with layers Z order
-    ######
-
-    def PushLayerToBack(self, id):
-        """Make layer specified be drawn at back of Z order.
-
-        id  ID of the layer to push to the back
-        """
-
-        self.layer_z_order.remove(id)
-        self.layer_z_order.insert(0, id)
-        self.update()
-
-    def PopLayerToFront(self, id):
-        """Make layer specified be drawn at front of Z order.
-
-        id  ID of the layer to pop to the front
-        """
-
-        self.layer_z_order.remove(id)
-        self.layer_z_order.append(id)
-        self.update()
-
-    def PlaceLayerBelowLayer(self, below, top):
-        """Place a layer so it will be drawn behind another layer.
-
-        below  ID of layer to place underneath 'top'
-        top    ID of layer to be drawn *above* 'below'
-        """
-
-        self.layer_z_order.remove(below)
-        i = self.layer_z_order.index(top)
-        self.layer_z_order.insert(i, below)
-        self.update()
-
-# UNUSED
-    def dump_key_data(self):
-        """Debug function to return string describing 'key' tile data."""
-
-        return (f'\t.key_tile_left={self.key_tile_left}\n'
-                f'\t.key_tile_top={self.key_tile_top}\n'
-                f'\t.key_tile_xoffset={self.key_tile_xoffset}\n'
-                f'\t.key_tile_yoffset={self.key_tile_yoffset}\n'
-                f'\t.view_width={self.view_width}\n'
-                f'\t.view_height={self.view_height}\n'
-                f'\t.map_width={self.map_width}\n'
-                f'\t.map_height={self.map_height}\n'
-               )
+#####
 
     def zoom_level(self, level):
         """Zoom to a map level.
@@ -1892,721 +1794,6 @@ class PySlipQt(QWidget):
         log(banner)
 
         wx.MessageBox(msg, 'Warning', wx.OK | wx.ICON_ERROR)
-
-######
-# "add a layer" routines
-######
-
-    def AddPointLayer(self, points, map_rel=True, visible=True,
-                      show_levels=None, selectable=False,
-                      name='<points_layer>', **kwargs):
-        """Add a layer of points, map or view relative.
-
-        points       iterable of point data:
-                         (x, y[, attributes])
-                     where x & y are either lon&lat (map) or x&y (view) coords
-                     and attributes is an optional dictionary of attributes for
-                     _each point_ with keys like:
-                         'placement'  a placement string
-                         'radius'     radius of point in pixels
-                         'colour'     colour of point
-                         'offset_x'   X offset
-                         'offset_y'   Y offset
-                         'data'       point user data object
-        map_rel      points are map relative if True, else view relative
-        visible      True if the layer is visible
-        show_levels  list of levels at which layer is auto-shown (or None==all)
-        selectable   True if select operates on this layer
-        name         the 'name' of the layer - mainly for debug
-        kwargs       a layer-specific attributes dictionary, has keys:
-                         'placement'  a placement string
-                         'radius'     radius of point in pixels
-                         'colour'     colour of point
-                         'offset_x'   X offset
-                         'offset_y'   Y offset
-                         'data'       point user data object
-        """
-
-        # merge global and layer defaults
-        if map_rel:
-            default_placement = kwargs.get('placement', self.DefaultPointPlacement)
-            default_radius = kwargs.get('radius', self.DefaultPointRadius)
-            default_colour = self.get_i18n_kw(kwargs, ('colour', 'color'),
-                                              self.DefaultPointColour)
-            default_offset_x = kwargs.get('offset_x', self.DefaultPointOffsetX)
-            default_offset_y = kwargs.get('offset_y', self.DefaultPointOffsetY)
-            default_data = kwargs.get('data', self.DefaultPointData)
-        else:
-            default_placement = kwargs.get('placement', self.DefaultPointViewPlacement)
-            default_radius = kwargs.get('radius', self.DefaultPointViewRadius)
-            default_colour = self.get_i18n_kw(kwargs, ('colour', 'color'),
-                                              self.DefaultPointViewColour)
-            default_offset_x = kwargs.get('offset_x', self.DefaultPointViewOffsetX)
-            default_offset_y = kwargs.get('offset_y', self.DefaultPointViewOffsetY)
-            default_data = kwargs.get('data', self.DefaultPointData)
-
-        # create draw data iterable for draw method
-        draw_data = []              # list to hold draw data
-
-        for pt in points:
-            if len(pt) == 3:
-                (x, y, attributes) = pt
-            elif len(pt) == 2:
-                (x, y) = pt
-                attributes = {}
-            else:
-                msg = ('Point data must be iterable of tuples: '
-                       '(x, y[, dict])\n'
-                       'Got: %s' % str(pt))
-                raise Exception(msg)
-
-            # plug in any required polygon values (override globals+layer)
-            placement = attributes.get('placement', default_placement)
-            radius = attributes.get('radius', default_radius)
-            colour = self.get_i18n_kw(attributes, ('colour', 'color'),
-                                      default_colour)
-            offset_x = attributes.get('offset_x', default_offset_x)
-            offset_y = attributes.get('offset_y', default_offset_y)
-            udata = attributes.get('data', default_data)
-
-            # check values that can be wrong
-            placement = placement.lower()
-            if placement not in self.valid_placements:
-                msg = ("Point placement value is invalid, got '%s'"
-                       % str(placement))
-                raise Exception(msg)
-
-            # convert various colour formats to internal (r, g, b, a)
-            colour = self.colour_to_internal(colour)
-
-            # append another point to draw data list
-            draw_data.append((float(x), float(y), placement,
-                              radius, colour, offset_x, offset_y, udata))
-
-        return self.add_layer(self.draw_point_layer, draw_data, map_rel,
-                              visible=visible, show_levels=show_levels,
-                              selectable=selectable, name=name,
-                              ltype=self.TypePoint)
-
-    def AddImageLayer(self, data, map_rel=True, visible=True,
-                      show_levels=None, selectable=False,
-                      name='<image_layer>', **kwargs):
-        """Add a layer of images, map or view relative.
-
-        data         list of (lon, lat, fname[, attributes]) (map_rel)
-                     or list of (x, y, fname[, attributes]) (view relative)
-                     attributes is a dictionary of attributes:
-                         placement  a placement string
-                         radius     object point radius
-                         colour     object point colour
-                         offset_x   X offset
-                         offset_y   Y offset
-                         data       image user data
-        map_rel      points drawn relative to map if True, else view relative
-        visible      True if the layer is to be immediately visible
-        show_levels  list of levels at which layer is auto-shown (or None)
-        selectable   True if select operates on this layer
-        name         name of this layer
-        kwargs       dictionary of extra params:
-                         placement  string describing placement wrt hotspot
-                         radius     object point radius
-                         colour     object point colour
-                         offset_x   hotspot X offset in pixels
-                         offset_y   hotspot Y offset in pixels
-                         data       image user data
-
-        The hotspot is placed at (lon, lat) or (x, y).  'placement' controls
-        where the image is displayed relative to the hotspot.
-        """
-
-        # merge global and layer defaults
-        if map_rel:
-            default_placement = kwargs.get('placement', self.DefaultImagePlacement)
-            default_radius = kwargs.get('radius', self.DefaultImageRadius)
-            default_colour = kwargs.get('colour', self.DefaultImageColour)
-            default_offset_x = kwargs.get('offset_x', self.DefaultImageOffsetX)
-            default_offset_y = kwargs.get('offset_y', self.DefaultImageOffsetY)
-            default_data = kwargs.get('data', self.DefaultImageData)
-        else:
-            default_placement = kwargs.get('placement', self.DefaultImageViewPlacement)
-            default_radius = kwargs.get('radius', self.DefaultImageViewRadius)
-            default_colour = kwargs.get('colour', self.DefaultImageViewColour)
-            default_offset_x = kwargs.get('offset_x', self.DefaultImageViewOffsetX)
-            default_offset_y = kwargs.get('offset_y', self.DefaultImageViewOffsetY)
-            default_data = kwargs.get('data', self.DefaultImageViewData)
-
-        # define cache variables for the image informtion
-        # used to minimise file access - just caches previous file informtion
-        fname_cache = None
-        pmap_cache = None
-        w_cache = None
-        h_cache = None
-
-        # load all image files, convert to bitmaps, create draw_data iterable
-        draw_data = []
-        for d in data:
-            if len(d) == 4:
-                (lon, lat, fname, attributes) = d
-            elif len(d) == 3:
-                (lon, lat, fname) = d
-                attributes = {}
-            else:
-                msg = ('Image data must be iterable of tuples: '
-                       '(x, y, fname[, dict])\nGot: %s' % str(d))
-                raise Exception(msg)
-
-            # get image specific values, if any
-            placement = attributes.get('placement', default_placement)
-            radius = attributes.get('radius', default_radius)
-            colour = attributes.get('colour', default_colour)
-            offset_x = attributes.get('offset_x', default_offset_x)
-            offset_y = attributes.get('offset_y', default_offset_y)
-            udata = attributes.get('data', None)
-
-            if fname == fname_cache:
-                pmap = pmap_cache
-                w = w_cache
-                h = h_cache
-            else:
-                fname_cache = fname
-                pmap_cache = pmap = QPixmap(fname)
-                size = pmap.size()
-                h = h_cache = size.height()
-                w = w_cache = size.width()
-
-            # check values that can be wrong
-            placement = placement.lower()
-            if placement not in self.valid_placements:
-                msg = ("Image placement value is invalid, got '%s'"
-                       % str(placement))
-                raise Exception(msg)
-
-            # convert various colour formats to internal (r, g, b, a)
-            colour = self.colour_to_internal(colour)
-
-            draw_data.append((float(lon), float(lat), pmap, w, h, placement,
-                              offset_x, offset_y, radius, colour, udata))
-
-        return self.add_layer(self.draw_image_layer, draw_data, map_rel,
-                             visible=visible, show_levels=show_levels,
-                             selectable=selectable, name=name,
-                             ltype=self.TypeImage)
-
-    def AddTextLayer(self, text, map_rel=True, visible=True, show_levels=None,
-                     selectable=False, name='<text_layer>', **kwargs):
-        """Add a text layer to the map or view.
-
-        text         list of sequence of (lon, lat, text[, dict]) coordinates
-                     (optional 'dict' contains point-specific attributes)
-        map_rel      points drawn relative to map if True, else view relative
-        visible      True if the layer is to be immediately visible
-        show_levels  list of levels at which layer is auto-shown
-        selectable   True if select operates on this layer
-        name         name of this layer
-        kwargs       a dictionary of changeable text attributes
-                         (placement, radius, fontname, fontsize, colour, data)
-                     these supply any data missing in 'data'
-        """
-
-        # merge global and layer defaults
-        if map_rel:
-            default_placement = kwargs.get('placement', self.DefaultTextPlacement)
-            default_radius = kwargs.get('radius', self.DefaultTextRadius)
-            default_fontname = kwargs.get('fontname', self.DefaultTextFontname)
-            default_fontsize = kwargs.get('fontsize', self.DefaultTextFontSize)
-            default_colour = self.get_i18n_kw(kwargs, ('colour', 'color'),
-                                              self.DefaultTextColour)
-            default_textcolour = self.get_i18n_kw(kwargs,
-                                                  ('textcolour', 'textcolor'),
-                                                  self.DefaultTextTextColour)
-            default_offset_x = kwargs.get('offset_x', self.DefaultTextOffsetX)
-            default_offset_y = kwargs.get('offset_y', self.DefaultTextOffsetY)
-            default_data = kwargs.get('data', self.DefaultTextData)
-        else:
-            default_placement = kwargs.get('placement', self.DefaultTextViewPlacement)
-            default_radius = kwargs.get('radius', self.DefaultTextViewRadius)
-            default_fontname = kwargs.get('fontname', self.DefaultTextViewFontname)
-            default_fontsize = kwargs.get('fontsize', self.DefaultTextViewFontSize)
-            default_colour = self.get_i18n_kw(kwargs, ('colour', 'color'),
-                                              self.DefaultTextViewColour)
-            default_textcolour = self.get_i18n_kw(kwargs,
-                                                  ('textcolour', 'textcolor'),
-                                                  self.DefaultTextViewTextColour)
-            default_offset_x = kwargs.get('offset_x', self.DefaultTextViewOffsetX)
-            default_offset_y = kwargs.get('offset_y', self.DefaultTextViewOffsetY)
-            default_data = kwargs.get('data', self.DefaultTextData)
-
-        # create data iterable ready for drawing
-        draw_data = []
-        for t in text:
-            if len(t) == 4:
-                (lon, lat, tdata, attributes) = t
-            elif len(t) == 3:
-                (lon, lat, tdata) = t
-                attributes = {}
-            else:
-                msg = ('Text data must be iterable of tuples: '
-                       '(lon, lat, text, [dict])\n'
-                       'Got: %s' % str(t))
-                raise Exception(msg)
-
-            # plug in any required defaults
-            placement = attributes.get('placement', default_placement)
-            radius = attributes.get('radius', default_radius)
-            fontname = attributes.get('fontname', default_fontname)
-            fontsize = attributes.get('fontsize', default_fontsize)
-            colour = self.get_i18n_kw(attributes, ('colour', 'color'),
-                                      default_colour)
-            textcolour = self.get_i18n_kw(attributes,
-                                          ('textcolour', 'textcolor'),
-                                          default_textcolour)
-            offset_x = attributes.get('offset_x', default_offset_x)
-            offset_y = attributes.get('offset_y', default_offset_y)
-            udata = attributes.get('data', default_data)
-
-            # check values that can be wrong
-            placement = placement.lower()
-            if placement not in self.valid_placements:
-                msg = ("Text placement value is invalid, got '%s'"
-                       % str(placement))
-                raise Exception(msg)
-
-            # convert various colour formats to internal (r, g, b, a)
-            colour = self.colour_to_internal(colour)
-            textcolour = self.colour_to_internal(textcolour)
-
-            draw_data.append((float(lon), float(lat), tdata, placement.lower(),
-                              radius, colour, textcolour, fontname, fontsize,
-                              offset_x, offset_y, udata))
-
-        return self.add_layer(self.draw_text_layer, draw_data, map_rel,
-                             visible=visible, show_levels=show_levels,
-                             selectable=selectable, name=name,
-                             ltype=self.TypeText)
-
-    def AddPolygonLayer(self, data, map_rel=True, visible=True,
-                        show_levels=None, selectable=False,
-                        name='<polygon_layer>', **kwargs):
-        """Add a layer of polygon data to the map.
-
-        data         iterable of polygon tuples:
-                         (points[, attributes])
-                     where points is another iterable of (x, y) tuples and
-                     attributes is a dictionary of polygon attributes:
-                         placement   a placement string (view-relative only)
-                         width       width of polygon edge lines
-                         colour      colour of edge lines
-                         close       if True closes polygon
-                         filled      polygon is filled (implies closed)
-                         fillcolour  fill colour
-                         offset_x    X offset
-                         offset_y    Y offset
-                         data        polygon user data object
-        map_rel      points drawn relative to map if True, else view relative
-        visible      True if the layer is to be immediately visible
-        show_levels  list of levels at which layer is auto-shown (or None)
-        selectable   True if select operates on this layer
-        name         name of this layer
-        kwargs       extra keyword args, layer-specific:
-                         placement   placement string (view-rel only)
-                         width       width of polygons in pixels
-                         colour      colour of polygon edge lines
-                         close       True if polygon is to be closed
-                         filled      if True, fills polygon
-                         fillcolour  fill colour
-                         offset_x    X offset
-                         offset_y    Y offset
-                         data        polygon user data object
-        """
-
-        # merge global and layer defaults
-        if map_rel:
-            default_placement = kwargs.get('placement',
-                                           self.DefaultPolygonPlacement)
-            default_width = kwargs.get('width', self.DefaultPolygonWidth)
-            default_colour = self.get_i18n_kw(kwargs, ('colour', 'color'),
-                                              self.DefaultPolygonColour)
-            default_close = kwargs.get('closed', self.DefaultPolygonClose)
-            default_filled = kwargs.get('filled', self.DefaultPolygonFilled)
-            default_fillcolour = self.get_i18n_kw(kwargs,
-                                                  ('fillcolour', 'fillcolor'),
-                                                  self.DefaultPolygonFillcolour)
-            default_offset_x = kwargs.get('offset_x', self.DefaultPolygonOffsetX)
-            default_offset_y = kwargs.get('offset_y', self.DefaultPolygonOffsetY)
-            default_data = kwargs.get('data', self.DefaultPolygonData)
-        else:
-            default_placement = kwargs.get('placement',
-                                           self.DefaultPolygonViewPlacement)
-            default_width = kwargs.get('width', self.DefaultPolygonViewWidth)
-            default_colour = self.get_i18n_kw(kwargs, ('colour', 'color'),
-                                              self.DefaultPolygonViewColour)
-            default_close = kwargs.get('closed', self.DefaultPolygonViewClose)
-            default_filled = kwargs.get('filled', self.DefaultPolygonViewFilled)
-            default_fillcolour = self.get_i18n_kw(kwargs,
-                                                  ('fillcolour', 'fillcolor'),
-                                                  self.DefaultPolygonViewFillcolour)
-            default_offset_x = kwargs.get('offset_x', self.DefaultPolygonViewOffsetX)
-            default_offset_y = kwargs.get('offset_y', self.DefaultPolygonViewOffsetY)
-            default_data = kwargs.get('data', self.DefaultPolygonViewData)
-
-        # create draw_data iterable
-        draw_data = []
-        for d in data:
-            if len(d) == 2:
-                (p, attributes) = d
-            elif len(d) == 1:
-                p = d
-                attributes = {}
-            else:
-                msg = ('Polygon data must be iterable of tuples: '
-                       '(points, [attributes])\n'
-                       'Got: %s' % str(d))
-                raise Exception(msg)
-
-            # get polygon attributes
-            placement = attributes.get('placement', default_placement)
-            width = attributes.get('width', default_width)
-            colour = self.get_i18n_kw(attributes, ('colour', 'color'),
-                                      default_colour)
-            close = attributes.get('closed', default_close)
-            filled = attributes.get('filled', default_filled)
-            if filled:
-                close = True
-            fillcolour = self.get_i18n_kw(attributes,
-                                          ('fillcolour', 'fillcolor'),
-                                          default_fillcolour)
-            offset_x = attributes.get('offset_x', default_offset_x)
-            offset_y = attributes.get('offset_y', default_offset_y)
-            udata = attributes.get('data', default_data)
-
-            # if polygon is to be filled, ensure closed
-            if close:
-                p = list(p)     # must get a *copy*
-                p.append(p[0])
-
-            # check values that can be wrong
-            placement = placement.lower()
-            if placement not in self.valid_placements:
-                msg = ("Polygon placement value is invalid, got '%s'"
-                       % str(placement))
-                raise Exception(msg)
-
-            # convert various colour formats to internal (r, g, b, a)
-            colour = self.colour_to_internal(colour)
-            fillcolour = self.colour_to_internal(fillcolour)
-
-            # append this polygon to the layer data
-            draw_data.append((p, placement, width, colour, close,
-                              filled, fillcolour, offset_x, offset_y, udata))
-
-        return self.add_layer(self.draw_polygon_layer, draw_data, map_rel,
-                             visible=visible, show_levels=show_levels,
-                             selectable=selectable, name=name,
-                             ltype=self.TypePolygon)
-
-    def AddPolylineLayer(self, data, map_rel=True, visible=True,
-                        show_levels=None, selectable=False,
-                        name='<polyline>', **kwargs):
-        """Add a layer of polyline data to the map.
-
-        data         iterable of polyline tuples:
-                         (points[, attributes])
-                     where points is another iterable of (x, y) tuples and
-                     attributes is a dictionary of polyline attributes:
-                         placement   a placement string (view-relative only)
-                         width       width of polyline edge lines
-                         colour      colour of edge lines
-                         offset_x    X offset
-                         offset_y    Y offset
-                         data        polyline user data object
-        map_rel      points drawn relative to map if True, else view relative
-        visible      True if the layer is to be immediately visible
-        show_levels  list of levels at which layer is auto-shown (or None)
-        selectable   True if select operates on this layer
-        name         name of this layer
-        kwargs       extra keyword args, layer-specific:
-                         placement   placement string (view-rel only)
-                         width       width of polyline in pixels
-                         colour      colour of polyline edge lines
-                         offset_x    X offset
-                         offset_y    Y offset
-                         data        polygon user data object
-        """
-
-        # merge global and layer defaults
-        if map_rel:
-            default_placement = kwargs.get('placement',
-                                           self.DefaultPolygonPlacement)
-            default_width = kwargs.get('width', self.DefaultPolygonWidth)
-            default_colour = self.get_i18n_kw(kwargs, ('colour', 'color'),
-                                              self.DefaultPolygonColour)
-            default_offset_x = kwargs.get('offset_x', self.DefaultPolygonOffsetX)
-            default_offset_y = kwargs.get('offset_y', self.DefaultPolygonOffsetY)
-            default_data = kwargs.get('data', self.DefaultPolygonData)
-        else:
-            default_placement = kwargs.get('placement',
-                                           self.DefaultPolygonViewPlacement)
-            default_width = kwargs.get('width', self.DefaultPolygonViewWidth)
-            default_colour = self.get_i18n_kw(kwargs, ('colour', 'color'),
-                                              self.DefaultPolygonViewColour)
-            default_offset_x = kwargs.get('offset_x', self.DefaultPolygonViewOffsetX)
-            default_offset_y = kwargs.get('offset_y', self.DefaultPolygonViewOffsetY)
-            default_data = kwargs.get('data', self.DefaultPolygonViewData)
-
-        # create draw_data iterable
-        draw_data = []
-        for d in data:
-            if len(d) == 2:
-                (p, attributes) = d
-            elif len(d) == 1:
-                p = d
-                attributes = {}
-            else:
-                msg = ('Polyline data must be iterable of tuples: '
-                       '(polyline, [attributes])\n'
-                       'Got: %s' % str(d))
-                raise Exception(msg)
-
-            # get polygon attributes
-            placement = attributes.get('placement', default_placement)
-            width = attributes.get('width', default_width)
-            colour = self.get_i18n_kw(attributes, ('colour', 'color'),
-                                      default_colour)
-            offset_x = attributes.get('offset_x', default_offset_x)
-            offset_y = attributes.get('offset_y', default_offset_y)
-            udata = attributes.get('data', default_data)
-
-            # check values that can be wrong
-            placement = placement.lower()
-            if placement not in self.valid_placements:
-                msg = ("Polyline placement value is invalid, got '%s'"
-                       % str(placement))
-                raise Exception(msg)
-
-            # convert various colour formats to internal (r, g, b, a)
-            colour = self.colour_to_internal(colour)
-
-            draw_data.append((p, placement, width, colour,
-                              offset_x, offset_y, udata))
-
-        return self.add_layer(self.draw_polyline_layer, draw_data, map_rel,
-                             visible=visible, show_levels=show_levels,
-                             selectable=selectable, name=name,
-                             ltype=self.TypePolyline)
-
-######
-# Positioning methods
-######
-
-    def GotoLevel(self, level):
-        """Use a new tile level.
-
-        level  the new tile level to use.
-
-        Returns True if all went well.
-        """
-
-        log(f'GotoLevel: level={level}')
-
-        if not self.tile_src.UseLevel(level):
-            log(f"GotoLevel: couldn't change to level {level}")
-            return False        # couldn't change level
-
-        self.level = level
-        self.map_width = self.tile_src.num_tiles_x * self.tile_width
-        self.map_height = self.tile_src.num_tiles_y * self.tile_height
-        (self.map_llon, self.map_rlon,
-             self.map_blat, self.map_tlat) = self.tile_src.extent
-
-        # to set some state variables
-        self.resizeEvent()
-
-        # raise level change event
-        self.raise_event(PySlipQt.EVT_PYSLIPQT_LEVEL, level=level)
-
-        return True
-
-    def GotoPosition(self, geo):
-        """Set view to centre on a geo position in the current level.
-
-        geo  a tuple (xgeo,ygeo) to centre view on
-
-        Recalculates the key tile info.
-        """
-
-        # get fractional tile coords of required centre of view
-        (xtile, ytile) = self.tile_src.Geo2Tile(geo)
-
-        # calculate pixels from view edges to centre tile edges
-        half_width = self.view_width / 2
-        half_height = self.view_height / 2
-
-        int_xtile = int(xtile)
-        int_ytile = int(ytile)
-
-        frac_xtile = xtile - int_xtile
-        frac_ytile = ytile - int_ytile
-
-        pix_xtile = frac_xtile * self.tile_width
-        piy_ytile = frac_ytile * self.tile_height
-
-        tile_xoff = half_width - pix_xtile
-        tile_yoff = half_height - piy_ytile
-
-
-
-
-        # now calculate view offsets, top, left, bottom and right
-        half_width = self.view_width / 2
-        centre_pixels_from_map_left = int(xtile * self.tile_width)
-        self.view_offset_x = centre_pixels_from_map_left - half_width
-
-        half_height = self.view_height / 2
-        centre_pixels_from_map_top = int(ytile * self.tile_height)
-        self.view_offset_y = centre_pixels_from_map_top - half_height
-
-        # reset the key tile info
-
-
-        self.update()
-
-    def GotoLevelAndPosition(self, level, geo):
-        """Goto a map level and set view to centre on a position.
-
-        level  the map level to use
-        geo    a tuple (xgeo,ygeo) to centre view on
-
-        Does nothing if we can't use desired level.
-        """
-
-        log(f'GotoLevelAndPosition: level={level}, geo={geo}')
-
-        if self.GotoLevel(level):
-            self.GotoPosition(geo)
-
-    def ZoomToArea(self, geo, size):
-        """Set view to level and position to view an area.
-
-        geo   a tuple (xgeo,ygeo) to centre view on
-        size  a tuple (width,height) of area in degrees
-
-        Centre an area and zoom to view such that the area will fill
-        approximately 50% of width or height, whichever is greater.
-
-        Use the ppd_x and ppd_y values in the level 'tiles' file.
-        """
-
-        # unpack area width/height (degrees)
-        (awidth, aheight) = size
-
-        # step through levels (smallest first) and check view size (degrees)
-        for l in self.tile_src.levels:
-            level = l
-            (_, _, ppd_x, ppd_y) = self.tile_src.getInfo(l)
-            view_deg_width = self.view_width / ppd_x
-            view_deg_height = self.view_height / ppd_y
-
-            # if area >= 50% of view, finished
-            if awidth >= view_deg_width / 2 or aheight >= view_deg_height / 2:
-                break
-
-        self.GotoLevelAndPosition(level, geo)
-
-    ######
-    # Change the tileset
-    ######
-
-    def ChangeTileset(self, tile_src):
-        """Change the source of tiles.
-
-        tile_src  the new tileset object to use
-
-        Returns the old tileset object, None if none.
-
-        Refreshes the display and tries to maintain the same position
-        and zoom level.  May change the zoom level if the current level doesn't
-        exist in the new tileset.
-        """
-
-        log(f'ChangeTileset: new tile_src={tile_src}')
-
-        # get level and geo position of view centre
-        (level, geo) = self.GetLevelAndPosition()
-
-        log(f'ChangeTileset: old tiles level={level}, geo={geo}')
-
-        # remember old tileset
-        old_tileset = self.tile_src
-
-        log(f'ChangeTileset: old tile source={old_tileset}')
-
-        # get levels in new tileset and see if we can display at the current level
-        new_levels = tile_src.levels
-        new_max_level = tile_src.max_level
-        new_min_level = tile_src.min_level
-        log(f'ChangeTileset: new_levels={new_levels}, new_max_level={new_max_level}, new_min_level={new_min_level}')
-        log(f'ChangeTileset: old levels={old_tileset.levels}, max_level={old_tileset.max_level}, min_level={old_tileset.min_level}')
-        if level > new_max_level:
-            level = new_max_level
-        if level < new_min_level:
-            level = new_min_level
-        log(f'ChangeTileset: After checking, level={level}')
-
-        # set new tile source and set some state
-        self.tile_src = tile_src
-        self.tile_size_x = tile_src.tile_size_x
-        self.tile_size_y = tile_src.tile_size_y
-        self.level = level
-
-        log(f'ChangeTileset: NEW .tile_size_x={self.tile_size_x}, .tile_size_y={self.tile_size_y}')
-
-        result = self.tile_src.GetInfo(level)
-        log(f'ChangeTileset: GetInfo({level}) returned {result}')
-        (num_tiles_x, num_tiles_y, ppd_x, ppd_y) = result
-        self.map_width = self.tile_size_x * num_tiles_x
-        self.map_height = self.tile_size_y * num_tiles_y
-        self.ppd_x = ppd_x
-        self.ppd_y = ppd_y
-
-        log(f'ChangeTileset: NEW .map_width={self.map_width}, .map_height={self.map_height}')
-
-        # set tile levels stuff - allowed levels, etc
-        self.tiles_max_level = max(tile_src.levels)
-        self.tiles_min_level = min(tile_src.levels)
-
-        # set callback from Tile source object when tile(s) available
-        self.tile_src.setCallback(self.OnTileAvailable)
-
-        # set the new zoom level to the old
-        log(f'ChangeTileset: calling tile_src.UseLevel({self.level})')
-        if not tile_src.UseLevel(self.level):
-            log(f"ChangeTileset: can't use level {level} in new tile source {tile_src}")
-            log(f'self.tiles_min_level={self.tiles_min_level}, self.tiles_max_level={self.tiles_max_level}')
-            # can't use old level, make sensible choice
-            if self.level < self.tiles_min_level:
-                self.level = self.tiles_min_level
-            elif self.level > self.tiles_max_level:
-                self.level = self.tiles_max_level
-
-            # if we can't change level now, raise an error exception
-            log(f'Try level {self.level} in new tiles')
-            if not tile_src.UseLevel(self.level):
-                raise Exception('Trying to use level %s in tile obj %s, '
-                                'levels available are %s'
-                                % (str(self.level),
-                                   str(tile_src), str(tile_src.levels)))
-
-# TODO: MUST SET KEY TILE STUFF HERE
-        self.set_key_from_centre(geo)
-
-        # back to old level+centre, and refresh the display
-        log(f'ChangeTileset: setting level {level} and position {geo}')
-#        self.GotoLevelAndPosition(level, geo)
-        self.zoom_level_position(level, geo)
-
-        log(f'ChangeTileset: returning old_tileset={old_tileset}')
-
-        return old_tileset
 
     def set_key_from_centre(self, geo):
         """Set 'key' tile stuff from given geo at view centre.
@@ -3420,6 +2607,7 @@ class PySlipQt(QWidget):
 #
 #        return (llon, rlon, tlat, blat)
 
+# UNUSED!?
     def ViewExtent(self, place, view, w, h, x_off, y_off, dcw=0, dch=0):
         """Get view extent of area.
 
@@ -3450,6 +2638,7 @@ class PySlipQt(QWidget):
 
         return (left, right, top, bottom)
 
+# UNUSED
     def PositionIsOnMap(self, posn):
         """Return True if 'posn' is actually on map (not just view).
 
@@ -3571,66 +2760,807 @@ class PySlipQt(QWidget):
 
         return (ll_corner_vx, ll_corner_vy, tr_corner_vx, tr_corner_vy)
 
-######
-# Placement routines instead of original 'exec' code.
-# Code in test_assumptions.py shows this is faster.
-######
+# UNUSED
+    def dump_key_data(self):
+        """Debug function to return string describing 'key' tile data."""
 
-    @staticmethod
-    def point_placement(place, x, y, x_off, y_off, dcw=0, dch=0):
-        """Perform map- or view-relative placement for a single point.
+        return (f'\t.key_tile_left={self.key_tile_left}\n'
+                f'\t.key_tile_top={self.key_tile_top}\n'
+                f'\t.key_tile_xoffset={self.key_tile_xoffset}\n'
+                f'\t.key_tile_yoffset={self.key_tile_yoffset}\n'
+                f'\t.view_width={self.view_width}\n'
+                f'\t.view_height={self.view_height}\n'
+                f'\t.map_width={self.map_width}\n'
+                f'\t.map_height={self.map_height}\n'
+               )
 
-        place         placement key string
-        x, y          point relative to placement origin
-        x_off, y_off  offset from point
-        dcw, dch      width, height of the view draw context (0 if map-rel)
+################################################################################
+# Below are the "external" API methods.
+################################################################################
 
-        Returns a tuple (x, y) in view coordinates.
+    ######
+    # "add a layer" routines
+    ######
+
+    def AddPointLayer(self, points, map_rel=True, visible=True,
+                      show_levels=None, selectable=False,
+                      name='<points_layer>', **kwargs):
+        """Add a layer of points, map or view relative.
+
+        points       iterable of point data:
+                         (x, y[, attributes])
+                     where x & y are either lon&lat (map) or x&y (view) coords
+                     and attributes is an optional dictionary of attributes for
+                     _each point_ with keys like:
+                         'placement'  a placement string
+                         'radius'     radius of point in pixels
+                         'colour'     colour of point
+                         'offset_x'   X offset
+                         'offset_y'   Y offset
+                         'data'       point user data object
+        map_rel      points are map relative if True, else view relative
+        visible      True if the layer is visible
+        show_levels  list of levels at which layer is auto-shown (or None==all)
+        selectable   True if select operates on this layer
+        name         the 'name' of the layer - mainly for debug
+        kwargs       a layer-specific attributes dictionary, has keys:
+                         'placement'  a placement string
+                         'radius'     radius of point in pixels
+                         'colour'     colour of point
+                         'offset_x'   X offset
+                         'offset_y'   Y offset
+                         'data'       point user data object
         """
 
-        dcw2 = dcw/2
-        dch2 = dch/2
+        # merge global and layer defaults
+        if map_rel:
+            default_placement = kwargs.get('placement', self.DefaultPointPlacement)
+            default_radius = kwargs.get('radius', self.DefaultPointRadius)
+            default_colour = self.get_i18n_kw(kwargs, ('colour', 'color'),
+                                              self.DefaultPointColour)
+            default_offset_x = kwargs.get('offset_x', self.DefaultPointOffsetX)
+            default_offset_y = kwargs.get('offset_y', self.DefaultPointOffsetY)
+            default_data = kwargs.get('data', self.DefaultPointData)
+        else:
+            default_placement = kwargs.get('placement', self.DefaultPointViewPlacement)
+            default_radius = kwargs.get('radius', self.DefaultPointViewRadius)
+            default_colour = self.get_i18n_kw(kwargs, ('colour', 'color'),
+                                              self.DefaultPointViewColour)
+            default_offset_x = kwargs.get('offset_x', self.DefaultPointViewOffsetX)
+            default_offset_y = kwargs.get('offset_y', self.DefaultPointViewOffsetY)
+            default_data = kwargs.get('data', self.DefaultPointData)
 
-        if place == 'cc':   x+=dcw2;       y+=dch2
-        elif place == 'nw': x+=x_off;      y+=y_off
-        elif place == 'cn': x+=dcw2;       y+=y_off
-        elif place == 'ne': x+=dcw-x_off;  y+=y_off
-        elif place == 'ce': x+=dcw-x_off;  y+=dch2
-        elif place == 'se': x+=dcw-x_off;  y+=dch-y_off
-        elif place == 'cs': x+=dcw2;       y+=dch-y_off
-        elif place == 'sw': x+=x_off;      y+=dch-y_off
-        elif place == 'cw': x+=x_off;      y+=dch2
+        # create draw data iterable for draw method
+        draw_data = []              # list to hold draw data
 
-        return (x, y)
+        for pt in points:
+            if len(pt) == 3:
+                (x, y, attributes) = pt
+            elif len(pt) == 2:
+                (x, y) = pt
+                attributes = {}
+            else:
+                msg = ('Point data must be iterable of tuples: '
+                       '(x, y[, dict])\n'
+                       'Got: %s' % str(pt))
+                raise Exception(msg)
 
-    @staticmethod
-    def extent_placement(place, x, y, x_off, y_off, w, h, dcw=0, dch=0):
-        """Perform map- and view-relative placement for an extent object.
+            # plug in any required polygon values (override globals+layer)
+            placement = attributes.get('placement', default_placement)
+            radius = attributes.get('radius', default_radius)
+            colour = self.get_i18n_kw(attributes, ('colour', 'color'),
+                                      default_colour)
+            offset_x = attributes.get('offset_x', default_offset_x)
+            offset_y = attributes.get('offset_y', default_offset_y)
+            udata = attributes.get('data', default_data)
 
-        place         placement key string
-        x, y          point relative to placement origin
-        x_off, y_off  offset from point
-        w, h          width, height of the image
-        dcw, dcw      width/height of the view draw context
+            # check values that can be wrong
+            placement = placement.lower()
+            if placement not in self.valid_placements:
+                msg = ("Point placement value is invalid, got '%s'"
+                       % str(placement))
+                raise Exception(msg)
 
-        Returns a tuple (x, y).
+            # convert various colour formats to internal (r, g, b, a)
+            colour = self.colour_to_internal(colour)
+
+            # append another point to draw data list
+            draw_data.append((float(x), float(y), placement,
+                              radius, colour, offset_x, offset_y, udata))
+
+        return self.add_layer(self.draw_point_layer, draw_data, map_rel,
+                              visible=visible, show_levels=show_levels,
+                              selectable=selectable, name=name,
+                              ltype=self.TypePoint)
+
+    def AddImageLayer(self, data, map_rel=True, visible=True,
+                      show_levels=None, selectable=False,
+                      name='<image_layer>', **kwargs):
+        """Add a layer of images, map or view relative.
+
+        data         list of (lon, lat, fname[, attributes]) (map_rel)
+                     or list of (x, y, fname[, attributes]) (view relative)
+                     attributes is a dictionary of attributes:
+                         placement  a placement string
+                         radius     object point radius
+                         colour     object point colour
+                         offset_x   X offset
+                         offset_y   Y offset
+                         data       image user data
+        map_rel      points drawn relative to map if True, else view relative
+        visible      True if the layer is to be immediately visible
+        show_levels  list of levels at which layer is auto-shown (or None)
+        selectable   True if select operates on this layer
+        name         name of this layer
+        kwargs       dictionary of extra params:
+                         placement  string describing placement wrt hotspot
+                         radius     object point radius
+                         colour     object point colour
+                         offset_x   hotspot X offset in pixels
+                         offset_y   hotspot Y offset in pixels
+                         data       image user data
+
+        The hotspot is placed at (lon, lat) or (x, y).  'placement' controls
+        where the image is displayed relative to the hotspot.
         """
 
-        w2 = w/2
-        h2 = h/2
+        # merge global and layer defaults
+        if map_rel:
+            default_placement = kwargs.get('placement', self.DefaultImagePlacement)
+            default_radius = kwargs.get('radius', self.DefaultImageRadius)
+            default_colour = kwargs.get('colour', self.DefaultImageColour)
+            default_offset_x = kwargs.get('offset_x', self.DefaultImageOffsetX)
+            default_offset_y = kwargs.get('offset_y', self.DefaultImageOffsetY)
+            default_data = kwargs.get('data', self.DefaultImageData)
+        else:
+            default_placement = kwargs.get('placement', self.DefaultImageViewPlacement)
+            default_radius = kwargs.get('radius', self.DefaultImageViewRadius)
+            default_colour = kwargs.get('colour', self.DefaultImageViewColour)
+            default_offset_x = kwargs.get('offset_x', self.DefaultImageViewOffsetX)
+            default_offset_y = kwargs.get('offset_y', self.DefaultImageViewOffsetY)
+            default_data = kwargs.get('data', self.DefaultImageViewData)
 
-        dcw2 = dcw/2
-        dch2 = dch/2
+        # define cache variables for the image informtion
+        # used to minimise file access - just caches previous file informtion
+        fname_cache = None
+        pmap_cache = None
+        w_cache = None
+        h_cache = None
 
-        if place == 'cc':   x+=dcw2-w2;       y+=dch2-h2
-        elif place == 'nw': x+=x_off;         y+=y_off
-        elif place == 'cn': x+=dcw2-w2;       y+=y_off
-        elif place == 'ne': x+=dcw-w-x_off;   y+=y_off
-        elif place == 'ce': x+=dcw-w-x_off;   y+=dch2-h2
-        elif place == 'se': x+=dcw-w-x_off;   y+=dch-h-y_off
-        elif place == 'cs': x+=dcw2-w2;       y+=dch-h-y_off
-        elif place == 'sw': x+=x_off;         y+=dch-h-y_off
-        elif place == 'cw': x+=x_off;         y+=dch2-h2
+        # load all image files, convert to bitmaps, create draw_data iterable
+        draw_data = []
+        for d in data:
+            if len(d) == 4:
+                (lon, lat, fname, attributes) = d
+            elif len(d) == 3:
+                (lon, lat, fname) = d
+                attributes = {}
+            else:
+                msg = ('Image data must be iterable of tuples: '
+                       '(x, y, fname[, dict])\nGot: %s' % str(d))
+                raise Exception(msg)
 
-        return (x, y)
+            # get image specific values, if any
+            placement = attributes.get('placement', default_placement)
+            radius = attributes.get('radius', default_radius)
+            colour = attributes.get('colour', default_colour)
+            offset_x = attributes.get('offset_x', default_offset_x)
+            offset_y = attributes.get('offset_y', default_offset_y)
+            udata = attributes.get('data', None)
+
+            if fname == fname_cache:
+                pmap = pmap_cache
+                w = w_cache
+                h = h_cache
+            else:
+                fname_cache = fname
+                pmap_cache = pmap = QPixmap(fname)
+                size = pmap.size()
+                h = h_cache = size.height()
+                w = w_cache = size.width()
+
+            # check values that can be wrong
+            placement = placement.lower()
+            if placement not in self.valid_placements:
+                msg = ("Image placement value is invalid, got '%s'"
+                       % str(placement))
+                raise Exception(msg)
+
+            # convert various colour formats to internal (r, g, b, a)
+            colour = self.colour_to_internal(colour)
+
+            draw_data.append((float(lon), float(lat), pmap, w, h, placement,
+                              offset_x, offset_y, radius, colour, udata))
+
+        return self.add_layer(self.draw_image_layer, draw_data, map_rel,
+                             visible=visible, show_levels=show_levels,
+                             selectable=selectable, name=name,
+                             ltype=self.TypeImage)
+
+    def AddTextLayer(self, text, map_rel=True, visible=True, show_levels=None,
+                     selectable=False, name='<text_layer>', **kwargs):
+        """Add a text layer to the map or view.
+
+        text         list of sequence of (lon, lat, text[, dict]) coordinates
+                     (optional 'dict' contains point-specific attributes)
+        map_rel      points drawn relative to map if True, else view relative
+        visible      True if the layer is to be immediately visible
+        show_levels  list of levels at which layer is auto-shown
+        selectable   True if select operates on this layer
+        name         name of this layer
+        kwargs       a dictionary of changeable text attributes
+                         (placement, radius, fontname, fontsize, colour, data)
+                     these supply any data missing in 'data'
+        """
+
+        # merge global and layer defaults
+        if map_rel:
+            default_placement = kwargs.get('placement', self.DefaultTextPlacement)
+            default_radius = kwargs.get('radius', self.DefaultTextRadius)
+            default_fontname = kwargs.get('fontname', self.DefaultTextFontname)
+            default_fontsize = kwargs.get('fontsize', self.DefaultTextFontSize)
+            default_colour = self.get_i18n_kw(kwargs, ('colour', 'color'),
+                                              self.DefaultTextColour)
+            default_textcolour = self.get_i18n_kw(kwargs,
+                                                  ('textcolour', 'textcolor'),
+                                                  self.DefaultTextTextColour)
+            default_offset_x = kwargs.get('offset_x', self.DefaultTextOffsetX)
+            default_offset_y = kwargs.get('offset_y', self.DefaultTextOffsetY)
+            default_data = kwargs.get('data', self.DefaultTextData)
+        else:
+            default_placement = kwargs.get('placement', self.DefaultTextViewPlacement)
+            default_radius = kwargs.get('radius', self.DefaultTextViewRadius)
+            default_fontname = kwargs.get('fontname', self.DefaultTextViewFontname)
+            default_fontsize = kwargs.get('fontsize', self.DefaultTextViewFontSize)
+            default_colour = self.get_i18n_kw(kwargs, ('colour', 'color'),
+                                              self.DefaultTextViewColour)
+            default_textcolour = self.get_i18n_kw(kwargs,
+                                                  ('textcolour', 'textcolor'),
+                                                  self.DefaultTextViewTextColour)
+            default_offset_x = kwargs.get('offset_x', self.DefaultTextViewOffsetX)
+            default_offset_y = kwargs.get('offset_y', self.DefaultTextViewOffsetY)
+            default_data = kwargs.get('data', self.DefaultTextData)
+
+        # create data iterable ready for drawing
+        draw_data = []
+        for t in text:
+            if len(t) == 4:
+                (lon, lat, tdata, attributes) = t
+            elif len(t) == 3:
+                (lon, lat, tdata) = t
+                attributes = {}
+            else:
+                msg = ('Text data must be iterable of tuples: '
+                       '(lon, lat, text, [dict])\n'
+                       'Got: %s' % str(t))
+                raise Exception(msg)
+
+            # plug in any required defaults
+            placement = attributes.get('placement', default_placement)
+            radius = attributes.get('radius', default_radius)
+            fontname = attributes.get('fontname', default_fontname)
+            fontsize = attributes.get('fontsize', default_fontsize)
+            colour = self.get_i18n_kw(attributes, ('colour', 'color'),
+                                      default_colour)
+            textcolour = self.get_i18n_kw(attributes,
+                                          ('textcolour', 'textcolor'),
+                                          default_textcolour)
+            offset_x = attributes.get('offset_x', default_offset_x)
+            offset_y = attributes.get('offset_y', default_offset_y)
+            udata = attributes.get('data', default_data)
+
+            # check values that can be wrong
+            placement = placement.lower()
+            if placement not in self.valid_placements:
+                msg = ("Text placement value is invalid, got '%s'"
+                       % str(placement))
+                raise Exception(msg)
+
+            # convert various colour formats to internal (r, g, b, a)
+            colour = self.colour_to_internal(colour)
+            textcolour = self.colour_to_internal(textcolour)
+
+            draw_data.append((float(lon), float(lat), tdata, placement.lower(),
+                              radius, colour, textcolour, fontname, fontsize,
+                              offset_x, offset_y, udata))
+
+        return self.add_layer(self.draw_text_layer, draw_data, map_rel,
+                             visible=visible, show_levels=show_levels,
+                             selectable=selectable, name=name,
+                             ltype=self.TypeText)
+
+    def AddPolygonLayer(self, data, map_rel=True, visible=True,
+                        show_levels=None, selectable=False,
+                        name='<polygon_layer>', **kwargs):
+        """Add a layer of polygon data to the map.
+
+        data         iterable of polygon tuples:
+                         (points[, attributes])
+                     where points is another iterable of (x, y) tuples and
+                     attributes is a dictionary of polygon attributes:
+                         placement   a placement string (view-relative only)
+                         width       width of polygon edge lines
+                         colour      colour of edge lines
+                         close       if True closes polygon
+                         filled      polygon is filled (implies closed)
+                         fillcolour  fill colour
+                         offset_x    X offset
+                         offset_y    Y offset
+                         data        polygon user data object
+        map_rel      points drawn relative to map if True, else view relative
+        visible      True if the layer is to be immediately visible
+        show_levels  list of levels at which layer is auto-shown (or None)
+        selectable   True if select operates on this layer
+        name         name of this layer
+        kwargs       extra keyword args, layer-specific:
+                         placement   placement string (view-rel only)
+                         width       width of polygons in pixels
+                         colour      colour of polygon edge lines
+                         close       True if polygon is to be closed
+                         filled      if True, fills polygon
+                         fillcolour  fill colour
+                         offset_x    X offset
+                         offset_y    Y offset
+                         data        polygon user data object
+        """
+
+        # merge global and layer defaults
+        if map_rel:
+            default_placement = kwargs.get('placement',
+                                           self.DefaultPolygonPlacement)
+            default_width = kwargs.get('width', self.DefaultPolygonWidth)
+            default_colour = self.get_i18n_kw(kwargs, ('colour', 'color'),
+                                              self.DefaultPolygonColour)
+            default_close = kwargs.get('closed', self.DefaultPolygonClose)
+            default_filled = kwargs.get('filled', self.DefaultPolygonFilled)
+            default_fillcolour = self.get_i18n_kw(kwargs,
+                                                  ('fillcolour', 'fillcolor'),
+                                                  self.DefaultPolygonFillcolour)
+            default_offset_x = kwargs.get('offset_x', self.DefaultPolygonOffsetX)
+            default_offset_y = kwargs.get('offset_y', self.DefaultPolygonOffsetY)
+            default_data = kwargs.get('data', self.DefaultPolygonData)
+        else:
+            default_placement = kwargs.get('placement',
+                                           self.DefaultPolygonViewPlacement)
+            default_width = kwargs.get('width', self.DefaultPolygonViewWidth)
+            default_colour = self.get_i18n_kw(kwargs, ('colour', 'color'),
+                                              self.DefaultPolygonViewColour)
+            default_close = kwargs.get('closed', self.DefaultPolygonViewClose)
+            default_filled = kwargs.get('filled', self.DefaultPolygonViewFilled)
+            default_fillcolour = self.get_i18n_kw(kwargs,
+                                                  ('fillcolour', 'fillcolor'),
+                                                  self.DefaultPolygonViewFillcolour)
+            default_offset_x = kwargs.get('offset_x', self.DefaultPolygonViewOffsetX)
+            default_offset_y = kwargs.get('offset_y', self.DefaultPolygonViewOffsetY)
+            default_data = kwargs.get('data', self.DefaultPolygonViewData)
+
+        # create draw_data iterable
+        draw_data = []
+        for d in data:
+            if len(d) == 2:
+                (p, attributes) = d
+            elif len(d) == 1:
+                p = d
+                attributes = {}
+            else:
+                msg = ('Polygon data must be iterable of tuples: '
+                       '(points, [attributes])\n'
+                       'Got: %s' % str(d))
+                raise Exception(msg)
+
+            # get polygon attributes
+            placement = attributes.get('placement', default_placement)
+            width = attributes.get('width', default_width)
+            colour = self.get_i18n_kw(attributes, ('colour', 'color'),
+                                      default_colour)
+            close = attributes.get('closed', default_close)
+            filled = attributes.get('filled', default_filled)
+            if filled:
+                close = True
+            fillcolour = self.get_i18n_kw(attributes,
+                                          ('fillcolour', 'fillcolor'),
+                                          default_fillcolour)
+            offset_x = attributes.get('offset_x', default_offset_x)
+            offset_y = attributes.get('offset_y', default_offset_y)
+            udata = attributes.get('data', default_data)
+
+            # if polygon is to be filled, ensure closed
+            if close:
+                p = list(p)     # must get a *copy*
+                p.append(p[0])
+
+            # check values that can be wrong
+            placement = placement.lower()
+            if placement not in self.valid_placements:
+                msg = ("Polygon placement value is invalid, got '%s'"
+                       % str(placement))
+                raise Exception(msg)
+
+            # convert various colour formats to internal (r, g, b, a)
+            colour = self.colour_to_internal(colour)
+            fillcolour = self.colour_to_internal(fillcolour)
+
+            # append this polygon to the layer data
+            draw_data.append((p, placement, width, colour, close,
+                              filled, fillcolour, offset_x, offset_y, udata))
+
+        return self.add_layer(self.draw_polygon_layer, draw_data, map_rel,
+                             visible=visible, show_levels=show_levels,
+                             selectable=selectable, name=name,
+                             ltype=self.TypePolygon)
+
+    def AddPolylineLayer(self, data, map_rel=True, visible=True,
+                        show_levels=None, selectable=False,
+                        name='<polyline>', **kwargs):
+        """Add a layer of polyline data to the map.
+
+        data         iterable of polyline tuples:
+                         (points[, attributes])
+                     where points is another iterable of (x, y) tuples and
+                     attributes is a dictionary of polyline attributes:
+                         placement   a placement string (view-relative only)
+                         width       width of polyline edge lines
+                         colour      colour of edge lines
+                         offset_x    X offset
+                         offset_y    Y offset
+                         data        polyline user data object
+        map_rel      points drawn relative to map if True, else view relative
+        visible      True if the layer is to be immediately visible
+        show_levels  list of levels at which layer is auto-shown (or None)
+        selectable   True if select operates on this layer
+        name         name of this layer
+        kwargs       extra keyword args, layer-specific:
+                         placement   placement string (view-rel only)
+                         width       width of polyline in pixels
+                         colour      colour of polyline edge lines
+                         offset_x    X offset
+                         offset_y    Y offset
+                         data        polygon user data object
+        """
+
+        # merge global and layer defaults
+        if map_rel:
+            default_placement = kwargs.get('placement',
+                                           self.DefaultPolygonPlacement)
+            default_width = kwargs.get('width', self.DefaultPolygonWidth)
+            default_colour = self.get_i18n_kw(kwargs, ('colour', 'color'),
+                                              self.DefaultPolygonColour)
+            default_offset_x = kwargs.get('offset_x', self.DefaultPolygonOffsetX)
+            default_offset_y = kwargs.get('offset_y', self.DefaultPolygonOffsetY)
+            default_data = kwargs.get('data', self.DefaultPolygonData)
+        else:
+            default_placement = kwargs.get('placement',
+                                           self.DefaultPolygonViewPlacement)
+            default_width = kwargs.get('width', self.DefaultPolygonViewWidth)
+            default_colour = self.get_i18n_kw(kwargs, ('colour', 'color'),
+                                              self.DefaultPolygonViewColour)
+            default_offset_x = kwargs.get('offset_x', self.DefaultPolygonViewOffsetX)
+            default_offset_y = kwargs.get('offset_y', self.DefaultPolygonViewOffsetY)
+            default_data = kwargs.get('data', self.DefaultPolygonViewData)
+
+        # create draw_data iterable
+        draw_data = []
+        for d in data:
+            if len(d) == 2:
+                (p, attributes) = d
+            elif len(d) == 1:
+                p = d
+                attributes = {}
+            else:
+                msg = ('Polyline data must be iterable of tuples: '
+                       '(polyline, [attributes])\n'
+                       'Got: %s' % str(d))
+                raise Exception(msg)
+
+            # get polygon attributes
+            placement = attributes.get('placement', default_placement)
+            width = attributes.get('width', default_width)
+            colour = self.get_i18n_kw(attributes, ('colour', 'color'),
+                                      default_colour)
+            offset_x = attributes.get('offset_x', default_offset_x)
+            offset_y = attributes.get('offset_y', default_offset_y)
+            udata = attributes.get('data', default_data)
+
+            # check values that can be wrong
+            placement = placement.lower()
+            if placement not in self.valid_placements:
+                msg = ("Polyline placement value is invalid, got '%s'"
+                       % str(placement))
+                raise Exception(msg)
+
+            # convert various colour formats to internal (r, g, b, a)
+            colour = self.colour_to_internal(colour)
+
+            draw_data.append((p, placement, width, colour,
+                              offset_x, offset_y, udata))
+
+        return self.add_layer(self.draw_polyline_layer, draw_data, map_rel,
+                             visible=visible, show_levels=show_levels,
+                             selectable=selectable, name=name,
+                             ltype=self.TypePolyline)
+
+    ######
+    # Layer manipulation
+    ######
+
+    def ShowLayer(self, id):
+        """Show a layer.
+
+        id  the layer id
+        """
+
+        self.layer_mapping[id].visible = True
+        self.update()
+
+    def HideLayer(self, id):
+        """Hide a layer.
+
+        id  the layer id
+        """
+
+        self.layer_mapping[id].visible = False
+        self.update()
+
+    def DeleteLayer(self, id):
+        """Delete a layer.
+
+        id  the layer id
+        """
+
+        # just in case we got None
+        if id:
+            # see if what we are about to remove might be visible
+            layer = self.layer_mapping[id]
+            visible = layer.visible
+
+            del layer
+            self.layer_z_order.remove(id)
+
+            # if layer was visible, refresh display
+            if visible:
+                self.update()
+
+    def PushLayerToBack(self, id):
+        """Make layer specified be drawn at back of Z order.
+
+        id  ID of the layer to push to the back
+        """
+
+        self.layer_z_order.remove(id)
+        self.layer_z_order.insert(0, id)
+        self.update()
+
+    def PopLayerToFront(self, id):
+        """Make layer specified be drawn at front of Z order.
+
+        id  ID of the layer to pop to the front
+        """
+
+        self.layer_z_order.remove(id)
+        self.layer_z_order.append(id)
+        self.update()
+
+    def PlaceLayerBelowLayer(self, below, top):
+        """Place a layer so it will be drawn behind another layer.
+
+        below  ID of layer to place underneath 'top'
+        top    ID of layer to be drawn *above* 'below'
+        """
+
+        self.layer_z_order.remove(below)
+        i = self.layer_z_order.index(top)
+        self.layer_z_order.insert(i, below)
+        self.update()
+
+    def SetLayerShowLevels(self, id, show_levels=None):
+        """Update the show_levels list for a layer.
+
+        id           ID of the layer we are going to update
+        show_levels  new layer show list
+
+        If 'show_levels' is None reset the displayable levels to
+        all levels in the current tileset.
+        """
+
+        # if we actually got an 'id' change the .show_levels value
+        if id:
+            layer = self.layer_mapping[id]
+
+            # if not given a 'show_levels' show all levels available
+            if not show_levels:
+                show_levels = range(self.tiles_min_level,
+                                    self.tiles_max_level+1)[:]
+
+            layer.show_levels = show_levels
+
+            # always update the display, there may be a change
+            self.update()
+
+    ######
+    # Zoom and pan
+    ######
+
+    def GotoLevel(self, level):
+        """Use a new tile level.
+
+        level  the new tile level to use.
+
+        Returns True if all went well.
+        """
+
+        if not self.tile_src.UseLevel(level):
+            return False        # couldn't change level
+
+        self.level = level
+        self.map_width = self.tile_src.num_tiles_x * self.tile_width
+        self.map_height = self.tile_src.num_tiles_y * self.tile_height
+        (self.map_llon, self.map_rlon,
+             self.map_blat, self.map_tlat) = self.tile_src.extent
+
+        # to set some state variables
+        self.resizeEvent()
+
+        # raise level change event
+        self.raise_event(PySlipQt.EVT_PYSLIPQT_LEVEL, level=level)
+
+        return True
+
+    def GotoPosition(self, geo):
+        """Set view to centre on a geo position in the current level.
+
+        geo  a tuple (xgeo,ygeo) to centre view on
+
+        Recalculates the key tile info.
+        """
+
+        # get fractional tile coords of required centre of view
+        (xtile, ytile) = self.tile_src.Geo2Tile(geo)
+
+        # calculate pixels from view edges to centre tile edges
+        half_width = self.view_width / 2
+        half_height = self.view_height / 2
+
+        int_xtile = int(xtile)
+        int_ytile = int(ytile)
+
+        frac_xtile = xtile - int_xtile
+        frac_ytile = ytile - int_ytile
+
+        pix_xtile = frac_xtile * self.tile_width
+        piy_ytile = frac_ytile * self.tile_height
+
+        tile_xoff = half_width - pix_xtile
+        tile_yoff = half_height - piy_ytile
+
+
+
+
+        # now calculate view offsets, top, left, bottom and right
+        half_width = self.view_width / 2
+        centre_pixels_from_map_left = int(xtile * self.tile_width)
+        self.view_offset_x = centre_pixels_from_map_left - half_width
+
+        half_height = self.view_height / 2
+        centre_pixels_from_map_top = int(ytile * self.tile_height)
+        self.view_offset_y = centre_pixels_from_map_top - half_height
+
+        # reset the key tile info
+
+
+        self.update()
+
+    def GotoLevelAndPosition(self, level, geo):
+        """Goto a map level and set view to centre on a position.
+
+        level  the map level to use
+        geo    a tuple (xgeo,ygeo) to centre view on
+
+        Does nothing if we can't use desired level.
+        """
+
+        if self.GotoLevel(level):
+            self.GotoPosition(geo)
+
+    def ZoomToArea(self, geo, size):
+        """Set view to level and position to view an area.
+
+        geo   a tuple (xgeo,ygeo) to centre view on
+        size  a tuple (width,height) of area in degrees
+
+        Centre an area and zoom to view such that the area will fill
+        approximately 50% of width or height, whichever is greater.
+
+        Use the ppd_x and ppd_y values in the level 'tiles' file.
+        """
+
+        # unpack area width/height (degrees)
+        (awidth, aheight) = size
+
+        # step through levels (smallest first) and check view size (degrees)
+        for l in self.tile_src.levels:
+            level = l
+            (_, _, ppd_x, ppd_y) = self.tile_src.getInfo(l)
+            view_deg_width = self.view_width / ppd_x
+            view_deg_height = self.view_height / ppd_y
+
+            # if area >= 50% of view, finished
+            if awidth >= view_deg_width / 2 or aheight >= view_deg_height / 2:
+                break
+
+        self.GotoLevelAndPosition(level, geo)
+
+    ######
+    # Change the tileset
+    ######
+
+    def ChangeTileset(self, tile_src):
+        """Change the source of tiles.
+
+        tile_src  the new tileset object to use
+
+        Returns the old tileset object, None if none.
+
+        Refreshes the display and tries to maintain the same position
+        and zoom level.  May change the zoom level if the current level doesn't
+        exist in the new tileset.
+        """
+
+        # get level and geo position of view centre
+        (level, geo) = self.GetLevelAndPosition()
+
+        # remember old tileset
+        old_tileset = self.tile_src
+
+        # get levels in new tileset and see if we can display at the current level
+        new_levels = tile_src.levels
+        new_max_level = tile_src.max_level
+        new_min_level = tile_src.min_level
+        if level > new_max_level:
+            level = new_max_level
+        if level < new_min_level:
+            level = new_min_level
+
+        # set new tile source and set some state
+        self.tile_src = tile_src
+        self.tile_size_x = tile_src.tile_size_x
+        self.tile_size_y = tile_src.tile_size_y
+        self.level = level
+
+        result = self.tile_src.GetInfo(level)
+        (num_tiles_x, num_tiles_y, ppd_x, ppd_y) = result
+        self.map_width = self.tile_size_x * num_tiles_x
+        self.map_height = self.tile_size_y * num_tiles_y
+        self.ppd_x = ppd_x
+        self.ppd_y = ppd_y
+
+        # set tile levels stuff - allowed levels, etc
+        self.tiles_max_level = max(tile_src.levels)
+        self.tiles_min_level = min(tile_src.levels)
+
+        # set callback from Tile source object when tile(s) available
+        self.tile_src.setCallback(self.OnTileAvailable)
+
+        # set the new zoom level to the old
+        if not tile_src.UseLevel(self.level):
+            # can't use old level, make sensible choice
+            if self.level < self.tiles_min_level:
+                self.level = self.tiles_min_level
+            elif self.level > self.tiles_max_level:
+                self.level = self.tiles_max_level
+
+            # if we can't change level now, raise an error exception
+            if not tile_src.UseLevel(self.level):
+                raise Exception('Trying to use level %s in tile obj %s, '
+                                'levels available are %s'
+                                % (str(self.level),
+                                   str(tile_src), str(tile_src.levels)))
+
+# TODO: MUST SET KEY TILE STUFF HERE
+        self.set_key_from_centre(geo)
+
+        # back to old level+centre, and refresh the display
+#        self.GotoLevelAndPosition(level, geo)
+        self.zoom_level_position(level, geo)
+
+        return old_tileset
 
