@@ -111,24 +111,18 @@ class Tiles(tiles.BaseTiles):
         doesn't exist.
         """
 
-        log(f'GetInfo: level={level}')
-
         # is required level available?
         if level not in self.levels:
-            log(f'GetInfo: returning None, {level} not in {self.levels}')
             return None
 
         # see if we can open the tile info file.
         info_file = os.path.join(self.tiles_dir, '%d' % level, TileInfoFilename)
-        log(f'GetInfo: info_file={info_file}')
         try:
             with open(info_file, 'rb') as fd:
                 info = pickle.load(fd)
         except IOError:
-            log(f'GetInfo: problem reading info file {info_file}')
             info = None
 
-        log(f'GetInfo: returning info={info}')
         return info
 
     def Geo2Tile(self, geo):
@@ -141,8 +135,6 @@ class Tiles(tiles.BaseTiles):
         This is an easy transformation as geo coordinates are Cartesian
         for this tileset.
         """
-
-        log(f'Geo2Tile: geo={geo}')
 
         # unpack the 'geo' tuple
         (xgeo, ygeo) = geo
