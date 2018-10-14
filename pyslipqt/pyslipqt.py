@@ -914,30 +914,39 @@ class PySlipQt(QWidget):
         map_rel  points relative to map if True, else relative to view
         """
 
+        log(f'draw_image_layer: dc={dc}, images={images}, map_rel={map_rel}')
+
         # get correct pex function
+        log(f'draw_image_layer: assuming self.pex_extent_view()')
         pex = self.pex_extent_view
         if map_rel:
+            log(f'draw_image_layer: using self.pex_extent()')
             pex = self.pex_extent
 
-        # speed up drawing by caching previous colour
-        cache_colour = None
+        # speed up drawing by caching previous point colour
+        cache_pcolour = None
 
         # draw the images
         for (lon, lat, pmap, w, h, place,
                  x_off, y_off, pradius, pcolour, idata) in images:
-            (pt, ex) = pex(place, (lon, lat), x_off, y_off, w, h)
+            log(f'draw_image_layer: lon={lon}, lat={lat}, w={w}, h={h}, place={place}, x_off={x_off}, y_off={y_off}, pradius={pradius}, pcolour={pcolour}')
+            (pt, ex) = pex(place, (lon, lat), x_off, y_off, w, h, image=True)
+            log(f'draw_image_layer: after pex(place, (lon, lat), x_off, y_off, w, h), pt={pt}, ex={ex}')
 
             if pt and pradius:
                 if cache_pcolour != pcolour:
-                    pen = QPen(pcolour, pradius, Qt.SolidLine)
-                    painter.setPen(pen)
-                    paint.setBrush(pen)
+                    qcolour = QColor(*pcolour)
+                    pen = QPen(qcolour, pradius, Qt.SolidLine)
+                    dc.setPen(pen)
+                    dc.setBrush(qcolour)
                     cache_pcolour = pcolour
                 (px, py) = pt
+                log(f'draw_image_layer: drawing point at ({px},{py}), radius={pradius}')
                 dc.drawEllipse(QPoint(px, py), pradius, pradius)
 
             if ex:
                 (ix, _, iy, _) = ex
+                log(f'draw_image_layer: drawing image at ({ix},{iy})')
                 dc.drawPixmap(QPoint(ix, iy), pmap)
 
     def draw_text_layer(self, dc, text, map_rel):
@@ -963,8 +972,6 @@ class PySlipQt(QWidget):
         # draw text on map/view
         for (lon, lat, tdata, place, radius, colour,
                 textcolour, fontname, fontsize, x_off, y_off, data) in text:
-            log(f'draw_text_layer: lon={lon}, lat={lat}, tdata={tdata}, place={place}, radius={radius}, x_off={x_off}, y_off={y_off}')
-
             # set font characteristics so we can calculate text width/height
             if cache_textcolour != textcolour:
                 qcolour = QColor(*textcolour)
@@ -985,8 +992,6 @@ class PySlipQt(QWidget):
             # get point + extent information (each can be None if off-view)
             (pt, ex) = pex(place, (lon, lat), x_off, y_off, w, h)
 
-            log(f'draw_text_layer: pt={pt}, ex={ex}')
-
             if pt and radius:   # don't draw point if off screen or zero radius
                 (pt_x, pt_y) = pt
                 if cache_colour != colour:
@@ -995,7 +1000,6 @@ class PySlipQt(QWidget):
                     dc.setPen(pen)
                     dc.setBrush(qcolour)
                     cache_colour = colour
-                log(f'draw_text_layer: drawing point at view ({pt_x},{pt_y})')
                 dc.drawEllipse(QPoint(pt_x, pt_y), radius, radius)
 
             if ex:              # don't draw text if off screen
@@ -1219,13 +1223,15 @@ class PySlipQt(QWidget):
 
         return (point, extent)
 
-    def pex_extent(self, place, geo, x_off, y_off, w, h):
+    def pex_extent(self, place, geo, x_off, y_off, w, h, image=False):
         """Convert object geo position to position & extent in view coords.
 
         place         placement string
         geo           point position tuple (xgeo, ygeo)
         x_off, y_off  X and Y offsets
         w, h          width and height of extent in pixels
+        image         True if we are placing an image.  Required because an image
+                      and text extents have DIFFERENT ORIGINS!
 
         Return a tuple ((px, py), (elx, erx, ety, eby)) of point and extent
         data where '(px, py)' is the point and '(elx, erx, ety, eby)' is the
@@ -1236,7 +1242,7 @@ class PySlipQt(QWidget):
         An extent object can be either an image object or a text object.
         """
 
-        log(f'pex_extent: place={place}, geo={geo}, x_off={x_off}, y_off={y_off}, w={w}, h={h}')
+        log(f'pex_extent: place={place}, geo={geo}, x_off={x_off}, y_off={y_off}, w={w}, h={h}, image={image}')
 
         # get point view coords
         vpoint = self.geo_to_view(geo)
@@ -1245,16 +1251,22 @@ class PySlipQt(QWidget):
 
         # get extent limits
         # must take into account 'place', 'x_off' and 'y_off'
-        log(f'pex_extent: calling .extent_placement(place, vpx, vpy, x_off, y_off, w, h)')
-        point = self.extent_placement(place, vpx, vpy, x_off, y_off, w, h)  # map-rel call
+        log(f'pex_extent: calling .extent_placement(place, vpx, vpy, x_off, y_off, w, h, image), image={image}')
+        point = self.extent_placement(place, vpx, vpy, x_off, y_off, w, h, dch=0, dcw=0, image=image)  # map-rel call
         (px, py) = point
         log(f'pex_extent: after .extent_placement(), px={px}, py={py}')
 
         # extent = (left, right, top, bottom) in view coords
+        # this is different for images
         elx = px
         erx = px + w
-        ety = py
-        eby = py + h
+        if image:
+            ety = py
+            eby = py + h
+        else:
+            ety = py - h
+            eby = py
+
         extent = (elx, erx, ety, eby)
 
         # decide if point is off-view
@@ -1272,13 +1284,15 @@ class PySlipQt(QWidget):
 
         return (vpoint, extent)
 
-    def pex_extent_view(self, place, view, x_off, y_off, w, h):
+    def pex_extent_view(self, place, view, x_off, y_off, w, h, image=False):
         """Convert object view position to point & extent in view coords.
 
         place         placement string
         view          point position tuple (xview, yview) (view coords)
         x_off, y_off  X and Y offsets
         w, h          width and height of extent in pixels
+        image         True if we are placing an image.  Required because an image
+                      and text extents have DIFFERENT ORIGINS!
 
         Return a tuple of point and extent origins (point, extent) where 'point'
         is (px, py) and extent is (elx, erx, ety, eby) (both in view coords).
@@ -1290,16 +1304,27 @@ class PySlipQt(QWidget):
         # get point view coords and perturb point to placement origin
         (xview, yview) = view
         point = self.extent_placement(place, xview, yview, x_off, y_off,
-                                      w, h, self.view_width, self.view_height)
+                                      w, h, dcw=self.view_width,
+                                      dch=self.view_height, image=image)
 
         # get point view coords (X and Y)
         (px, py) = point
 
         # extent = (left, right, top, bottom) in view coords
+        # this is different for images
         elx = px
         erx = px + w
-        ety = py
-        eby = py + h
+        if image:
+            ety = py
+            eby = py + h
+        else:
+            ety = py - h
+            eby = py
+
+#        elx = px
+#        erx = px + w
+#        ety = py
+#        eby = py + h
         extent = (elx, erx, ety, eby)
 
         # decide if point is off-view
@@ -1405,20 +1430,20 @@ class PySlipQt(QWidget):
         dcw2 = dcw/2
         dch2 = dch/2
 
-        if place == 'cc':   x+=dcw2;       y+=dch2
-        elif place == 'nw': x+=x_off;      y+=y_off
-        elif place == 'cn': x+=dcw2;       y+=y_off
-        elif place == 'ne': x+=dcw-x_off;  y+=y_off
-        elif place == 'ce': x+=dcw-x_off;  y+=dch2
-        elif place == 'se': x+=dcw-x_off;  y+=dch-y_off
-        elif place == 'cs': x+=dcw2;       y+=dch-y_off
-        elif place == 'sw': x+=x_off;      y+=dch-y_off
-        elif place == 'cw': x+=x_off;      y+=dch2
+        if   place == 'cc': x+=dcw2;      y+=dch2
+        elif place == 'nw': x+=x_off;     y+=y_off
+        elif place == 'cn': x+=dcw2;      y+=y_off
+        elif place == 'ne': x+=dcw-x_off; y+=y_off
+        elif place == 'ce': x+=dcw-x_off; y+=dch2
+        elif place == 'se': x+=dcw-x_off; y+=dch-y_off
+        elif place == 'cs': x+=dcw2;      y+=dch-y_off
+        elif place == 'sw': x+=x_off;     y+=dch-y_off
+        elif place == 'cw': x+=x_off;     y+=dch2
 
         return (x, y)
 
     @staticmethod
-    def extent_placement(place, x, y, x_off, y_off, w, h, dcw=0, dch=0):
+    def extent_placement(place, x, y, x_off, y_off, w, h, dcw=0, dch=0, image=None):
         """Perform map- and view-relative placement for an extent object.
 
         place         placement key string
@@ -1426,11 +1451,13 @@ class PySlipQt(QWidget):
         x_off, y_off  offset from point (pixels)
         w, h          width, height of the extent (pixels)
         dcw, dcw      width/height of the view draw context (zero if map-rel) (pixels)
+        image         True if we are placing an image.  Required because an image
+                      and text extents have DIFFERENT ORIGINS!
 
         Returns a tuple (x, y).
         """
 
-        log(f'extent_placement: place={place}, x={x}, y={y}, x_off={x_off}, y_off={y_off}, w={w}, h={h}, dcw={dcw}, dch={dch}')
+        log(f'extent_placement: place={place}, x={x}, y={y}, x_off={x_off}, y_off={y_off}, w={w}, h={h}, dcw={dcw}, dch={dch}, image={image}')
 
         w2 = w/2
         h2 = h/2
@@ -1438,15 +1465,27 @@ class PySlipQt(QWidget):
         dcw2 = dcw/2
         dch2 = dch/2
 
-        if place == 'cc':   x+=dcw2-w2;      y+=dch2+h2
-        elif place == 'nw': x+=x_off;        y+=h+y_off
-        elif place == 'cn': x+=dcw2-w2;      y+=h+y_off
-        elif place == 'ne': x+=dcw-w-x_off;  y+=h+y_off
-        elif place == 'ce': x+=dcw-w-x_off;  y-=dch2
-        elif place == 'se': x+=dcw-w-x_off;  y+=dch-y_off
-        elif place == 'cs': x+=dcw2-w2;      y+=dch-h-y_off
-        elif place == 'sw': x+=x_off;        y+=dch-y_off
-        elif place == 'cw': x+=x_off;        y+=dch2+h2
+        if image:
+            log(f'extent_placement: placing image')
+            if   place == 'cc': x+=dcw2-w2;     y+=dch2-h2
+            elif place == 'nw': x+=x_off;       y+=y_off
+            elif place == 'cn': x+=dcw2-w2;     y+=y_off
+            elif place == 'ne': x+=dcw-w-x_off; y+=y_off
+            elif place == 'ce': x+=dcw-w-x_off; y+=dch2-h2
+            elif place == 'se': x+=dcw-w-x_off; y+=dch-h-y_off
+            elif place == 'cs': x+=dcw2-w2;     y+=dch-h-y_off
+            elif place == 'sw': x+=x_off;       y+=dch-h-y_off
+            elif place == 'cw': x+=x_off;       y+=dch2-h2
+        else:
+            if   place == 'cc': x+=dcw2-w2;     y+=dch2+h2
+            elif place == 'nw': x+=x_off;       y+=h+y_off
+            elif place == 'cn': x+=dcw2-w2;     y+=h+y_off
+            elif place == 'ne': x+=dcw-w-x_off; y+=h+y_off
+            elif place == 'ce': x+=dcw-w-x_off; y+=dch2+h2
+            elif place == 'se': x+=dcw-w-x_off; y+=dch-y_off
+            elif place == 'cs': x+=dcw2-w2;     y+=dch-y_off
+            elif place == 'sw': x+=x_off;       y+=dch-y_off
+            elif place == 'cw': x+=x_off;       y+=dch2+h2
 
         log(f'extent_placement: after, x={x}, y={y}, returning')
 

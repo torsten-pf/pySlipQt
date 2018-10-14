@@ -36,10 +36,8 @@ except ImportError:
 try:
     from PyQt5.QtCore import QTimer
     from PyQt5.QtGui import QPixmap
-    from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QLabel,
-                                 QSpinBox, QVBoxLayout, QVBoxLayout, QAction,
-                                 QHBoxLayout, QVBoxLayout, QGridLayout,
-                                 QErrorMessage)
+    from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget,
+                                 QAction, QGridLayout, QErrorMessage)
 except ImportError:
     msg = '*'*60 + '\nSorry, you must install PyQt5\n' + '*'*60
     print(msg)
@@ -161,7 +159,10 @@ DefaultTilesetIndex = 1
 
 class TilesetManager:
     """A class to manage multiple tileset objects.
-    
+  
+        ts = TilesetManager(source_list)  # 'source_list' is list of tileset source modules
+        ts.get_tile_source(index)         # 'index' into 'source_list' of source to use
+
     Features 'lazy' importing, only imports when the tileset is used
     the first time.
     """
@@ -170,6 +171,8 @@ class TilesetManager:
         """Create a set of tile sources.
         
         mod_list  list of module filenames to manage
+
+        The list is something like: ['osm_tiles.py', 'gmt_local_tiles.py']
 
         We can access tilesets using the index of the module in the 'mod_list'.
         """
@@ -1705,7 +1708,7 @@ class PySlipQtDemo(QMainWindow):
                     (158.55, -19.98, 'Prince of Denmark - 1863',
                         {'placement': 'nw', 'offset_x': 20, 'colour': 'green'}),
                     (146.867525, -19.152182, 'Moltke - 1911',
-                        {'placement': 'ce', 'offset_x': 20, 'colour': 'green'})
+                        {'placement': 'ce', 'offset_x': 20, 'colour': 'green'}),
                    ]
         if sys.platform != 'win32':
             # TODO: check if this works under Windows
