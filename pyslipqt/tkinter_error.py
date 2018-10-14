@@ -6,7 +6,15 @@ A small function to put an error message on the screen with Tkinter.
 Used by GUI programs started from a desktop icon.
 '''
 
-from tkinter import *
+import textwrap
+
+try:
+    from tkinter import *
+except ImportError:
+    print("You must install 'tkinter'")
+    print("Ubuntu: apt-get install python-tk")
+    print("Windows: ???")
+    sys.exit(1)
 
 
 def tkinter_error(msg, title=None):
@@ -16,12 +24,12 @@ def tkinter_error(msg, title=None):
     title  the window title (defaults to 'ERROR')
 
     The whole point of this is to get *some* output from a python GUI
-    program when run from an icon double-click.  We use Tkinter since it's
+    program when run from an icon double-click.  We use tkinter since it's
     part of standard python and we may be trying to say something like:
 
-        +-----------------------------+
-        |  you must install wxPython  |
-        +-----------------------------+
+        +-------------------------+
+        |  You must install PyQt  |
+        +-------------------------+
 
     Under Linux and OSX we can run the program from the commandline and we would
     see printed output.  Under Windows that's hard to do, hence this code.
@@ -66,6 +74,18 @@ def tkinter_error(msg, title=None):
 
 
 if __name__ == '__main__':
-    tkinter_error('A short message:\n\tHello, world!\n\n'
-                  'Some Unicode (你好, สวัสดี, こんにちは)',
+    long_msg = ('Lorem ipsum dolor sit amet, consectetur adipiscing elit, '
+                'sed do eiusmod tempor incididunt ut labore et dolore magna '
+                'aliqua. Ut enim ad minim veniam, quis nostrud exercitation '
+                'ullamco laboris nisi ut aliquip ex ea commodo consequat. '
+                'Duis aute irure dolor in reprehenderit in voluptate velit '
+                'esse cillum dolore eu fugiat nulla pariatur. Excepteur sint '
+                'occaecat cupidatat non proident, sunt in culpa qui officia '
+                'deserunt mollit anim id est laborum.'
+               )
+
+    tkinter_error('A short message with initial TAB:\n\tHello, world!\n\n'
+                  'Some Unicode (你好, สวัสดี, こんにちは)\n\n'
+                  'A large text paragraph. You must wrap and indent the text yourself:\n'
+                      + textwrap.fill(long_msg, initial_indent='    ', subsequent_indent='    '),
                   title='Test Error Message')
