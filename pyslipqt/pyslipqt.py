@@ -1438,15 +1438,15 @@ class PySlipQt(QWidget):
         dcw2 = dcw/2
         dch2 = dch/2
 
-        if place == 'cc':   x+=dcw2-w2;       y+=dch2-h2
-        elif place == 'nw': x+=x_off;         y+=y_off
-        elif place == 'cn': x+=dcw2-w2;       y+=y_off
-        elif place == 'ne': x+=dcw-w-x_off;   y+=y_off
-        elif place == 'ce': x+=dcw-w-x_off;   y+=dch2-h2
-        elif place == 'se': x+=dcw-w-x_off;   y+=dch-h-y_off
-        elif place == 'cs': x+=dcw2-w2;       y+=dch-h-y_off
-        elif place == 'sw': x+=x_off;         y+=dch-h-y_off
-        elif place == 'cw': x+=x_off;         y+=dch2-h2
+        if place == 'cc':   x+=dcw2-w2;      y+=dch2+h2
+        elif place == 'nw': x+=x_off;        y+=h+y_off
+        elif place == 'cn': x+=dcw2-w2;      y+=h+y_off
+        elif place == 'ne': x+=dcw-w-x_off;  y+=h+y_off
+        elif place == 'ce': x+=dcw-w-x_off;  y-=dch2
+        elif place == 'se': x+=dcw-w-x_off;  y+=dch-y_off
+        elif place == 'cs': x+=dcw2-w2;      y+=dch-h-y_off
+        elif place == 'sw': x+=x_off;        y+=dch-y_off
+        elif place == 'cw': x+=x_off;        y+=dch2+h2
 
         log(f'extent_placement: after, x={x}, y={y}, returning')
 

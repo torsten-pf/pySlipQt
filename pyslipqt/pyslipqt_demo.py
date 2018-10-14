@@ -1670,7 +1670,10 @@ class PySlipQtDemo(QMainWindow):
         transparent_placement = {'placement': 'se', 'colour': '#00000040'}
         capital = {'placement': 'se', 'fontsize': 14, 'colour': 'red',
                    'textcolour': 'red'}
-        TextData = [(151.20, -33.85, 'Sydney', text_placement),
+        capital_sw = {'placement': 'sw', 'fontsize': 14, 'colour': 'red',
+                      'textcolour': 'red'}
+        TextData = [
+                    (151.20, -33.85, 'Sydney', text_placement),
                     (144.95, -37.84, 'Melbourne', {'placement': 'ce'}),
                     (153.08, -27.48, 'Brisbane', text_placement),
                     (115.86, -31.96, 'Perth', transparent_placement),
@@ -1682,6 +1685,9 @@ class PySlipQtDemo(QMainWindow):
                     (172.61, -43.51, 'Christchurch', text_placement),
                     (168.74, -45.01, 'Queenstown', text_placement),
                     (147.30, -09.41, 'Port Moresby', capital),
+                    (143.1048, -5.4646, 'Porgera', text_placement),
+                    (103.833333, 1.283333, 'Singapore', capital),
+                    (101.683333, 3.133333, 'Kuala Lumpur', capital_sw),
                     (106.822922, -6.185451, 'Jakarta', capital),
                     (110.364444, -7.801389, 'Yogyakarta', text_placement),
                     (120.966667, 14.563333, 'Manila', capital),
@@ -1701,25 +1707,26 @@ class PySlipQtDemo(QMainWindow):
                     (146.867525, -19.152182, 'Moltke - 1911',
                         {'placement': 'ce', 'offset_x': 20, 'colour': 'green'})
                    ]
-#        if sys.platform != 'win32':
-#            TextData.extend([
-#                    (110.5, 24.783333, '阳朔县 (Yangshuo)', {'placement': 'sw'}),
-#                    (117.183333, 39.133333, '天津市 (Tianjin)', {'placement': 'sw'}),
-#                    (106.36, +10.36, 'Mỹ Tho', {'placement': 'ne'}),
-#                    (105.85, +21.033333, 'Hà Nội', capital),
-#                    (106.681944, 10.769444, 'Thành phố Hồ Chí Minh',
-#                        {'placement': 'sw'}),
-#                    (132.47, +34.44, '広島市 (Hiroshima City)',
-#                        text_placement),
-#                    (114.158889, +22.278333, '香港 (Hong Kong)',
-#                        {'placement': 'nw'}),
-#                    (98.392, 7.888, 'ภูเก็ต (Phuket)', text_placement),
-#                    ( 96.16, +16.80, 'ရန်ကုန် (Yangon)', capital),
-#                    (104.93, +11.54, ' ភ្នំពេញ (Phnom Penh)', capital),
-#                    (100.49, +13.75, 'กรุงเทพมหานคร (Bangkok)', capital),
-#                    ( 77.56, +34.09, 'གླེ་(Leh)', text_placement),
-#                    (84.991275, 24.695102, 'बोधगया (Bodh Gaya)', text_placement)
-#                        ])
+        if sys.platform != 'win32':
+            # TODO: check if this works under Windows
+            TextData.extend([
+                    (110.5, 24.783333, '阳朔县 (Yangshuo)', {'placement': 'sw'}),
+                    (117.183333, 39.133333, '天津市 (Tianjin)', {'placement': 'sw'}),
+                    (106.36, +10.36, 'Mỹ Tho', {'placement': 'ne'}),
+                    (105.85, +21.033333, 'Hà Nội', capital),
+                    (106.681944, 10.769444, 'Thành phố Hồ Chí Minh',
+                        {'placement': 'sw'}),
+                    (132.47, +34.44, '広島市 (Hiroshima City)',
+                        text_placement),
+                    (114.158889, +22.278333, '香港 (Hong Kong)',
+                        {'placement': 'nw'}),
+                    (98.392, 7.888, 'ภูเก็ต (Phuket)', text_placement),
+                    ( 96.16, +16.80, 'ရန်ကုန် (Yangon)', capital),
+                    (104.93, +11.54, ' ភ្នំពេញ (Phnom Penh)', capital),
+                    (100.49, +13.75, 'กรุงเทพมหานคร (Bangkok)', capital),
+                    ( 77.56, +34.09, 'གླེ་(Leh)', text_placement),
+                    (84.991275, 24.695102, 'बोधगया (Bodh Gaya)', text_placement)
+                        ])
 
         TextViewData = [(0, 0, '%s %s' % (DemoName, DemoVersion))]
         TextViewDataPlace = 'cn'
