@@ -963,6 +963,7 @@ class PySlipQt(QWidget):
         # draw text on map/view
         for (lon, lat, tdata, place, radius, colour,
                 textcolour, fontname, fontsize, x_off, y_off, data) in text:
+            log(f'draw_text_layer: lon={lon}, lat={lat}, tdata={tdata}, place={place}, radius={radius}, x_off={x_off}, y_off={y_off}')
 
             # set font characteristics so we can calculate text width/height
             if cache_textcolour != textcolour:
@@ -983,15 +984,18 @@ class PySlipQt(QWidget):
 
             # get point + extent information (each can be None if off-view)
             (pt, ex) = pex(place, (lon, lat), x_off, y_off, w, h)
-            (pt_x, pt_y) = pt
+
+            log(f'draw_text_layer: pt={pt}, ex={ex}')
 
             if pt and radius:   # don't draw point if off screen or zero radius
+                (pt_x, pt_y) = pt
                 if cache_colour != colour:
                     qcolour = QColor(*colour)
                     pen = QPen(qcolour, radius, Qt.SolidLine)
                     dc.setPen(pen)
                     dc.setBrush(qcolour)
                     cache_colour = colour
+                log(f'draw_text_layer: drawing point at view ({pt_x},{pt_y})')
                 dc.drawEllipse(QPoint(pt_x, pt_y), radius, radius)
 
             if ex:              # don't draw text if off screen
@@ -1232,14 +1236,19 @@ class PySlipQt(QWidget):
         An extent object can be either an image object or a text object.
         """
 
+        log(f'pex_extent: place={place}, geo={geo}, x_off={x_off}, y_off={y_off}, w={w}, h={h}')
+
         # get point view coords
         vpoint = self.geo_to_view(geo)
         (vpx, vpy) = vpoint
+        log(f'pex_extent: after .geo_to_view({geo}), vpx={vpx}, vpy={vpy}')
 
         # get extent limits
         # must take into account 'place', 'x_off' and 'y_off'
-        point = self.extent_placement(place, vpx, vpy, x_off, y_off, w, h)
+        log(f'pex_extent: calling .extent_placement(place, vpx, vpy, x_off, y_off, w, h)')
+        point = self.extent_placement(place, vpx, vpy, x_off, y_off, w, h)  # map-rel call
         (px, py) = point
+        log(f'pex_extent: after .extent_placement(), px={px}, py={py}')
 
         # extent = (left, right, top, bottom) in view coords
         elx = px
@@ -1249,15 +1258,19 @@ class PySlipQt(QWidget):
         extent = (elx, erx, ety, eby)
 
         # decide if point is off-view
-        if px < 0 or px > self.view_width or py < 0 or py > self.view_height:
-            point = None
+        if vpx < 0 or vpx > self.view_width or vpy < 0 or vpy > self.view_height:
+            log(f'pex_extent: point off-view, use None')
+            vpoint = None
 
         # decide if extent is off-view
         if erx < 0 or elx > self.view_width or eby < 0 or ety > self.view_height:
             # no extent if ALL of extent is off-view
+            log(f'pex_extent: extent off-view, use None')
             extent = None
 
-        return (point, extent)
+        log(f'pex_extent: returning ({point}, {extent})')
+
+        return (vpoint, extent)
 
     def pex_extent_view(self, place, view, x_off, y_off, w, h):
         """Convert object view position to point & extent in view coords.
@@ -1417,6 +1430,8 @@ class PySlipQt(QWidget):
         Returns a tuple (x, y).
         """
 
+        log(f'extent_placement: place={place}, x={x}, y={y}, x_off={x_off}, y_off={y_off}, w={w}, h={h}, dcw={dcw}, dch={dch}')
+
         w2 = w/2
         h2 = h/2
 
@@ -1433,44 +1448,9 @@ class PySlipQt(QWidget):
         elif place == 'sw': x+=x_off;         y+=dch-h-y_off
         elif place == 'cw': x+=x_off;         y+=dch2-h2
 
-        return (x, y)
+        log(f'extent_placement: after, x={x}, y={y}, returning')
 
-#    def zoom_level(self, level):
-#        """Zoom to a map level.
-#
-#        level  map level to zoom to
-#
-#        Change the map zoom level to that given. Returns True if the zoom
-#        succeeded, else False. If False is returned the method call has no effect.
-#        """
-#
-#        # get geo coords of view centre point
-#        x = self.view_width / 2
-#        y = self.view_height / 2
-#        geo = self.view_to_geo((x, y))
-#
-#        # get tile source to use the new level
-#        result = self.tile_src.UseLevel(level)
-#
-#        if result:
-#            # zoom worked, adjust state variables
-#            self.level = level
-#
-#            # move to new level
-#            (self.num_tiles_x, self.num_tiles_y, _, _) = self.tile_src.GetInfo(level)
-#            self.map_width = self.num_tiles_x * self.tile_width
-#            self.map_height = self.num_tiles_y * self.tile_height
-#
-#            # finally, pan to original map centre (updates widget)
-#            self.pan_position(geo)
-#
-#            # raise the EVT_PYSLIPQT_LEVEL event
-#            self.raise_event(PySlipQt.EVT_PYSLIPQT_LEVEL, level=level)
-#
-#            # trigger an EVT_PYSLIPQT_POSITION event to update any user widget
-#            # TODO
-#
-#        return result
+        return (x, y)
 
     def zoom_level(self, level):
 
