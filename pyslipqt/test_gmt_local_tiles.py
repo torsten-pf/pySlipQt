@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 """
 Test the local GMT tiles code.
 
@@ -16,10 +14,7 @@ import unittest
 #import pyslipqt.gmt_local_tiles as tiles
 import gmt_local_tiles as tiles
 from PyQt5.QtGui import QPixmap
-from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QLabel,
-                             QSpinBox, QVBoxLayout, QVBoxLayout, QAction,
-                             QHBoxLayout, QVBoxLayout, QGridLayout,
-                             QErrorMessage)
+from PyQt5.QtWidgets import (QApplication, QMainWindow)
 
 
 DemoName = 'GMT Tiles Cache Test'
