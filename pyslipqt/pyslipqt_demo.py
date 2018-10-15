@@ -1538,6 +1538,7 @@ class PySlipQtDemo(QMainWindow):
         if event.mposn:
             (lon, lat) = event.mposn
             self.mouse_position.set_text(f'{lon:.2f}/{lat:.2f}')
+            log(f'mouse_posn_event: move event.vposn={event.vposn}')
         else:
             self.mouse_position.set_text('')
 
@@ -1693,7 +1694,7 @@ class PySlipQtDemo(QMainWindow):
                     (101.683333, 3.133333, 'Kuala Lumpur', capital_sw),
                     (106.822922, -6.185451, 'Jakarta', capital),
                     (110.364444, -7.801389, 'Yogyakarta', text_placement),
-                    (120.966667, 14.563333, 'Manila', capital),
+                    (121.050, 14.600, 'Manila', capital),
                     (271.74, +40.11, 'Champaign', text_placement),
                     (160.0, -30.0, 'Agnes Napier - 1855',
                         {'placement': 'cw', 'offset_x': 20, 'colour': 'green'}),
@@ -1713,7 +1714,7 @@ class PySlipQtDemo(QMainWindow):
         if sys.platform != 'win32':
             # TODO: check if this works under Windows
             TextData.extend([
-                    (110.5, 24.783333, '阳朔县 (Yangshuo)', {'placement': 'sw'}),
+                    (110.490, 24.780, '阳朔县 (Yangshuo)', {'placement': 'sw'}),
                     (117.183333, 39.133333, '天津市 (Tianjin)', {'placement': 'sw'}),
                     (106.36, +10.36, 'Mỹ Tho', {'placement': 'ne'}),
                     (105.85, +21.033333, 'Hà Nội', capital),
@@ -1721,7 +1722,7 @@ class PySlipQtDemo(QMainWindow):
                         {'placement': 'sw'}),
                     (132.47, +34.44, '広島市 (Hiroshima City)',
                         text_placement),
-                    (114.158889, +22.278333, '香港 (Hong Kong)',
+                    (114.000, +22.450, '香港 (Hong Kong)',
                         {'placement': 'nw'}),
                     (98.392, 7.888, 'ภูเก็ต (Phuket)', text_placement),
                     ( 96.16, +16.80, 'ရန်ကုန် (Yangon)', capital),

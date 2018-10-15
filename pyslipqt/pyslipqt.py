@@ -959,10 +959,15 @@ class PySlipQt(QWidget):
         map_rel  points relative to map if True, else relative to view
         """
 
+        log(f'draw_text_layer: text={text}, map_rel={map_rel}')
+
         # get correct pex function for mode (map/view)
+
         pex = self.pex_extent_view
+        log(f'draw_text_layer: assuming pex_extent_view()')
         if map_rel:
             pex = self.pex_extent
+            log(f'draw_text_layer: using pex_extent()')
 
         # set some caching to speed up mostly unchanging data
         cache_textcolour = None
@@ -972,6 +977,7 @@ class PySlipQt(QWidget):
         # draw text on map/view
         for (lon, lat, tdata, place, radius, colour,
                 textcolour, fontname, fontsize, x_off, y_off, data) in text:
+            log(f'draw_text_layer: lon={lon}, lat={lat}, tdata={tdata}, place={place}, radius={radius}, x_off={x_off}, y_off={y_off}')
             # set font characteristics so we can calculate text width/height
             if cache_textcolour != textcolour:
                 qcolour = QColor(*textcolour)
@@ -990,7 +996,9 @@ class PySlipQt(QWidget):
             h = qrect.height()
 
             # get point + extent information (each can be None if off-view)
+            log(f'draw_text_layer: calling pex(place={place}, (lon,lat)={(lon, lat)}, x_off={x_off}, y_off={y_off}, w={w}, h={h})')
             (pt, ex) = pex(place, (lon, lat), x_off, y_off, w, h)
+            log(f'draw_text_layer: pt={pt}, ex={ex}')
 
             if pt and radius:   # don't draw point if off screen or zero radius
                 (pt_x, pt_y) = pt
@@ -1000,11 +1008,13 @@ class PySlipQt(QWidget):
                     dc.setPen(pen)
                     dc.setBrush(qcolour)
                     cache_colour = colour
+                log(f'draw_text_layer: drawing point at ({pt_x},{pt_y})')
                 dc.drawEllipse(QPoint(pt_x, pt_y), radius, radius)
 
             if ex:              # don't draw text if off screen
-                (lx, _, ty, _) = ex
-                dc.drawText(QPointF(lx, ty), tdata)
+                (lx, _, _, by) = ex
+                log(f'draw_text_layer: drawing text at ({lx},{by})')
+                dc.drawText(QPointF(lx, by), tdata)
 
     def draw_polygon_layer(self, dc, data, map_rel):
         """Draw a polygon layer.
@@ -1477,6 +1487,7 @@ class PySlipQt(QWidget):
             elif place == 'sw': x+=x_off;       y+=dch-h-y_off
             elif place == 'cw': x+=x_off;       y+=dch2-h2
         else:
+            log(f'extent_placement: placing text')
             if   place == 'cc': x+=dcw2-w2;     y+=dch2+h2
             elif place == 'nw': x+=x_off;       y+=h+y_off
             elif place == 'cn': x+=dcw2-w2;     y+=h+y_off
@@ -2797,6 +2808,8 @@ class PySlipQt(QWidget):
                          (placement, radius, fontname, fontsize, colour, data)
                      these supply any data missing in 'data'
         """
+
+        log(f'AddTextLayer: text={text}, map_rel={map_rel}')
 
         # merge global and layer defaults
         if map_rel:
