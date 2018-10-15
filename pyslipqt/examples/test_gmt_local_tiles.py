@@ -1,44 +1,44 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 """
 Test the local GMT tiles code.
 
-Requires a wxPython application to be created before use.
-If we can create a bitmap without wxPython, we could remove this dependency.
+Requires a PyQt5 application to be created before use.
+If we can create a bitmap without PyQt5, we could remove this dependency.
 """
 
 import os
+import sys
 import glob
 import pickle
-import wx
-import pyslip.gmt_local_tiles as tiles
-
-import unittest
 import shutil
-from wx.lib.embeddedimage import PyEmbeddedImage
+import unittest
+#import pyslipqt.gmt_local_tiles as tiles
+import gmt_local_tiles as tiles
+from PyQt5.QtGui import QPixmap
+from PyQt5.QtWidgets import (QApplication, QMainWindow)
 
 
-DefaultAppSize = (512, 512)
 DemoName = 'GMT Tiles Cache Test'
 DemoVersion = '0.1'
 
+DemoWidth = 300
+DemoHeight = 250
 
-class AppFrame(wx.Frame):
+
+class AppFrame(QMainWindow):
 
     def __init__(self):
-        wx.Frame.__init__(self, None, size=DefaultAppSize,
-                          title='%s %s' % (DemoName, DemoVersion))
-        self.SetMinSize(DefaultAppSize)
-        self.panel = wx.Panel(self, wx.ID_ANY)
-        self.panel.SetBackgroundColour(wx.WHITE)
-        self.panel.ClearBackground()
-        self.Bind(wx.EVT_CLOSE, self.onClose)
+        super().__init__()
+        self.setGeometry(300, 300, DemoWidth, DemoHeight)
+        self.setWindowTitle('%s %s' % (DemoName, DemoVersion))
+        self.show()
 
         unittest.main()
 
-    def onClose(self, event):
-        self.Destroy()
+    def onClose(self):
+        """Application is closing."""
+
+        pass
+
 
 class TestGMTTiles(unittest.TestCase):
 
@@ -65,7 +65,7 @@ class TestGMTTiles(unittest.TestCase):
                     for y in range(num_tiles_height):
                         bmp = cache.GetTile(x, y)
                         msg = "Can't find tile (%d,%d,%d)!?" % (level, x, y)
-                        self.failIf(bmp is None, msg)
+                        self.assertFalse(bmp is None, msg)
 
     def testErrors(self):
         """Test possible errors."""
@@ -122,7 +122,7 @@ class TestGMTTiles(unittest.TestCase):
 
             bmp.SaveFile('xyzzy_%d.jpg' % level, wx.BITMAP_TYPE_JPEG)
 
-app = wx.App()
-app_frame = AppFrame()
-app_frame.Show()
-app.MainLoop()
+
+app = QApplication(sys.argv)
+ex = AppFrame()
+sys.exit(app.exec_())

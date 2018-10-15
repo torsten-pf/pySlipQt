@@ -4,39 +4,43 @@
 """
 Test the OSM tiles code.
 
-Requires a wxPython application to be created before use.
-If we can create a bitmap without wxPython, we could remove this dependency.
+Requires a PyQt5 application to be created before use.
+If we can create a bitmap without PyQt5, we could remove this dependency.
 """
 
 import os
+import sys
 import glob
 import pickle
-import wx
-import pyslip.osm_tiles as tiles
+#import pyslipqt.osm_tiles as tiles
+import osm_tiles as tiles
+from PyQt5.QtGui import QPixmap
+from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QLabel,
+                             QSpinBox, QVBoxLayout, QVBoxLayout, QAction,
+                             QHBoxLayout, QVBoxLayout, QGridLayout,
+                             QErrorMessage)
 
 import unittest
 import shutil
-from wx.lib.embeddedimage import PyEmbeddedImage
 
 
 # where the OSM tiles are cached on disk
 TilesDir = 'test_osm_tiles'
 
-DefaultAppSize = (512, 512)
 DemoName = 'OSM Tiles Cache Test'
 DemoVersion = '0.1'
 
+DemoWidth = 300
+DemoHeight = 250
 
-class AppFrame(wx.Frame):
+
+class AppFrame(QMainWindow):
 
     def __init__(self):
-        wx.Frame.__init__(self, None, size=DefaultAppSize,
-                          title='%s %s' % (DemoName, DemoVersion))
-        self.SetMinSize(DefaultAppSize)
-        self.panel = wx.Panel(self, wx.ID_ANY)
-        self.panel.SetBackgroundColour(wx.WHITE)
-        self.panel.ClearBackground()
-        self.Bind(wx.EVT_CLOSE, self.onClose)
+        super().__init__()
+        self.setGeometry(300, 300, DemoWidth, DemoHeight)
+        self.setWindowTitle('%s %s' % (DemoName, DemoVersion))
+        self.show()
 
         unittest.main()
 
@@ -66,7 +70,7 @@ class TestOSMTiles(unittest.TestCase):
 #                    for y in range(num_tiles_height):
                         bmp = cache.GetTile(x, y)
                         msg = "Can't find tile (%d,%d,%d)!?" % (level, x, y)
-                        self.failIf(bmp is None, msg)
+                        self.assertFalse(bmp is None, msg)
             else:
                 print('level %d not available' % level)
 
@@ -140,7 +144,7 @@ class TestOSMTiles(unittest.TestCase):
         time.sleep(30)
 
 
-app = wx.App()
-app_frame = AppFrame()
-app_frame.Show()
-app.MainLoop()
+app = QApplication(sys.argv)
+ex = AppFrame()
+sys.exit(app.exec_())
+

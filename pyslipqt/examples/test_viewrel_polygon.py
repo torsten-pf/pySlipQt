@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-"""Test PySlip view-relative polygons.
+"""Test PySlipQt view-relative polygons.
 
 Usage: test_maprel_image.py [-h] [-t (OSM|GMT)]
 """
 
 
 import wx
-import pyslip
+import pyslipqt
 
 
 ######
@@ -52,8 +52,8 @@ PolyViewData = [(arrow_cn, {'placement': 'cn'}),
 class TestFrame(wx.Frame):
     def __init__(self):
         wx.Frame.__init__(self, None, size=DefaultAppSize,
-                          title=('PySlip %s - view-relative polygon test'
-                                 % pyslip.__version__))
+                          title=('PySlipQt %s - view-relative polygon test'
+                                 % pyslipqt.__version__))
         self.SetMinSize(DefaultAppSize)
         self.panel = wx.Panel(self, wx.ID_ANY)
         self.panel.SetBackgroundColour(wx.WHITE)
@@ -65,18 +65,18 @@ class TestFrame(wx.Frame):
         # build the GUI
         box = wx.BoxSizer(wx.HORIZONTAL)
         self.panel.SetSizer(box)
-        self.pyslip = pyslip.PySlip(self.panel, tile_src=self.tile_src)
-        box.Add(self.pyslip, proportion=1, border=1, flag=wx.EXPAND)
+        self.pyslipqt = pyslipqt.PySlipQt(self.panel, tile_src=self.tile_src)
+        box.Add(self.pyslipqt, proportion=1, border=1, flag=wx.EXPAND)
         self.panel.SetSizer(box)
         self.panel.Layout()
         self.Centre()
         self.Show(True)
 
         # set initial view position
-        self.pyslip.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
+        self.pyslipqt.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
 
         # add test test layer
-        self.text_layer = self.pyslip.AddPolygonLayer(PolyViewData,
+        self.text_layer = self.pyslipqt.AddPolygonLayer(PolyViewData,
                                                       map_rel=False,
                                                       name='<poly_map_layer>',
                                                       offset_x=0, offset_y=0,
@@ -127,9 +127,9 @@ if __name__ == '__main__':
 
     # set up the appropriate tile source
     if tile_source == 'gmt':
-        import pyslip.gmt_local_tiles as Tiles
+        import pyslipqt.gmt_local_tiles as Tiles
     elif tile_source == 'osm':
-        import pyslip.osm_tiles as Tiles
+        import pyslipqt.osm_tiles as Tiles
     else:
         usage('Bad tile source: %s' % tile_source)
         sys.exit(3)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-"""Test PySlip with multiple widget instances.
+"""Test PySlipQt with multiple widget instances.
 
 Usage: test_multi_widget.py [-h]
 
@@ -11,10 +11,10 @@ the widget instances.
 
 
 import wx
-import pyslip
+import pyslipqt
 
-import pyslip.gmt_local_tiles as GMTTiles
-import pyslip.osm_tiles as NetTiles
+import pyslipqt.gmt_local_tiles as GMTTiles
+import pyslipqt.osm_tiles as NetTiles
 
 
 ######
@@ -40,8 +40,8 @@ class TestFrame(wx.Frame):
         """Initialize the widget."""
 
         wx.Frame.__init__(self, None, size=DefaultAppSize,
-                          title=('PySlip %s - multiwidget test'
-                                 % pyslip.__version__))
+                          title=('PySlipQt %s - multiwidget test'
+                                 % pyslipqt.__version__))
         self.SetMinSize(DefaultAppSize)
         self.panel = wx.Panel(self, wx.ID_ANY)
         self.panel.SetBackgroundColour(wx.WHITE)
@@ -58,17 +58,17 @@ class TestFrame(wx.Frame):
         box = wx.BoxSizer(wx.VERTICAL)
         gsz = wx.GridSizer(rows=2, cols=2, vgap=5, hgap=5)
 
-        self.pyslip1 = pyslip.PySlip(self.panel, tile_src=gmt_tile_src_1)
-        gsz.Add(self.pyslip1, flag=wx.ALL|wx.EXPAND)
+        self.pyslipqt1 = pyslipqt.PySlipQt(self.panel, tile_src=gmt_tile_src_1)
+        gsz.Add(self.pyslipqt1, flag=wx.ALL|wx.EXPAND)
 
-        self.pyslip2 = pyslip.PySlip(self.panel, tile_src=osm_tile_src_1)
-        gsz.Add(self.pyslip2, flag=wx.ALL|wx.EXPAND)
+        self.pyslipqt2 = pyslipqt.PySlipQt(self.panel, tile_src=osm_tile_src_1)
+        gsz.Add(self.pyslipqt2, flag=wx.ALL|wx.EXPAND)
 
-        self.pyslip3 = pyslip.PySlip(self.panel, tile_src=osm_tile_src_2)
-        gsz.Add(self.pyslip3, flag=wx.ALL|wx.EXPAND)
+        self.pyslipqt3 = pyslipqt.PySlipQt(self.panel, tile_src=osm_tile_src_2)
+        gsz.Add(self.pyslipqt3, flag=wx.ALL|wx.EXPAND)
 
-        self.pyslip4 = pyslip.PySlip(self.panel, tile_src=gmt_tile_src_2)
-        gsz.Add(self.pyslip4, flag=wx.ALL|wx.EXPAND)
+        self.pyslipqt4 = pyslipqt.PySlipQt(self.panel, tile_src=gmt_tile_src_2)
+        gsz.Add(self.pyslipqt4, flag=wx.ALL|wx.EXPAND)
 
         box.Add(gsz, proportion=1, flag=wx.ALL|wx.EXPAND)
 
@@ -79,10 +79,10 @@ class TestFrame(wx.Frame):
         self.Show(True)
 
         # set initial view position
-        self.pyslip1.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
-        self.pyslip2.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
-        self.pyslip3.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
-        self.pyslip4.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
+        self.pyslipqt1.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
+        self.pyslipqt2.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
+        self.pyslipqt3.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
+        self.pyslipqt4.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
 
 ################################################################################
 

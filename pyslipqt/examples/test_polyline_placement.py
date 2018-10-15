@@ -10,15 +10,15 @@ Usage: test_polyline_placement.py [-h|--help] [-d] [(-t|--tiles) (GMT|OSM)]
 
 
 import os
-import pyslip.tkinter_error as tkinter_error
+import pyslipqt.tkinter_error as tkinter_error
 try:
     import wx
 except ImportError:
     msg = 'Sorry, you must install wxPython'
     tkinter_error.tkinter_error(msg)
 
-import pyslip
-import pyslip.log as log
+import pyslipqt
+import pyslipqt.log as log
 
 
 ######
@@ -26,7 +26,7 @@ import pyslip.log as log
 ######
 
 # demo name/version
-DemoName = 'Test polyline placement, pySlip %s' % pyslip.__version__
+DemoName = 'Test polyline placement, pySlipQt %s' % pyslipqt.__version__
 DemoVersion = '1.0'
 
 # initial values
@@ -278,8 +278,8 @@ class AppFrame(wx.Frame):
         self.map_level.SetLabel('%d' % InitialViewLevel)
         wx.CallAfter(self.final_setup, InitialViewLevel, InitialViewPosition)
 
-        # force pyslip initialisation
-        self.pyslip.OnSize()
+        # force pyslipqt initialisation
+        self.pyslipqt.OnSize()
 
         # finally, set up application window position
         self.Centre()
@@ -288,9 +288,9 @@ class AppFrame(wx.Frame):
         self.poly_layer = None
         self.poly_view_layer = None
 
-        # finally, bind pySlip events to handlers
-        self.pyslip.Bind(pyslip.EVT_PYSLIP_POSITION, self.handle_position_event)
-        self.pyslip.Bind(pyslip.EVT_PYSLIP_LEVEL, self.handle_level_change)
+        # finally, bind pySlipQt events to handlers
+        self.pyslipqt.Bind(pyslipqt.EVT_PYSLIP_POSITION, self.handle_position_event)
+        self.pyslipqt.Bind(pyslipqt.EVT_PYSLIP_LEVEL, self.handle_level_change)
 
 #####
 # Build the GUI
@@ -326,11 +326,11 @@ class AppFrame(wx.Frame):
 
         # create gui objects
         sb = AppStaticBox(parent, '')
-        self.pyslip = pyslip.PySlip(parent, tile_src=self.tile_source)
+        self.pyslipqt = pyslipqt.PySlipQt(parent, tile_src=self.tile_source)
 
         # lay out objects
         box = wx.StaticBoxSizer(sb, orient=wx.HORIZONTAL)
-        box.Add(self.pyslip, proportion=1, border=0, flag=wx.EXPAND)
+        box.Add(self.pyslipqt, proportion=1, border=0, flag=wx.EXPAND)
 
         return box
 
@@ -472,7 +472,7 @@ class AppFrame(wx.Frame):
         """Display updated polygon."""
 
         if self.poly_layer:
-            self.pyslip.DeleteLayer(self.poly_layer)
+            self.pyslipqt.DeleteLayer(self.poly_layer)
 
         # convert values to sanity for layer attributes
         placement = event.placement
@@ -503,7 +503,7 @@ class AppFrame(wx.Frame):
                                    'colour': colour,
                                    'offset_x': off_x,
                                    'offset_y': off_y})]
-        self.poly_layer = self.pyslip.AddPolygonLayer(poly_data, map_rel=True,
+        self.poly_layer = self.pyslipqt.AddPolygonLayer(poly_data, map_rel=True,
                                                       visible=True,
                                                       name='<poly_layer>')
 
@@ -511,7 +511,7 @@ class AppFrame(wx.Frame):
         """Delete the polygon map-relative layer."""
 
         if self.poly_layer:
-            self.pyslip.DeleteLayer(self.poly_layer)
+            self.pyslipqt.DeleteLayer(self.poly_layer)
         self.poly_layer = None
 
 ##### view-relative polygon layer
@@ -520,7 +520,7 @@ class AppFrame(wx.Frame):
         """Display updated polygon layer."""
 
         if self.poly_view_layer:
-            self.pyslip.DeleteLayer(self.poly_view_layer)
+            self.pyslipqt.DeleteLayer(self.poly_view_layer)
 
         # convert values to sanity for layer attributes
         placement = event.placement
@@ -546,7 +546,7 @@ class AppFrame(wx.Frame):
                                        'colour': colour,
                                        'offset_x': off_x,
                                        'offset_y': off_y})]
-        self.poly_view_layer = self.pyslip.AddPolygonLayer(poly_data,
+        self.poly_view_layer = self.pyslipqt.AddPolygonLayer(poly_data,
                                                            map_rel=False,
                                                            visible=True,
                                                            name='<poly_layer>')
@@ -555,7 +555,7 @@ class AppFrame(wx.Frame):
         """Delete the polygon view-relative layer."""
 
         if self.poly_view_layer:
-            self.pyslip.DeleteLayer(self.poly_view_layer)
+            self.pyslipqt.DeleteLayer(self.poly_view_layer)
         self.poly_view_layer = None
 
     def final_setup(self, level, position):
@@ -565,14 +565,14 @@ class AppFrame(wx.Frame):
         position  position to be in centre of view
         """
 
-        self.pyslip.GotoLevelAndPosition(level, position)
+        self.pyslipqt.GotoLevelAndPosition(level, position)
 
     ######
     # Exception handlers
     ######
 
     def handle_position_event(self, event):
-        """Handle a pySlip POSITION event."""
+        """Handle a pySlipQt POSITION event."""
 
         posn_str = ''
         if event.mposn:
@@ -583,7 +583,7 @@ class AppFrame(wx.Frame):
         self.mouse_position.SetValue(posn_str)
 
     def handle_level_change(self, event):
-        """Handle a pySlip LEVEL event."""
+        """Handle a pySlipQt LEVEL event."""
 
         self.map_level.SetLabel('%d' % event.level)
 
@@ -646,9 +646,9 @@ if __name__ == '__main__':
 
     # set up the appropriate tile source
     if tile_source == 'gmt':
-        import pyslip.gmt_local_tiles as Tiles
+        import pyslipqt.gmt_local_tiles as Tiles
     elif tile_source == 'osm':
-        import pyslip.osm_tiles as Tiles
+        import pyslipqt.osm_tiles as Tiles
     else:
         usage('Bad tile source: %s' % tile_source)
         sys.exit(3)

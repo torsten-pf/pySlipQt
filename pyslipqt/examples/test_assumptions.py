@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
 """
-Test PySlip assumptions.
+Test PySlipQt assumptions.
 
-We make some assumptions in pySlip about relative speeds
+We make some assumptions in pySlipQt about relative speeds
 of various operations.  Make sure those assumptions hold.
 """
 
@@ -18,7 +18,7 @@ class TestAssumptions(unittest.TestCase):
     def test_copy_list(self):
         """Check 'l_poly = list(poly)' gets us a new list.
 
-        At a few places in pySlip we need a copy of a list, not the original.
+        At a few places in pySlipQt we need a copy of a list, not the original.
         We do this by:
             l_poly = list(poly)
             new_poly = l_poly[:]
@@ -40,7 +40,7 @@ class TestAssumptions(unittest.TestCase):
     def test_copy(self):
         """Test 'new_list = old_list[:]' does give us a copy.
 
-        At a few places in pySlip we need a copy of a list, not the original.
+        At a few places in pySlipQt we need a copy of a list, not the original.
         We do this by:
             new_poly = l_poly[:]
         """
@@ -59,7 +59,7 @@ class TestAssumptions(unittest.TestCase):
     def test_copy2(self):
         """Check 'list(poly)' is faster than 'poly[:]'.
 
-        At a few places in pySlip we need a copy of a list and we do:
+        At a few places in pySlipQt we need a copy of a list and we do:
             new_poly = list(poly)
         Is this faster than:
             new_poly = poly[:]
@@ -72,13 +72,13 @@ class TestAssumptions(unittest.TestCase):
 
         # time list() approach
         start = time.time()
-        for _ in xrange(loops):
+        for _ in range(loops):
             new_list = list(old_list)
         list_delta = time.time() - start
 
         # time copy approach
         start = time.time()
-        for _ in xrange(loops):
+        for _ in range(loops):
             new_list = old_list[:]
         copy_delta = time.time() - start
 
@@ -92,7 +92,7 @@ class TestAssumptions(unittest.TestCase):
     def test_dispatch_slower(self):
         """Test that dispatch is faster than function if/elif/else.
 
-        pySlip used to use code like this:
+        pySlipQt used to use code like this:
             x = ...
             y = ...
             test = {'ab': 'x+=1;y-=1',
@@ -105,7 +105,7 @@ class TestAssumptions(unittest.TestCase):
             def test(x, y, place, x_off, y_off):
                 if place == 'ab':
                     x += 1
-                            y -= 1
+                    y -= 1
                 elif place == 'bc':
                     ...
 
@@ -137,7 +137,7 @@ class TestAssumptions(unittest.TestCase):
             test[key] = compile(test[key], 'string', 'exec')
 
         start = time.time()
-        for _ in xrange(LOOPS):
+        for _ in range(LOOPS):
             x = 0
             y = 0
             place = 'nw'
@@ -147,7 +147,7 @@ class TestAssumptions(unittest.TestCase):
             w2 = w/2
             h = 100
             h2 = h/2
-            exec test[place]
+            exec(test[place])
         exec_delta = time.time() - start
 
         # now for function equivalent
@@ -176,7 +176,7 @@ class TestAssumptions(unittest.TestCase):
             return (x, y)
 
         start = time.time()
-        for _ in xrange(LOOPS):
+        for _ in range(LOOPS):
             x = 0
             y = 0
             place = 'nw'
@@ -202,12 +202,12 @@ class TestAssumptions(unittest.TestCase):
         a = [1,2,3,4,5,6,7,8,9,0]   # fake a Z-order list
 
         start = time.time()
-        for _ in xrange(loops):
+        for _ in range(loops):
             b = copy.deepcopy(a)
         copy_delta = time.time() - start
 
         start = time.time()
-        for _ in xrange(loops):
+        for _ in range(loops):
             b = a[:]
         clone_delta = time.time() - start
 
@@ -235,13 +235,13 @@ class TestAssumptions(unittest.TestCase):
 
         # time tuple object
         start = time.time()
-        for _ in xrange(loops):
+        for _ in range(loops):
             (one, two, three, four, five, six, seven, eight, nine, ten) = tuple_obj
         tuple_delta = time.time() - start
 
         # time data object
         start = time.time()
-        for _ in xrange(loops):
+        for _ in range(loops):
             one = data_obj.one
             two = data_obj.two
             three = data_obj.three

@@ -1,8 +1,5 @@
-#!/usr/bin/env python
-# -*- coding= utf-8 -*-
-
 """
-Test PySlip GototPosition() function.
+Test PySlipQt GototPosition() function.
 
 The idea is to have a set of buttons selecting various geo positions on the OSM
 tile map.  When selected, the view would be moved with GotoPosition() and a
@@ -13,13 +10,22 @@ between the two markers shows errors in the Geo2Tile() & Tile2GEO() functions.
 
 
 import os
-import wx
-import pyslip
-import pyslip.osm_tiles as tiles
+import sys
+import traceback
+
+from PyQt5.QtCore import QTimer
+from PyQt5.QtGui import QPixmap
+from PyQt5.QtWidgets import (QApplication, QMainWindow, QHBoxLayout)
+
+#import pyslipqt.pyslipqt as pyslipqt
+import pyslipqt
+#import pyslipqt.osm_tiles as tiles
+import osm_tiles as tiles
 
 # If we have log.py, well and good.  Otherwise ...
 try:
-    import pyslip.log as log
+#    import pyslipqt.log as log
+    import log
 except ImportError:
     def logit(*args, **kwargs):
         pass
@@ -30,20 +36,22 @@ except ImportError:
     log.error = logit
     log.critical = logit
 
+#import pyslipqt.tkinter_error as tkinter_error
+import tkinter_error
+
+
 ######
 # Various demo constants
 ######
 
 # demo name/version
 DemoVersion = '1.0'
-DemoName = "pySlip %s - GotoPosition() test %s" % (pyslip.__version__, DemoVersion)
+DemoName = "pySlip %s - GotoPosition() test %s" % (pyslipqt.__version__, DemoVersion)
+DemoWidth = 800
+DemoHeight = 665
 
 # initial level and position
 InitViewLevel = 3
-InitViewPosition = (0.0, 0.0)
-
-# startup size of the application
-DefaultAppSize = (800, 665)
 
 # the number of decimal places in a lon/lat display
 LonLatPrecision = 3
@@ -67,53 +75,17 @@ Cities = [((0.0, 51.4778), 'Greenwich, United Kingdom'),
           ((98.3763357, 7.8605885), "Home"),
          ]
 
-# sizes of various spacers
-HSpacerSize = (3,1)         # horizontal in application screen
-VSpacerSize = (1,5)         # vertical in control pane
-
-# border width when packing GUI elements
-PackBorder = 1
-
-
-################################################################################
-# Override the wx.TextCtrl class to add read-only style and background colour
-################################################################################
-
-# background colour for the 'read-only' text field
-ControlReadonlyColour = '#ffffcc'
-
-class ROTextCtrl(wx.TextCtrl):
-    """Override the wx.TextCtrl widget to get read-only text control which
-    has a distinctive background colour."""
-
-    def __init__(self, parent, value, tooltip='', *args, **kwargs):
-        wx.TextCtrl.__init__(self, parent, wx.ID_ANY, value=value,
-                             style=wx.TE_READONLY, *args, **kwargs)
-        self.SetBackgroundColour(ControlReadonlyColour)
-        self.SetToolTip(wx.ToolTip(tooltip))
-
-################################################################################
-# Override the wx.StaticBox class to show our style
-################################################################################
-
-class AppStaticBox(wx.StaticBox):
-
-    def __init__(self, parent, label, *args, **kwargs):
-        if label:
-            label = '  ' + label + '  '
-        wx.StaticBox.__init__(self, parent, wx.ID_ANY, label, *args, **kwargs)
 
 ################################################################################
 # The main application frame
 ################################################################################
 
-class AppFrame(wx.Frame):
+class AppFrame(QMainWindow):
     def __init__(self):
-        wx.Frame.__init__(self, None, size=DefaultAppSize, title=DemoName)
-        self.SetMinSize(DefaultAppSize)
-        self.panel = wx.Panel(self, wx.ID_ANY)
-        self.panel.SetBackgroundColour(wx.WHITE)
-        self.panel.ClearBackground()
+        super().__init__()
+        self.setGeometry(300, 300, DemoWidth, DemoHeight)
+        self.setWindowTitle(DemoName)
+        self.show()
 
         self.tile_source = tiles.Tiles()
         self.tile_directory = self.tile_source.tiles_dir
@@ -123,66 +95,57 @@ class AppFrame(wx.Frame):
         self.view_layer = None
 
         # build the GUI
-        self.make_gui(self.panel)
-
-        # finally, set up application window position
-        self.Centre()
+        self.make_gui()
 
         # bind events to handlers
-        self.pyslip.Bind(pyslip.EVT_PYSLIP_POSITION, self.handle_position_event)
-        self.pyslip.Bind(pyslip.EVT_PYSLIP_LEVEL, self.handle_level_change)
+        self.pyslipqt.events.EVT_PYSLIPQT_POSITION.connect(self.handle_position_event)
+        self.pyslipqt.events.EVT_PYSLIPQT_LEVEL.connect(self.handle_level_change)
 
         # finally, goto desired level and position
-        self.pyslip.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
+        self.pyslipqt.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
 
 #####
 # Build the GUI
 #####
 
-    def make_gui(self, parent):
+    def make_gui(self):
         """Create application GUI."""
 
-        # start application layout
-        all_display = wx.BoxSizer(wx.HORIZONTAL)
-        parent.SetSizer(all_display)
+        hbox = QHBoxLayout()
+        self.setLayout(hbox)
 
         # put map view in left of horizontal box
-        sl_box = self.make_gui_view(parent)
+        sl_box = self.make_gui_view()
         all_display.Add(sl_box, proportion=1, border=1, flag=wx.EXPAND)
 
         # small spacer here - separate view and controls
         all_display.AddSpacer(HSpacerSize)
 
         # add controls to right of spacer
-        controls = self.make_gui_controls(parent)
+        controls = self.make_gui_controls(self)
         all_display.Add(controls, proportion=0, border=1)
 
-        parent.SetSizerAndFit(all_display)
-#        parent.Fit()
+        self.SetSizerAndFit(all_display)
 
-    def make_gui_view(self, parent):
+    def make_gui_view(self):
         """Build the map view widget
-
-        parent  reference to the widget parent
 
         Returns the static box sizer.
         """
 
         # create gui objects
-        sb = AppStaticBox(parent, '')
+        sb = AppStaticBox(self, '')
 #        tile_object = tiles.Tiles(self.tile_directory)
-        self.pyslip = pyslip.PySlip(parent, tile_src=self.tile_source)
+        self.pyslipqt = pyslipqt.PySlipQt(self, tile_src=self.tile_source)
 
         # lay out objects
         box = wx.StaticBoxSizer(sb, orient=wx.HORIZONTAL)
-        box.Add(self.pyslip, proportion=1, border=1, flag=wx.EXPAND)
+        box.Add(self.pyslipqt, proportion=1, border=1, flag=wx.EXPAND)
 
         return box
 
-    def make_gui_controls(self, parent):
+    def make_gui_controls(self):
         """Build the 'controls' part of the GUI
-
-        parent  reference to parent
 
         Returns reference to containing sizer object.
         """
@@ -191,14 +154,14 @@ class AppFrame(wx.Frame):
         controls = wx.BoxSizer(wx.VERTICAL)
 
         # add the map level in use widget
-        level = self.make_gui_level(parent)
+        level = self.make_gui_level(self)
         controls.Add(level, proportion=0, flag=wx.EXPAND|wx.ALL)
 
         # vertical spacer
         controls.AddSpacer(VSpacerSize)
 
         # add the mouse position feedback stuff
-        mouse = self.make_gui_mouse(parent)
+        mouse = self.make_gui_mouse(self)
         controls.Add(mouse, proportion=0, flag=wx.EXPAND|wx.ALL)
 
         # buttons for each point of interest
@@ -206,26 +169,24 @@ class AppFrame(wx.Frame):
         for (num, city) in enumerate(Cities):
             controls.AddSpacer(VSpacerSize)
             (lonlat, name) = city
-            btn = wx.Button(parent, num, name)
+            btn = wx.Button(self, num, name)
             controls.Add(btn, proportion=0, flag=wx.EXPAND|wx.ALL)
             btn.Bind(wx.EVT_BUTTON, self.handle_button)
             self.buttons[num] = city
         return controls
 
-    def make_gui_level(self, parent):
+    def make_gui_level(self):
         """Build the control that shows the level.
-
-        parent  reference to parent
 
         Returns reference to containing sizer object.
         """
 
         # create objects
-        txt = wx.StaticText(parent, wx.ID_ANY, 'Level: ')
-        self.map_level = wx.StaticText(parent, wx.ID_ANY, ' ')
+        txt = wx.StaticText(self, wx.ID_ANY, 'Level: ')
+        self.map_level = wx.StaticText(self, wx.ID_ANY, ' ')
 
         # lay out the controls
-        sb = AppStaticBox(parent, 'Map level')
+        sb = AppStaticBox(self, 'Map level')
         box = wx.StaticBoxSizer(sb, orient=wx.HORIZONTAL)
         box.Add(txt, border=PackBorder, flag=(wx.ALIGN_CENTER_VERTICAL
                                      |wx.ALIGN_RIGHT|wx.LEFT))
@@ -234,28 +195,26 @@ class AppFrame(wx.Frame):
 
         return box
 
-    def make_gui_mouse(self, parent):
+    def make_gui_mouse(self):
         """Build the mouse part of the controls part of GUI.
-
-        parent  reference to parent
 
         Returns reference to containing sizer object.
         """
 
         # create objects
-        txt = wx.StaticText(parent, wx.ID_ANY, 'Lon/Lat: ')
-        self.mouse_position = ROTextCtrl(parent, '', size=(150,-1),
+        txt = wx.StaticText(self, wx.ID_ANY, 'Lon/Lat: ')
+        self.mouse_position = ROTextCtrl(self, '', size=(150,-1),
                                          tooltip=('Shows the mouse '
                                                   'longitude and latitude '
                                                   'on the map'))
 
         # lay out the controls
-        sb = AppStaticBox(parent, 'Mouse position')
+        sb = AppStaticBox(self, 'Mouse position')
         box = wx.StaticBoxSizer(sb, orient=wx.HORIZONTAL)
         box.Add(txt, border=PackBorder, flag=(wx.ALIGN_CENTER_VERTICAL
                                      |wx.ALIGN_RIGHT|wx.LEFT))
         box.Add(self.mouse_position, proportion=1, border=PackBorder,
-                flag=wx.RIGHT|wx.TOP|wx.BOTTOM)
+                    flag=wx.RIGHT|wx.TOP|wx.BOTTOM)
 
         return box
 
@@ -267,30 +226,30 @@ class AppFrame(wx.Frame):
         """Handle button event."""
 
         (posn, name) = self.buttons[event.Id]
-        self.pyslip.GotoPosition(posn)
+        self.pyslipqt.GotoPosition(posn)
 
         if self.map_layer:
-            self.pyslip.DeleteLayer(self.map_layer)
+            self.pyslipqt.DeleteLayer(self.map_layer)
         map_data = [posn]
         point_colour = '#0000ff40'
-        self.map_layer = self.pyslip.AddPointLayer(map_data, map_rel=True,
-                                                   placement='cc',
-                                                   color=point_colour,
-                                                   radius=11,
-                                                   visible=True,
-                                                   name='map_layer')
+        self.map_layer = self.pyslipqt.AddPointLayer(map_data, map_rel=True,
+                                                     placement='cc',
+                                                     color=point_colour,
+                                                     radius=11,
+                                                     visible=True,
+                                                     name='map_layer')
 
         if self.view_layer:
-            self.pyslip.DeleteLayer(self.view_layer)
+            self.pyslipqt.DeleteLayer(self.view_layer)
         view_data = [(((0,0),(0,-10),(0,0),(0,10),
             (0,0),(-10,0),(0,0),(10,0)),{'colour':'#ff0000ff'},)]
 #        poly_colour = '#ff0000ff'
-        self.view_layer = self.pyslip.AddPolygonLayer(view_data, map_rel=False,
-                                                      placement='cc',
-#                                                      colour=poly_colour,
-                                                      closed=False,
-                                                      visible=True,
-                                                      name='view_layer')
+        self.view_layer = self.pyslipqt.AddPolygonLayer(view_data, map_rel=False,
+                                                        placement='cc',
+#                                                        colour=poly_colour,
+                                                        closed=False,
+                                                        visible=True,
+                                                        name='view_layer')
 
     def handle_position_event(self, event):
         """Handle a pySlip POSITION event."""
@@ -311,36 +270,24 @@ class AppFrame(wx.Frame):
 
 ################################################################################
 
-if __name__ == '__main__':
-    import sys
-    import traceback
-    import pyslip.tkinter_error as tkinter_error
+# our own handler for uncaught exceptions
+def excepthook(type, value, tb):
+    msg = '\n' + '=' * 80
+    msg += '\nUncaught exception:\n'
+    msg += ''.join(traceback.format_exception(type, value, tb))
+    msg += '=' * 80 + '\n'
+    log(msg)
+    tkinter_error.tkinter_error(msg)
+    sys.exit(1)
 
-    # our own handler for uncaught exceptions
-    def excepthook(type, value, tb):
-        msg = '\n' + '=' * 80
-        msg += '\nUncaught exception:\n'
-        msg += ''.join(traceback.format_exception(type, value, tb))
-        msg += '=' * 80 + '\n'
-        log(msg)
-        tkinter_error.tkinter_error(msg)
-        sys.exit(1)
+# use user tile directory, if supplied
+tile_dir = None
+if len(sys.argv) > 1:
+    tile_dir = sys.argv[1]
 
-    # use user tile directory, if supplied
-    tile_dir = None
-    if len(sys.argv) > 1:
-        tile_dir = sys.argv[1]
+# plug our handler into the python system
+sys.excepthook = excepthook
 
-    # plug our handler into the python system
-    sys.excepthook = excepthook
-
-    # start wxPython app
-    app = wx.App()
-    app_frame = AppFrame()
-    app_frame.Show()
-
-##    import wx.lib.inspection
-##    wx.lib.inspection.InspectionTool().Show()
-
-    app.MainLoop()
-
+app = QApplication(sys.argv)
+ex = AppFrame()
+sys.exit(app.exec_())

@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-"""Test PySlip map-relative text.
+"""Test PySlipQt map-relative text.
 
 Usage: test_maprel_text.py [-h] [-t (OSM|GMT)]
 """
 
 
 import wx
-import pyslip
+import pyslipqt
 
 
 ######
@@ -42,8 +42,8 @@ TextMapData = [(151.20, -33.85, 'Sydney cc', {'placement': 'cc'}),
 class TestFrame(wx.Frame):
     def __init__(self):
         wx.Frame.__init__(self, None, size=DefaultAppSize,
-                          title=('PySlip %s - map-relative text test'
-                                 % pyslip.__version__))
+                          title=('PySlipQt %s - map-relative text test'
+                                 % pyslipqt.__version__))
         self.SetMinSize(DefaultAppSize)
         self.panel = wx.Panel(self, wx.ID_ANY)
         self.panel.SetBackgroundColour(wx.WHITE)
@@ -55,21 +55,21 @@ class TestFrame(wx.Frame):
         # build the GUI
         box = wx.BoxSizer(wx.HORIZONTAL)
         self.panel.SetSizer(box)
-        self.pyslip = pyslip.PySlip(self.panel, tile_src=self.tile_src)
-        box.Add(self.pyslip, proportion=1, border=1, flag=wx.EXPAND)
+        self.pyslipqt = pyslipqt.PySlipQt(self.panel, tile_src=self.tile_src)
+        box.Add(self.pyslipqt, proportion=1, border=1, flag=wx.EXPAND)
         self.panel.SetSizerAndFit(box)
         self.panel.Layout()
         self.Centre()
         self.Show(True)
 
         # add test test layer
-        self.text_layer = self.pyslip.AddTextLayer(TextMapData,
-                                                   map_rel=True,
-                                                   name='<text_map_layer>',
-                                                   offset_x=5, offset_y=1)
+        self.text_layer = self.pyslipqt.AddTextLayer(TextMapData,
+                                                     map_rel=True,
+                                                     name='<text_map_layer>',
+                                                     offset_x=5, offset_y=1)
 
         # set initial view position
-        self.pyslip.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
+        self.pyslipqt.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
 
 #####
 # Build the GUI
@@ -81,9 +81,9 @@ class TestFrame(wx.Frame):
         # start application layout
         all_display = wx.BoxSizer(wx.HORIZONTAL)
         parent.SetSizer(all_display)
-        self.pyslip = pyslip.PySlip(parent, tile_src=self.tile_src,
+        self.pyslipqt = pyslipqt.PySlipQt(parent, tile_src=self.tile_src,
                                     min_level=MinTileLevel)
-        all_display.Add(self.pyslip, proportion=1, border=1, flag=wx.EXPAND)
+        all_display.Add(self.pyslipqt, proportion=1, border=1, flag=wx.EXPAND)
         parent.SetSizerAndFit(all_display)
 
     def make_gui_view(self, parent):
@@ -96,12 +96,12 @@ class TestFrame(wx.Frame):
 
         # create gui objects
         sb = AppStaticBox(parent, '')
-        self.pyslip = pyslip.PySlip(parent, tile_src=self.tile_src,
-                                    min_level=MinTileLevel)
+        self.pyslipqt = pyslipqt.PySlipQt(parent, tile_src=self.tile_src,
+                                              min_level=MinTileLevel)
 
         # lay out objects
         box = wx.StaticBoxSizer(sb, orient=wx.HORIZONTAL)
-        box.Add(self.pyslip, proportion=1, border=1, flag=wx.EXPAND)
+        box.Add(self.pyslipqt, proportion=1, border=1, flag=wx.EXPAND)
 
         return box
 
@@ -150,9 +150,9 @@ if __name__ == '__main__':
 
     # set up the appropriate tile source
     if tile_source == 'gmt':
-        import pyslip.gmt_local_tiles as Tiles
+        import pyslipqt.gmt_local_tiles as Tiles
     elif tile_source == 'osm':
-        import pyslip.osm_tiles as Tiles
+        import pyslipqt.osm_tiles as Tiles
     else:
         usage('Bad tile source: %s' % tile_source)
         sys.exit(3)

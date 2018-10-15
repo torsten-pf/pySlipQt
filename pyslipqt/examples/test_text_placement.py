@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding= utf-8 -*-
 
 """
 Program to test text map-relative and view-relative placement.
@@ -10,15 +9,13 @@ Usage: test_text_placement.py [-h|--help] [-d] [(-t|--tiles) (GMT|OSM)]
 
 
 import os
-import pyslip.tkinter_error as tkinter_error
-try:
-    import wx
-except ImportError:
-    msg = 'Sorry, you must install wxPython'
-    tkinter_error.tkinter_error(msg)
+from PyQt5.QtGui import QPixmap
+from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QLabel,
+                             QSpinBox, QVBoxLayout, QVBoxLayout, QAction,
+                             QHBoxLayout, QVBoxLayout, QGridLayout,
+                             QErrorMessage)
 
-import pyslip
-import pyslip.log as log
+import pyslipqt
 
 
 ######
@@ -26,7 +23,7 @@ import pyslip.log as log
 ######
 
 # demo name/version
-DemoName = 'Test text placement, pySlip %s' % pyslip.__version__
+DemoName = 'Test text placement, pySlipQt %s' % pyslipqt.__version__
 DemoVersion = '1.0'
 
 # initial values
@@ -81,34 +78,6 @@ FontChoices = None
 FontsizeChoices = ['8', '10', '12', '14', '16', '18', '20']
 PointRadiusChoices = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10']
 
-
-###############################################################################
-# Override the wx.TextCtrl class to add read-only style and background colour
-###############################################################################
-
-# background colour for the 'read-only' text field
-ControlReadonlyColour = '#ffffcc'
-
-class ROTextCtrl(wx.TextCtrl):
-    """Override the wx.TextCtrl widget to get read-only text control which
-    has a distinctive background colour."""
-
-    def __init__(self, parent, value, tooltip='', *args, **kwargs):
-        wx.TextCtrl.__init__(self, parent, wx.ID_ANY, value=value,
-                             style=wx.TE_READONLY, *args, **kwargs)
-        self.SetBackgroundColour(ControlReadonlyColour)
-        self.SetToolTip(wx.ToolTip(tooltip))
-
-###############################################################################
-# Override the wx.StaticBox class to show our style
-###############################################################################
-
-class AppStaticBox(wx.StaticBox):
-
-    def __init__(self, parent, label, *args, **kwargs):
-        if 'style' not in kwargs:
-            kwargs['style'] = wx.NO_BORDER
-        wx.StaticBox.__init__(self, parent, wx.ID_ANY, label, *args, **kwargs)
 
 ###############################################################################
 # Class for a LayerControl widget.
@@ -365,8 +334,8 @@ class AppFrame(wx.Frame):
         self.map_level.SetLabel('%d' % InitialViewLevel)
         wx.CallAfter(self.final_setup, InitialViewLevel, InitialViewPosition)
 
-        # force pyslip initialisation
-        self.pyslip.OnSize()
+        # force pyslipqt initialisation
+        self.pyslipqt.OnSize()
 
         # finally, set up application window position
         self.Centre()
@@ -375,9 +344,9 @@ class AppFrame(wx.Frame):
         self.text_layer = None
         self.text_view_layer = None
 
-        # finally, bind pySlip events to handlers
-        self.pyslip.Bind(pyslip.EVT_PYSLIP_POSITION, self.handle_position_event)
-        self.pyslip.Bind(pyslip.EVT_PYSLIP_LEVEL, self.handle_level_change)
+        # finally, bind pySlipQt events to handlers
+        self.pyslipqt.Bind(pyslipqt.EVT_PYSLIPQT_POSITION, self.handle_position_event)
+        self.pyslipqt.Bind(pyslipqt.EVT_PYSLIPQT_LEVEL, self.handle_level_change)
 
 #####
 # Build the GUI
@@ -413,11 +382,11 @@ class AppFrame(wx.Frame):
 
         # create gui objects
         sb = AppStaticBox(parent, '')
-        self.pyslip = pyslip.PySlip(parent, tile_src=self.tile_source)
+        self.pyslipqt = pyslipqt.PySlipQt(parent, tile_src=self.tile_source)
 
         # lay out objects
         box = wx.StaticBoxSizer(sb, orient=wx.HORIZONTAL)
-        box.Add(self.pyslip, proportion=1, border=0, flag=wx.EXPAND)
+        box.Add(self.pyslipqt, proportion=1, border=0, flag=wx.EXPAND)
 
         return box
 
@@ -569,7 +538,7 @@ class AppFrame(wx.Frame):
         """Display updated text."""
 
         if self.text_layer:
-            self.pyslip.DeleteLayer(self.text_layer)
+            self.pyslipqt.DeleteLayer(self.text_layer)
 
         # convert values to sanity for layer attributes
         text = event.text
@@ -623,7 +592,7 @@ class AppFrame(wx.Frame):
                                    'textcolour': textcolour,
                                    'offset_x': off_x,
                                    'offset_y': off_y})]
-        self.text_layer = self.pyslip.AddTextLayer(text_data, map_rel=True,
+        self.text_layer = self.pyslipqt.AddTextLayer(text_data, map_rel=True,
                                                    visible=True,
                                                    name='<text_layer>')
 
@@ -631,7 +600,7 @@ class AppFrame(wx.Frame):
         """Delete the text map-relative layer."""
 
         if self.text_layer:
-            self.pyslip.DeleteLayer(self.text_layer)
+            self.pyslipqt.DeleteLayer(self.text_layer)
         self.text_layer = None
 
 ##### view-relative text layer
@@ -640,7 +609,7 @@ class AppFrame(wx.Frame):
         """Display updated text."""
 
         if self.text_view_layer:
-            self.pyslip.DeleteLayer(self.text_view_layer)
+            self.pyslipqt.DeleteLayer(self.text_view_layer)
 
         # convert values to sanity for layer attributes
         text = event.text
@@ -683,7 +652,7 @@ class AppFrame(wx.Frame):
                                    'textcolour': textcolour,
                                    'offset_x': off_x,
                                    'offset_y': off_y})]
-        self.text_view_layer = self.pyslip.AddTextLayer(text_data,
+        self.text_view_layer = self.pyslipqt.AddTextLayer(text_data,
                                                         map_rel=False,
                                                         visible=True,
                                                         name='<text_layer>')
@@ -692,7 +661,7 @@ class AppFrame(wx.Frame):
         """Delete the text view-relative layer."""
 
         if self.text_view_layer:
-            self.pyslip.DeleteLayer(self.text_view_layer)
+            self.pyslipqt.DeleteLayer(self.text_view_layer)
         self.text_view_layer = None
 
     def final_setup(self, level, position):
@@ -705,14 +674,14 @@ class AppFrame(wx.Frame):
         must not be done while the GUI is "fluid".
         """
 
-        self.pyslip.GotoLevelAndPosition(level, position)
+        self.pyslipqt.GotoLevelAndPosition(level, position)
 
     ######
     # Exception handlers
     ######
 
     def handle_position_event(self, event):
-        """Handle a pySlip POSITION event."""
+        """Handle a pySlipQt POSITION event."""
 
         posn_str = ''
         if event.mposn:
@@ -723,7 +692,7 @@ class AppFrame(wx.Frame):
         self.mouse_position.SetValue(posn_str)
 
     def handle_level_change(self, event):
-        """Handle a pySlip LEVEL event."""
+        """Handle a pySlipQt LEVEL event."""
 
         self.map_level.SetLabel('%d' % event.level)
 
@@ -761,8 +730,7 @@ if __name__ == '__main__':
         msg += '\nUncaught exception:\n'
         msg += ''.join(traceback.format_exception(type, value, tb))
         msg += '=' * 80 + '\n'
-        log(msg)
-        tkinter_error.tkinter_error(msg)
+        print(msg)
         sys.exit(1)
 
     def usage(msg=None):
@@ -797,9 +765,9 @@ if __name__ == '__main__':
 
     # set up the appropriate tile source
     if tile_source == 'gmt':
-        import pyslip.gmt_local_tiles as Tiles
+        import pyslipqt.gmt_local_tiles as Tiles
     elif tile_source == 'osm':
-        import pyslip.osm_tiles as Tiles
+        import pyslipqt.osm_tiles as Tiles
     else:
         usage('Bad tile source: %s' % tile_source)
         sys.exit(3)
