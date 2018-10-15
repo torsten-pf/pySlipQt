@@ -7,7 +7,11 @@ Usage: test_maprel_text.py [-h] [-t (OSM|GMT)]
 """
 
 
+impoert sys
+
 import wx
+
+sys.path.append('..')
 import pyslipqt
 
 

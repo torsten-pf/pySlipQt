@@ -12,6 +12,7 @@ from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QLabel,
                              QHBoxLayout)
 
+sys.path.append('..')
 import pyslipqt
 
 

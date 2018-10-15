@@ -12,16 +12,16 @@ import os
 import sys
 import glob
 import pickle
-#import pyslipqt.osm_tiles as tiles
+import unittest
+import shutil
+
+sys.path.append('..')
 import osm_tiles as tiles
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QLabel,
                              QSpinBox, QVBoxLayout, QVBoxLayout, QAction,
                              QHBoxLayout, QVBoxLayout, QGridLayout,
                              QErrorMessage)
-
-import unittest
-import shutil
 
 
 # where the OSM tiles are cached on disk

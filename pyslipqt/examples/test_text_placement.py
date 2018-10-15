@@ -9,12 +9,14 @@ Usage: test_text_placement.py [-h|--help] [-d] [(-t|--tiles) (GMT|OSM)]
 
 
 import os
+import sys
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QLabel,
                              QSpinBox, QVBoxLayout, QVBoxLayout, QAction,
                              QHBoxLayout, QVBoxLayout, QGridLayout,
                              QErrorMessage)
 
+sys.path.append('..')
 import pyslipqt
 
 

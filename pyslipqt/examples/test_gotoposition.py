@@ -17,9 +17,9 @@ from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QHBoxLayout)
 
-#import pyslipqt.pyslipqt as pyslipqt
+sys.path.append('..')
+
 import pyslipqt
-#import pyslipqt.osm_tiles as tiles
 import osm_tiles as tiles
 
 # If we have log.py, well and good.  Otherwise ...

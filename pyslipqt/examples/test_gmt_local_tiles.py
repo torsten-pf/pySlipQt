@@ -11,7 +11,9 @@ import glob
 import pickle
 import shutil
 import unittest
-#import pyslipqt.gmt_local_tiles as tiles
+
+sys.path.append('..')
+
 import gmt_local_tiles as tiles
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import (QApplication, QMainWindow)

@@ -6,8 +6,11 @@
 Usage: test_maprel_image.py [-h] [-t (OSM|GMT)]
 """
 
+import sys
 
 import wx
+
+sys.path.append('..')
 import pyslipqt
 
 

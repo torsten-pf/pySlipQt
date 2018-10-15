@@ -10,7 +10,11 @@ Usage: test_image_placement.py [-h|--help] [-d] [(-t|--tiles) (GMT|OSM)]
 
 
 import os
+import sys
+
+sys.path.append('..')
 import pyslipqt.tkinter_error as tkinter_error
+
 try:
     import wx
 except ImportError:
@@ -18,7 +22,7 @@ except ImportError:
     tkinter_error.tkinter_error(msg)
 
 import pyslipqt
-import pyslipqt.log as log
+import log
 
 
 ######

@@ -10,11 +10,14 @@ the widget instances.
 """
 
 
-import wx
-import pyslipqt
+import sys
 
-import pyslipqt.gmt_local_tiles as GMTTiles
-import pyslipqt.osm_tiles as NetTiles
+import wx
+
+sys.path.append('..')
+import pyslipqt
+import gmt_local_tiles as GMTTiles
+import osm_tiles as NetTiles
 
 
 ######
