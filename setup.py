@@ -5,7 +5,7 @@ def readme():
         return f.read()
 
 setup(name='pyslipqt',
-      version='1.0.0',
+      version='0.1.0',
       description='A slipmap widget for PyQt5',
       long_description=readme(),
       url='http://github.com/rzzzwilson/pySlipQt',
@@ -20,6 +20,6 @@ setup(name='pyslipqt',
                    'Operating System :: OS Independent',
                    'Programming Language :: Python :: 3 :: Only'],
       keywords='python pyqt5 slipmap map',
-      download_url='https://github.com/rzzzwilson/pySlipQt/releases/tag/1.0.0',
+      download_url='https://github.com/rzzzwilson/pySlipQt/releases/tag/0.1.0',
       include_package_data=True,
       zip_safe=False)
