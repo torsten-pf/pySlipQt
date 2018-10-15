@@ -1,18 +1,26 @@
-Release 3.0.4 of pySlip fixes a packaging problem in 3.0.3.
+Release 0.1.0 of pySlipQt is an early-release and is therefore BETA software.
 
--------------------------------------------------------------------------------
-Release 3.0.3 of pySlip includes:
+This release has these warnings:
 
-1. An example of using multiple pySlip widgets in an application.
+1. Little testing has been done, so please report any errors and try to include
+   the pyslipqt.log file.
 
-2. Bug fixes.
+2. "Box selection" (a multi-selection dragging a select box) doesn't work at the
+   moment, but it will sometime.
 
--------------------------------------------------------------------------------
-Release 3.0 of pySlip has some changes that adversely affect existing code:
+3. Wrap-around of tiles doesn't work yet, but I *hope* to have it working.
 
-1. The pySlip() constructor has a slight change to its signature.  This is to
-   handle different tile sources.
+4. The included GMT tileset is very old and has a different zoom compared to any
+   tiles from the 'net, such as OSM tiles, for instance.  I hope to fix this
+   later.  The GMT tiles can still be used an example of how to use locally
+   generated tiles.
 
-2. The selection event EVT_PYSLIP_SELECT has changed considerably.
+The GMT example tileset is included in the pyslipqt/examples directory.  The
+gmt_local_tiles.py tileset code assumes that the zip file has been unzipped in
+the user's home directory (ie, ~/gmt_tiles).  If you put the tiles in any other
+place, please make the appropriate changes in gmt_local_tiles.py.
 
-See the API documentation for the details.
+See the API documentation for the details on how to use pySlipQt.  The
+demonstration program pyslipqt/examples/pyslipqt_demo.py does work if you run it
+from the examples directory.  It does not require that the pySlipQt package has
+been installed.
