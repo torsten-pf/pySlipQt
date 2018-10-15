@@ -914,13 +914,9 @@ class PySlipQt(QWidget):
         map_rel  points relative to map if True, else relative to view
         """
 
-        log(f'draw_image_layer: dc={dc}, images={images}, map_rel={map_rel}')
-
         # get correct pex function
-        log(f'draw_image_layer: assuming self.pex_extent_view()')
         pex = self.pex_extent_view
         if map_rel:
-            log(f'draw_image_layer: using self.pex_extent()')
             pex = self.pex_extent
 
         # speed up drawing by caching previous point colour
@@ -929,9 +925,7 @@ class PySlipQt(QWidget):
         # draw the images
         for (lon, lat, pmap, w, h, place,
                  x_off, y_off, pradius, pcolour, idata) in images:
-            log(f'draw_image_layer: lon={lon}, lat={lat}, w={w}, h={h}, place={place}, x_off={x_off}, y_off={y_off}, pradius={pradius}, pcolour={pcolour}')
             (pt, ex) = pex(place, (lon, lat), x_off, y_off, w, h, image=True)
-            log(f'draw_image_layer: after pex(place, (lon, lat), x_off, y_off, w, h), pt={pt}, ex={ex}')
 
             if pt and pradius:
                 if cache_pcolour != pcolour:
@@ -941,12 +935,10 @@ class PySlipQt(QWidget):
                     dc.setBrush(qcolour)
                     cache_pcolour = pcolour
                 (px, py) = pt
-                log(f'draw_image_layer: drawing point at ({px},{py}), radius={pradius}')
                 dc.drawEllipse(QPoint(px, py), pradius, pradius)
 
             if ex:
                 (ix, _, iy, _) = ex
-                log(f'draw_image_layer: drawing image at ({ix},{iy})')
                 dc.drawPixmap(QPoint(ix, iy), pmap)
 
     def draw_text_layer(self, dc, text, map_rel):
@@ -959,15 +951,11 @@ class PySlipQt(QWidget):
         map_rel  points relative to map if True, else relative to view
         """
 
-        log(f'draw_text_layer: text={text}, map_rel={map_rel}')
-
         # get correct pex function for mode (map/view)
 
         pex = self.pex_extent_view
-        log(f'draw_text_layer: assuming pex_extent_view()')
         if map_rel:
             pex = self.pex_extent
-            log(f'draw_text_layer: using pex_extent()')
 
         # set some caching to speed up mostly unchanging data
         cache_textcolour = None
@@ -977,7 +965,6 @@ class PySlipQt(QWidget):
         # draw text on map/view
         for (lon, lat, tdata, place, radius, colour,
                 textcolour, fontname, fontsize, x_off, y_off, data) in text:
-            log(f'draw_text_layer: lon={lon}, lat={lat}, tdata={tdata}, place={place}, radius={radius}, x_off={x_off}, y_off={y_off}')
             # set font characteristics so we can calculate text width/height
             if cache_textcolour != textcolour:
                 qcolour = QColor(*textcolour)
@@ -996,9 +983,7 @@ class PySlipQt(QWidget):
             h = qrect.height()
 
             # get point + extent information (each can be None if off-view)
-            log(f'draw_text_layer: calling pex(place={place}, (lon,lat)={(lon, lat)}, x_off={x_off}, y_off={y_off}, w={w}, h={h})')
             (pt, ex) = pex(place, (lon, lat), x_off, y_off, w, h)
-            log(f'draw_text_layer: pt={pt}, ex={ex}')
 
             if pt and radius:   # don't draw point if off screen or zero radius
                 (pt_x, pt_y) = pt
@@ -1008,12 +993,10 @@ class PySlipQt(QWidget):
                     dc.setPen(pen)
                     dc.setBrush(qcolour)
                     cache_colour = colour
-                log(f'draw_text_layer: drawing point at ({pt_x},{pt_y})')
                 dc.drawEllipse(QPoint(pt_x, pt_y), radius, radius)
 
             if ex:              # don't draw text if off screen
                 (lx, _, _, by) = ex
-                log(f'draw_text_layer: drawing text at ({lx},{by})')
                 dc.drawText(QPointF(lx, by), tdata)
 
     def draw_polygon_layer(self, dc, data, map_rel):
@@ -1252,19 +1235,14 @@ class PySlipQt(QWidget):
         An extent object can be either an image object or a text object.
         """
 
-        log(f'pex_extent: place={place}, geo={geo}, x_off={x_off}, y_off={y_off}, w={w}, h={h}, image={image}')
-
         # get point view coords
         vpoint = self.geo_to_view(geo)
         (vpx, vpy) = vpoint
-        log(f'pex_extent: after .geo_to_view({geo}), vpx={vpx}, vpy={vpy}')
 
         # get extent limits
         # must take into account 'place', 'x_off' and 'y_off'
-        log(f'pex_extent: calling .extent_placement(place, vpx, vpy, x_off, y_off, w, h, image), image={image}')
         point = self.extent_placement(place, vpx, vpy, x_off, y_off, w, h, dch=0, dcw=0, image=image)  # map-rel call
         (px, py) = point
-        log(f'pex_extent: after .extent_placement(), px={px}, py={py}')
 
         # extent = (left, right, top, bottom) in view coords
         # this is different for images
@@ -1281,16 +1259,12 @@ class PySlipQt(QWidget):
 
         # decide if point is off-view
         if vpx < 0 or vpx > self.view_width or vpy < 0 or vpy > self.view_height:
-            log(f'pex_extent: point off-view, use None')
             vpoint = None
 
         # decide if extent is off-view
         if erx < 0 or elx > self.view_width or eby < 0 or ety > self.view_height:
             # no extent if ALL of extent is off-view
-            log(f'pex_extent: extent off-view, use None')
             extent = None
-
-        log(f'pex_extent: returning ({point}, {extent})')
 
         return (vpoint, extent)
 
@@ -1467,8 +1441,6 @@ class PySlipQt(QWidget):
         Returns a tuple (x, y).
         """
 
-        log(f'extent_placement: place={place}, x={x}, y={y}, x_off={x_off}, y_off={y_off}, w={w}, h={h}, dcw={dcw}, dch={dch}, image={image}')
-
         w2 = w/2
         h2 = h/2
 
@@ -1476,7 +1448,6 @@ class PySlipQt(QWidget):
         dch2 = dch/2
 
         if image:
-            log(f'extent_placement: placing image')
             if   place == 'cc': x+=dcw2-w2;     y+=dch2-h2
             elif place == 'nw': x+=x_off;       y+=y_off
             elif place == 'cn': x+=dcw2-w2;     y+=y_off
@@ -1487,7 +1458,6 @@ class PySlipQt(QWidget):
             elif place == 'sw': x+=x_off;       y+=dch-h-y_off
             elif place == 'cw': x+=x_off;       y+=dch2-h2
         else:
-            log(f'extent_placement: placing text')
             if   place == 'cc': x+=dcw2-w2;     y+=dch2+h2
             elif place == 'nw': x+=x_off;       y+=h+y_off
             elif place == 'cn': x+=dcw2-w2;     y+=h+y_off
@@ -1497,8 +1467,6 @@ class PySlipQt(QWidget):
             elif place == 'cs': x+=dcw2-w2;     y+=dch-y_off
             elif place == 'sw': x+=x_off;       y+=dch-y_off
             elif place == 'cw': x+=x_off;       y+=dch2+h2
-
-        log(f'extent_placement: after, x={x}, y={y}, returning')
 
         return (x, y)
 
@@ -1553,8 +1521,6 @@ class PySlipQt(QWidget):
         middle of the view.  If that is not possible, just centre in either
         the X or Y directions, or both.
         """
-
-        log(f'pan_position: geo={geo}')
 
         # convert the geo posn to a tile position
         (tile_x, tile_y) = self.tile_src.Geo2Tile(geo)
@@ -1700,8 +1666,6 @@ class PySlipQt(QWidget):
             self.tile_height
         """
 
-        log(f'set_key_from_centre: geo={geo}')
-
         (ctile_tx, ctile_ty) = self.tile_src.Geo2Tile(geo)
 
         int_ctile_tx = int(ctile_tx)
@@ -1727,17 +1691,12 @@ class PySlipQt(QWidget):
 
         # centre map in view if map < view
         if self.key_tile_left < 0:
-            log(f'set_key_from_centre: centreing in X, .view_width={self.view_width}, .map_width={self.map_width}')
             self.key_tile_left = 0
             self.key_tile_xoffset = (self.view_width - self.map_width) // 2
 
         if self.key_tile_top < 0:
-            log(f'set_key_from_centre: centreing in Y, .view_height={self.view_height}, .map_height={self.map_height}')
             self.key_tile_top = 0
             self.key_tile_yoffset = (self.view_height - self.map_height) // 2
-
-        log(f'set_key_from_centre: AFTER, .key_tile_left={self.key_tile_left}, .key_tile_xoffset={self.key_tile_xoffset}')
-        log(f'set_key_from_centre: AFTER, .key_tile_top={self.key_tile_top}, .key_tile_yoffset={self.key_tile_yoffset}')
 
     def OnTileAvailable(self, level, x, y, img, bmp):
         """Callback routine: tile level/x/y is available.
@@ -2808,8 +2767,6 @@ class PySlipQt(QWidget):
                          (placement, radius, fontname, fontsize, colour, data)
                      these supply any data missing in 'data'
         """
-
-        log(f'AddTextLayer: text={text}, map_rel={map_rel}')
 
         # merge global and layer defaults
         if map_rel:

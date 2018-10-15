@@ -1538,7 +1538,6 @@ class PySlipQtDemo(QMainWindow):
         if event.mposn:
             (lon, lat) = event.mposn
             self.mouse_position.set_text(f'{lon:.2f}/{lat:.2f}')
-            log(f'mouse_posn_event: move event.vposn={event.vposn}')
         else:
             self.mouse_position.set_text('')
 
