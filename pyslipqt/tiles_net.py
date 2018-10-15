@@ -86,14 +86,14 @@ class TileWorker(QThread):
         while True:
             # get zoom level and tile coordinates to retrieve
             (level, x, y) = self.requests.get()
-            log(f'run: getting tile ({level},{x},{y})')
+            log('run: getting tile (%d,%d,%d)' % (level, x, y))
 
             # try to retrieve the image
             error = False
             pixmap = self.error_image
             try:
                 tile_url = self.server + self.tilepath.format(Z=level, X=x, Y=y)
-                log(f'tile_url={tile_url}')
+                log('tile_url=%s' % tile_url)
                 response = request.urlopen(tile_url)
                 headers = response.info()
                 content_type = headers.get_content_type()
@@ -107,8 +107,8 @@ class TileWorker(QThread):
                     pixmap = self.error_image
             except Exception as e:
                 error = True
-                log(f'{type(e).__name__} exception getting tile {level},{x},{y} '
-                    f'from {tile_url}\n{str(e)}')
+                log('%s exception getting tile (%d,%d,%d)'
+                        % (type(e).__name__, level, x, y))
 
             # call the callback function passing level, x, y and pixmap data
             # error is False if we want to cache this tile on-disk

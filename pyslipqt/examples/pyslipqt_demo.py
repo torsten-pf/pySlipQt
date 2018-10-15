@@ -1575,10 +1575,10 @@ class PySlipQtDemo(QMainWindow):
         Print attributes and values for non_dunder attributes.
         """
 
-        log(f'dump_event: event:')
+        log('dump_event: event:')
         for attr in dir(event):
             if not attr.startswith('__'):
-                log(f'            event.{attr}={getattr(event, attr)}')
+                log('            event.%s=%s' % (attr, getattr(event, attr)))
 
     ######
     # Finish initialization of data, etc
