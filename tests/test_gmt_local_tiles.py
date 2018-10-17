@@ -12,12 +12,15 @@ import pickle
 import shutil
 import unittest
 
-sys.path.append('..')
-
-import gmt_local_tiles as tiles
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import (QApplication, QMainWindow)
 
+try:
+    import gmt_local as tiles
+except ImportError:
+    # maybe not installed properly, try relative import
+    sys.path.append('../tilesets')
+    import gmt_local as tiles
 
 DemoName = 'GMT Tiles Cache Test'
 DemoVersion = '0.1'

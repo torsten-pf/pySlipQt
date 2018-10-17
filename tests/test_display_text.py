@@ -7,8 +7,12 @@ Test the DisplayText custom widget used by pySlipQt.
 import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout
 
-sys.path.append('..')
-from display_text import DisplayText
+try:
+    from display_text import DisplayText
+except ImportError:
+    # maybe not installed properly, try relative import
+    sys.path.append('../examples')
+    from display_text import DisplayText
 
 class DisplayTextExample(QWidget):
     """Application to demonstrate the pySlipQt 'DisplayText' widget."""

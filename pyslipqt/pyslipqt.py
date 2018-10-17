@@ -7,7 +7,9 @@ Some semantics:
           (view may be smaller than map, or larger)
 """
 
-from math import floor
+
+import sys
+
 from PyQt5.QtCore import Qt, QTimer, QPoint, QPointF, QObject, pyqtSignal
 from PyQt5.QtWidgets import QLabel, QSizePolicy, QWidget
 from PyQt5.QtGui import QPainter, QColor, QPixmap, QPen, QFont, QFontMetrics
@@ -32,6 +34,13 @@ except ImportError as e:
     log.error = logit
     log.critical = logit
 
+import platform
+if platform.python_version_tuple()[0] != '3':
+    msg = ('You must run pySlipQt with python 3.x, you are running version %s.x.'
+            % platform.python_version_tuple()[0])
+    log(msg)
+    print(msg)
+    sys.exit(1)
 
 # version number of the widget
 __version__ = '0.1.0'
@@ -1747,21 +1756,25 @@ class PySlipQt(QWidget):
             try:
                 len_colour = len(colour)
             except TypeError:
-                msg = f"Colour value '{colour}' is not in the form '(r, g, b, a)'"
+                msg = ("Colour value '%s' is not in the form '(r, g, b, a)'"
+                        % str(colour))
                 raise Exception(msg)
 
             if len_colour != 4:
-                msg = f"Colour value '{colour}' is not in the form '(r, g, b, a)'"
+                msg = ("Colour value '%s' is not in the form '(r, g, b, a)'"
+                        % str(colour))
                 raise Exception(msg)
             result = []
             for v in colour:
                 try:
                     v = int(v)
                 except ValueError:
-                    msg = f"Colour value '{colour}' is not in the form '(r, g, b, a)'"
+                    msg = ("Colour value '%s' is not in the form '(r, g, b, a)'"
+                            % str(colour))
                     raise Exception(msg)
                 if v < 0 or v > 255:
-                    msg = f"Colour value '{colour}' is not in the form '(r, g, b, a)'"
+                    msg = ("Colour value '%s' is not in the form '(r, g, b, a)'"
+                            % str(colour))
                     raise Exception(msg)
                 result.append(v)
             result = tuple(result)

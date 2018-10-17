@@ -24,17 +24,10 @@ import os
 import sys
 import copy
 import importlib
+import getopt
+import traceback
 from functools import partial
 
-sys.path.append('..')
-from tkinter_error import tkinter_error
-try:
-    import pyslipqt
-except ImportError:
-    msg = '*'*60 + '\nSorry, you must install pySlipQt first\n' + '*'*60
-    print(msg)
-    tkinter_error(msg)
-    sys.exit(1)
 try:
     from PyQt5.QtCore import QTimer
     from PyQt5.QtGui import QPixmap
@@ -46,15 +39,50 @@ except ImportError:
     tkinter_error(msg)
     sys.exit(1)
 
-import getopt
-import traceback
+from tkinter_error import tkinter_error
 
-import log
-import gmt_local_tiles as tiles
+try:
+    import pyslipqt
+    print(f'Imported pyslipqt "naked"')
+except ImportError:
+    # pyslipqt not installed, try again, importing locally
+    sys.path.append('../pyslipqt')
+    try:
+        import pyslipqt
+        print(f'Imported pyslipqt after appending "../pyslipqt"')
+    except ImportError:
+        msg = '*'*60 + '\nSorry, you must install pySlipQt first\n' + '*'*60
+        print(msg)
+        tkinter_error(msg)
+        sys.exit(1)
+try:
+    import gmt_local as tiles
+except ImportError:
+    # pyslipqt not installed, try again, importing locally
+    sys.path.append('../tilesets')
+    try:
+        import gmt_local as tiles
+    except ImportError:
+        msg = '*'*60 + '\nSorry, you must install pySlipQt first\n' + '*'*60
+        print(msg)
+        tkinter_error(msg)
+        sys.exit(1)
+
 from display_text import DisplayText
 from layer_control import LayerControl
 
-log = log.Log("pyslipqt.log")
+#try:
+#    import log
+#except ImportError:
+#    # maybe not installed properly, try relative import
+#    sys.path.append('../pyslipqt')
+#    import log
+
+log = pyslipqt.log.Log("pyslipqt.log")
+
+print(f'After importing pyslipqt: dir(pyslipqt)={dir(pyslipqt)}')
+print(f'pyslipqt.__version__={pyslipqt.__version__}')
+
 
 ######
 # Various demo constants
@@ -142,14 +170,14 @@ LogSym2Num = {'CRITICAL': 50,
 
 # associate the display name and module filename for each tileset used
 Tilesets = [
-            ('BlueMarble tiles', 'bm_tiles'),
-            ('GMT tiles', 'gmt_local_tiles'),
-#            ('ModestMaps tiles', 'mm_tiles'),  # can't access?
-#            ('MapQuest tiles', 'mq_tiles'),    # can't access?
-            ('OpenStreetMap tiles', 'osm_tiles'),
-            ('Stamen Toner tiles', 'stmt_tiles'),
-            ('Stamen Transport tiles', 'stmtr_tiles'),
-            ('Stamen Watercolor tiles', 'stmw_tiles'),
+            ('BlueMarble tiles', 'blue_marble'),
+            ('GMT tiles', 'gmt_local'),
+#            ('ModestMaps tiles', 'modest_maps'),  # can't access?
+#            ('MapQuest tiles', 'mapquest'),    # can't access?
+            ('OpenStreetMap tiles', 'open_street_map'),
+            ('Stamen Toner tiles', 'stamen_toner'),
+            ('Stamen Transport tiles', 'stamen_transport'),
+            ('Stamen Watercolor tiles', 'stamen_watercolor'),
            ]
 
 # index into Tilesets above to set default tileset
@@ -423,6 +451,9 @@ class PySlipQtDemo(QMainWindow):
                                % str(self.id2tiledata))
 
         if new_tile_obj is None:
+# if required, do this
+#sys.path.append('../tilesets')
+
             # haven't seen this tileset before, import and instantiate
             module_obj = importlib.import_module(module_name)
             tile_name = module_obj.TilesetName

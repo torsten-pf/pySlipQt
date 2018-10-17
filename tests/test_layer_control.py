@@ -7,8 +7,13 @@ Test the LayerControl custom widget used by pySlipQt.
 import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout
 
-sys.path.append('..')
-from layer_control import LayerControl
+try:
+    from layer_control import LayerControl
+except ImportError:
+    # maybe not installed properly, try relative import
+    sys.path.append('../examples')
+    from layer_control import LayerControl
+
 
 class LayerControlExample(QWidget):
     """Application to demonstrate the pySlipQt 'LayerControl' widget."""

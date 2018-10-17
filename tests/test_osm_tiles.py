@@ -15,13 +15,18 @@ import pickle
 import unittest
 import shutil
 
-sys.path.append('..')
-import osm_tiles as tiles
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QLabel,
                              QSpinBox, QVBoxLayout, QVBoxLayout, QAction,
                              QHBoxLayout, QVBoxLayout, QGridLayout,
                              QErrorMessage)
+
+try:
+    import open_street_map as tiles
+except ImportError:
+    # maybe not installed correctly, try relative import
+    sys.path.append('../tilesets')
+    import open_street_map as tiles
 
 
 # where the OSM tiles are cached on disk
