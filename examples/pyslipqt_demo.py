@@ -41,55 +41,41 @@ except ImportError:
 
 from tkinter_error import tkinter_error
 
+import pySlipQt
+
 try:
-    import pyslipqt
-    print(f'Imported pyslipqt "naked"')
+    import pySlipQt
 except ImportError:
-    # pyslipqt not installed, try again, importing locally
-    sys.path.append('../pyslipqt')
-    try:
-        import pyslipqt
-        print(f'Imported pyslipqt after appending "../pyslipqt"')
-    except ImportError:
-        msg = '*'*60 + '\nSorry, you must install pySlipQt first\n' + '*'*60
-        print(msg)
-        tkinter_error(msg)
-        sys.exit(1)
+    msg = '*'*60 + '\nSorry, you must install pySlipQt\n' + '*'*60
+    print(msg)
+    tkinter_error(msg)
+    sys.exit(1)
+
+# initialize the logging system
+log = pySlipQt.Log("pyslipqt.log")
+
 try:
-    import gmt_local as tiles
+    log('Doing: from tilesets import gmt_local')
+    from tilesets import gmt_local
 except ImportError:
-    # pyslipqt not installed, try again, importing locally
-    sys.path.append('../tilesets')
-    try:
-        import gmt_local as tiles
-    except ImportError:
-        msg = '*'*60 + '\nSorry, you must install pySlipQt first\n' + '*'*60
-        print(msg)
-        tkinter_error(msg)
-        sys.exit(1)
+    msg = '*'*60 + '\nSorry, problem importing tilesets\n' + '*'*60
+    log('\n' + msg)
+    print(msg)
+    tkinter_error(msg)
+    sys.exit(1)
 
 from display_text import DisplayText
 from layer_control import LayerControl
-
-#try:
-#    import log
-#except ImportError:
-#    # maybe not installed properly, try relative import
-#    sys.path.append('../pyslipqt')
-#    import log
-
-log = pyslipqt.log.Log("pyslipqt.log")
-
-print(f'After importing pyslipqt: dir(pyslipqt)={dir(pyslipqt)}')
-print(f'pyslipqt.__version__={pyslipqt.__version__}')
 
 
 ######
 # Various demo constants
 ######
+print('dir(pySlipQt)=%s' % dir(pySlipQt))
+print('dir(pySlipQt.pySlipQt)=%s' % dir(pySlipQt.pySlipQt))
 
 # demo name/version
-DemoName = 'pySlipQt %s - Demonstration' % pyslipqt.__version__
+DemoName = 'pySlipQt %s - Demonstration' % pySlipQt.pySlipQt.__version__
 DemoVersion = '1.0'
 
 DemoWidth = 800
@@ -221,8 +207,18 @@ class TilesetManager:
         (filename, modulename, tile_obj) = tileset_data
         if not tile_obj:
             # have never used this tileset, import and instantiate
-            obj = __import__(modulename)
-            tile_obj = obj.Tiles()
+# from tilesets import gmt_local
+
+# from spam.ham import eggs, sausage as saus
+#
+# _temp = __import__('spam.ham', globals(), locals(), ['eggs', 'sausage'], 0)
+# eggs = _temp.eggs
+# saus = _temp.sausage
+            obj = __import__('tilesets', globals(), locals(), [modulename])
+            log('dir(obj)=%s' % dir(obj))
+            tileset = getattr(obj, modulename)
+            log('dir(tileset)=%s' % dir(tileset))
+            tile_obj = tileset.Tiles()
             tileset_data[2] = tile_obj
         return tile_obj
 
@@ -250,7 +246,7 @@ class PySlipQtDemo(QMainWindow):
         # build the 'controls' part of GUI
         num_rows = self.make_gui_controls(grid)
 
-        self.pyslipqt = pyslipqt.PySlipQt(self, tile_src=self.tile_source, start_level=0)
+        self.pyslipqt = pySlipQt.PySlipQt(self, tile_src=self.tile_source, start_level=0)
         grid.addWidget(self.pyslipqt, 0, 0, num_rows, 1)
 
         # add the menus
@@ -532,7 +528,7 @@ class PySlipQtDemo(QMainWindow):
             self.pyslipqt.SetLayerSelectable(layer, False)
 
     def pointSelect(self, event):
-        """Handle map-relative point select exception from pyslipqt.
+        """Handle map-relative point select exception from pySlipQt.
 
         event.type       the type of point selection: single or box
         event.layer_id   ID of the layer the select occurred on
@@ -567,7 +563,7 @@ class PySlipQtDemo(QMainWindow):
 
             # choose different highlight colour for different type of selection
             selcolour = '#00ffff'
-            if event.type == pyslipqt.PySlipQt.EVT_PYSLIPQT_SELECT: # TODO better visibility (like pySlip)
+            if event.type == pySlipQt.PySlipQt.EVT_PYSLIPQT_SELECT: # TODO better visibility (like pySlip)
                 selcolour = '#0000ff'
 
             # get selected points into form for display layer
@@ -641,7 +637,7 @@ class PySlipQtDemo(QMainWindow):
             self.pyslipqt.SetLayerSelectable(layer, False)
 
     def pointViewSelect(self, event):
-        """Handle view-relative point select exception from pyslipqt.
+        """Handle view-relative point select exception from pySlipQt.
 
         event.type       the event type
         event.layer_id   the ID of the layer that was selected
@@ -733,7 +729,7 @@ class PySlipQtDemo(QMainWindow):
             self.pyslipqt.SetLayerSelectable(layer, False)
 
     def imageSelect(self, event):
-        """Select event from pyslipqt.
+        """Select event from pySlipQt.
 
         event.type       the type of point selection: single or box
         event.selection  tuple (selection, data, relsel)
@@ -778,7 +774,7 @@ class PySlipQtDemo(QMainWindow):
         return True
 
     def imageBSelect(self, id, selection=None):
-        """Select event from pyslipqt."""
+        """Select event from pySlipQt."""
 
         # remove any previous selection
         if self.sel_image_layer:
@@ -856,7 +852,7 @@ class PySlipQtDemo(QMainWindow):
             self.pyslipqt.SetLayerSelectable(layer, False)
 
     def imageViewSelect(self, event):
-        """View-relative image select event from pyslipqt.
+        """View-relative image select event from pySlipQt.
 
         event  the event that contains these attributes:
                    selection  [list of] tuple (xgeo,ygeo) of selected point
@@ -993,7 +989,7 @@ class PySlipQtDemo(QMainWindow):
 
 
     def textSelect(self, event):
-        """Map-relative text select event from pyslipqt.
+        """Map-relative text select event from pySlipQt.
 
         event.type       the type of point selection: single or box
         event.selection  [list of] tuple (xgeo,ygeo) of selected point
@@ -1088,7 +1084,7 @@ class PySlipQtDemo(QMainWindow):
             self.pyslipqt.SetLayerSelectable(layer, False)
 
     def textViewSelect(self, event):
-        """View-relative text select event from pyslipqt.
+        """View-relative text select event from pySlipQt.
 
         event  the event that contains these attributes:
                    type       the type of point selection: single or box
@@ -1175,7 +1171,7 @@ class PySlipQtDemo(QMainWindow):
             self.pyslipqt.SetLayerSelectable(layer, False)
 
     def polySelect(self, event):
-        """Map- and view-relative polygon select event from pyslipqt.
+        """Map- and view-relative polygon select event from pySlipQt.
 
         event  the event that contains these attributes:
                    type       the type of point selection: single or box
@@ -1187,8 +1183,6 @@ class PySlipQtDemo(QMainWindow):
         Select a polygon to turn it on, any other polygon selection turns
         it off, unless previous selection again selected.
         """
-
-        self.dump_event(event)
 
         # .seletion: [(poly,attr), ...]
         selection = event.selection
@@ -1271,7 +1265,7 @@ class PySlipQtDemo(QMainWindow):
             self.pyslipqt.SetLayerSelectable(layer, False)
 
     def polyViewSelect(self, event):
-        """View-relative polygon select event from pyslipqt.
+        """View-relative polygon select event from pySlipQt.
 
         event  the event that contains these attributes:
                    type       the type of point selection: single or box
@@ -1280,8 +1274,6 @@ class PySlipQtDemo(QMainWindow):
 
         The selection could be a single or box select.
         """
-
-        self.dump_event(event)
 
         selection = event.selection
 
@@ -1370,7 +1362,7 @@ class PySlipQtDemo(QMainWindow):
             self.pyslipqt.SetLayerSelectable(layer, False)
 
     def polylineSelect(self, event):
-        """Map- and view-relative polyline select event from pyslipqt.
+        """Map- and view-relative polyline select event from pySlipQt.
 
         event  the event that contains these attributes:
                    type       the type of point selection: single or box
@@ -1485,7 +1477,7 @@ class PySlipQtDemo(QMainWindow):
             self.pyslipqt.SetLayerSelectable(layer, False)
 
     def polylineViewSelect(self, event):
-        """View-relative polyline select event from pyslipqt.
+        """View-relative polyline select event from pySlipQt.
 
         event  the event that contains these attributes:
                    type       the type of point selection: single or box

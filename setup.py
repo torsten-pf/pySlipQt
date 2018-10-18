@@ -4,7 +4,7 @@ def readme():
     with open('README.rst') as f:
         return f.read()
 
-setup(name='pyslipqt',
+setup(name='pySlipQt',
       version='0.1.0',
       description='A slipmap widget for PyQt5',
       long_description=readme(),
@@ -12,8 +12,8 @@ setup(name='pyslipqt',
       author='Ross Wilson',
       author_email='rzzzwilson@gmail.com',
       license='MIT',
-      packages=['pyslipqt'],
-      install_requires=['pyqt5'],
+      packages=['pySlipQt', 'tilesets'],
+      install_requires=['pyqt5', 'python'],
       classifiers=['Development Status :: 3 - Alpha',
                    'Intended Audience :: Developers',
                    'License :: OSI Approved :: MIT License',

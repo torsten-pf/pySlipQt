@@ -8,7 +8,7 @@ For example, see gmt_local_tiles.py and osm_tiles.py.
 import os
 import math
 from PyQt5.QtGui import QPixmap
-import pycacheback
+import tilesets.pycacheback as pycacheback
 
 
 # if we don't have log.py, don't crash
