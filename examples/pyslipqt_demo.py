@@ -71,8 +71,6 @@ from layer_control import LayerControl
 ######
 # Various demo constants
 ######
-print('dir(pySlipQt)=%s' % dir(pySlipQt))
-print('dir(pySlipQt.pySlipQt)=%s' % dir(pySlipQt.pySlipQt))
 
 # demo name/version
 DemoName = 'pySlipQt %s - Demonstration' % pySlipQt.pySlipQt.__version__
@@ -214,6 +212,7 @@ class TilesetManager:
 # _temp = __import__('spam.ham', globals(), locals(), ['eggs', 'sausage'], 0)
 # eggs = _temp.eggs
 # saus = _temp.sausage
+            log("get_tile_source: __import__('tilesets', globals(), locals(), ['%s'])" % modulename)
             obj = __import__('tilesets', globals(), locals(), [modulename])
             log('dir(obj)=%s' % dir(obj))
             tileset = getattr(obj, modulename)
@@ -447,13 +446,18 @@ class PySlipQtDemo(QMainWindow):
                                % str(self.id2tiledata))
 
         if new_tile_obj is None:
-# if required, do this
-#sys.path.append('../tilesets')
+            log("change_tileset: __import__('tilesets', globals(), locals(), ['%s'])" % module_name)
+            obj = __import__('tilesets', globals(), locals(), [module_name])
+            log('dir(obj)=%s' % dir(obj))
+            tileset = getattr(obj, module_name)
+            log('dir(tileset)=%s' % dir(tileset))
+            tile_name = tileset.TilesetName
+            new_tile_obj = tileset.Tiles()
 
             # haven't seen this tileset before, import and instantiate
-            module_obj = importlib.import_module(module_name)
-            tile_name = module_obj.TilesetName
-            new_tile_obj = module_obj.Tiles()
+#            module_obj = importlib.import_module(module_name)
+#            tile_name = module_obj.TilesetName
+#            new_tile_obj = module_obj.Tiles()
 
             # update the self.id2tiledata element
             self.id2tiledata[menu_id] = (name, module_name, action, new_tile_obj)
