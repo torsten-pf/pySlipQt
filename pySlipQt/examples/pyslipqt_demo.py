@@ -42,7 +42,8 @@ except ImportError:
 from tkinter_error import tkinter_error
 
 try:
-    import pySlipQt
+    import pySlipQt.pySlipQt as pySlipQt
+    import pySlipQt.log as log
 except ImportError:
     msg = '*'*60 + '\nSorry, you must install pySlipQt\n' + '*'*60
     print(msg)
@@ -50,15 +51,16 @@ except ImportError:
     sys.exit(1)
 
 # initialize the logging system
-log = pySlipQt.Log("pyslipqt.log")
+log = log.Log("pyslipqt.log")
 
 try:
-    log('Doing: from tilesets import gmt_local')
-    from pySlipQt_tilesets import gmt_local
+    log('Doing: import pySlipQt.tilesets.gmt_local as gmt_local')
+    import pySlipQt.tilesets.gmt_local as gmt_local
 except ImportError:
     msg = '*'*60 + '\nSorry, problem importing tilesets\n' + '*'*60
     log('\n' + msg)
     print(msg)
+    print('Doing: import pySlipQt.tilesets.gmt_local as gmt_local')
     tkinter_error(msg)
     sys.exit(1)
 
@@ -203,8 +205,7 @@ class TilesetManager:
         (filename, modulename, tile_obj) = tileset_data
         if not tile_obj:
             # have never used this tileset, import and instantiate
-            log("get_tile_source: __import__('pySlipQt_tilesets', globals(), locals(), ['%s'])" % modulename)
-            obj = __import__('pySlipQt_tilesets', globals(), locals(), [modulename])
+            obj = __import__('pySlipQt.tilesets', globals(), locals(), [modulename])
             log('dir(obj)=%s' % dir(obj))
             tileset = getattr(obj, modulename)
             log('dir(tileset)=%s' % dir(tileset))
@@ -438,7 +439,7 @@ class PySlipQtDemo(QMainWindow):
 
         if new_tile_obj is None:
             log("change_tileset: __import__('pySlipQt_tilesets', globals(), locals(), ['%s'])" % module_name)
-            obj = __import__('pySlipQt_tilesets', globals(), locals(), [module_name])
+            obj = __import__('pySlipQt.tilesets', globals(), locals(), [module_name])
             log('dir(obj)=%s' % dir(obj))
             tileset = getattr(obj, module_name)
             log('dir(tileset)=%s' % dir(tileset))

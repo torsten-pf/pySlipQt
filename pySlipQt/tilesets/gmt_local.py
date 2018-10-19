@@ -6,7 +6,7 @@ Uses pyCacheBack to provide in-memory and on-disk caching.
 
 import os
 import pickle
-import pySlipQt_tilesets.tiles as tiles
+import pySlipQt.tilesets.tiles as tiles
 
 
 # if we don't have log.py, don't crash
