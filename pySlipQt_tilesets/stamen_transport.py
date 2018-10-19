@@ -1,12 +1,15 @@
 """
-A tile source that serves MapQuest tiles from the internet.
+A tile source that serves Stamen Transport tiles from the internet.
+
+Map tiles by Stamen Design, under CC BY 3.0. Data by OpenStreetMap, under CC BY SA.
+(See README.rst)
 
 Uses pyCacheBack to provide in-memory and on-disk caching.
 """
 
 import math
 
-import tilesets.tiles_net as tiles
+import pySlipQt_tilesets.tiles_net as tiles
 
 
 # if we don't have log.py, don't crash
@@ -34,23 +37,22 @@ except ImportError as e:
 
 # attributes used for tileset introspection
 # names must be unique amongst tile modules
-TilesetName = 'MapQuest Tiles'
-TilesetShortName = 'MQ Tiles'
+TilesetName = 'Stamen Transport Tiles'
+TilesetShortName = 'STMTR Tiles'
 TilesetVersion = '1.0'
 
 # the pool of tile servers used
-TileServers = ['http://otile1.mqcdn.com',
-               'http://otile2.mqcdn.com',
-               'http://otile3.mqcdn.com',
-               'http://otile4.mqcdn.com',
+TileServers = ['http://a.tile2.opencyclemap.org',
+               'http://b.tile2.opencyclemap.org',
+               'http://c.tile2.opencyclemap.org',
               ]
 
 # the path on the server to a tile
 # {} params are Z=level, X=column, Y=row, origin at map top-left
-TileURLPath = '/tiles/1.0.0/map/{Z}/{X}/{Y}.jpg'
+TileURLPath = '/transport/{Z}/{X}/{Y}.png'
 
 # tile levels to be used
-TileLevels = range(17)
+TileLevels = range(16)
 
 # maximum pending requests for each tile server
 MaxServerRequests = 2
@@ -64,7 +66,7 @@ TileHeight = 256
 
 # where earlier-cached tiles will be
 # this can be overridden in the __init__ method
-TilesDir = 'mq_tiles'
+TilesDir = 'stmtr_tiles'
 
 ################################################################################
 # Class for these tiles.   Builds on tiles.BaseTiles.
@@ -73,7 +75,7 @@ TilesDir = 'mq_tiles'
 class Tiles(tiles.Tiles):
     """An object to source internet tiles for pySlip."""
 
-    def __init__(self, tiles_dir=TilesDir, http_proxy=None):
+    def __init__(self, tiles_dir=TilesDir ,http_proxy=None):
         """Override the base class for these tiles.
 
         Basically, just fill in the BaseTiles class with values from above

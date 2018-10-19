@@ -1,14 +1,12 @@
 """
-A tile source that serves Stamen Toner tiles from the internet.
-
-Map tiles by Stamen Design, under CC BY 3.0. Data by OpenStreetMap, under ODbL.
+A tile source that serves BlueMarble tiles from the internet.
 
 Uses pyCacheBack to provide in-memory and on-disk caching.
 """
 
 import math
 
-import tilesets.tiles_net as tiles
+import pySlipQt_tilesets.tiles_net as tiles
 
 
 # if we don't have log.py, don't crash
@@ -36,20 +34,20 @@ except ImportError as e:
 
 # attributes used for tileset introspection
 # names must be unique amongst tile modules
-TilesetName = 'Stamen Toner Tiles'
-TilesetShortName = 'STMT Tiles'
+TilesetName = 'BlueMarble Tiles'
+TilesetShortName = 'BM Tiles'
 TilesetVersion = '1.0'
 
 # the pool of tile servers used
-TileServers = ['http://tile.stamen.com',
+TileServers = ['http://s3.amazonaws.com',
               ]
 
 # the path on the server to a tile
 # {} params are Z=level, X=column, Y=row, origin at map top-left
-TileURLPath = '/toner/{Z}/{X}/{Y}.png'
+TileURLPath = '/com.modestmaps.bluemarble/{Z}-r{Y}-c{X}.jpg'
 
 # tile levels to be used
-TileLevels = range(17)
+TileLevels = range(10)
 
 # maximum pending requests for each tile server
 MaxServerRequests = 2
@@ -63,7 +61,7 @@ TileHeight = 256
 
 # where earlier-cached tiles will be
 # this can be overridden in the __init__ method
-TilesDir = 'stmt_tiles'
+TilesDir = 'bm_tiles'
 
 ################################################################################
 # Class for these tiles.   Builds on tiles.BaseTiles.
@@ -79,10 +77,11 @@ class Tiles(tiles.Tiles):
         and provide the Geo2Tile() and Tile2Geo() methods.
         """
 
-        super(Tiles, self).__init__(TileLevels, TileWidth, TileHeight,
+        super(Tiles, self).__init__(levels=TileLevels,
+                                    tile_width=TileWidth, tile_height=TileHeight,
+                                    tiles_dir=tiles_dir, max_lru=MaxLRU,
                                     servers=TileServers, url_path=TileURLPath,
                                     max_server_requests=MaxServerRequests,
-                                    max_lru=MaxLRU, tiles_dir=tiles_dir,
                                     http_proxy=http_proxy)
 
     def Geo2Tile(self, geo):

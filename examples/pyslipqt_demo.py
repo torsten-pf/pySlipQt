@@ -41,8 +41,6 @@ except ImportError:
 
 from tkinter_error import tkinter_error
 
-import pySlipQt
-
 try:
     import pySlipQt
 except ImportError:
@@ -56,7 +54,7 @@ log = pySlipQt.Log("pyslipqt.log")
 
 try:
     log('Doing: from tilesets import gmt_local')
-    from tilesets import gmt_local
+    from pySlipQt_tilesets import gmt_local
 except ImportError:
     msg = '*'*60 + '\nSorry, problem importing tilesets\n' + '*'*60
     log('\n' + msg)
@@ -205,15 +203,8 @@ class TilesetManager:
         (filename, modulename, tile_obj) = tileset_data
         if not tile_obj:
             # have never used this tileset, import and instantiate
-# from tilesets import gmt_local
-
-# from spam.ham import eggs, sausage as saus
-#
-# _temp = __import__('spam.ham', globals(), locals(), ['eggs', 'sausage'], 0)
-# eggs = _temp.eggs
-# saus = _temp.sausage
-            log("get_tile_source: __import__('tilesets', globals(), locals(), ['%s'])" % modulename)
-            obj = __import__('tilesets', globals(), locals(), [modulename])
+            log("get_tile_source: __import__('pySlipQt_tilesets', globals(), locals(), ['%s'])" % modulename)
+            obj = __import__('pySlipQt_tilesets', globals(), locals(), [modulename])
             log('dir(obj)=%s' % dir(obj))
             tileset = getattr(obj, modulename)
             log('dir(tileset)=%s' % dir(tileset))
@@ -446,8 +437,8 @@ class PySlipQtDemo(QMainWindow):
                                % str(self.id2tiledata))
 
         if new_tile_obj is None:
-            log("change_tileset: __import__('tilesets', globals(), locals(), ['%s'])" % module_name)
-            obj = __import__('tilesets', globals(), locals(), [module_name])
+            log("change_tileset: __import__('pySlipQt_tilesets', globals(), locals(), ['%s'])" % module_name)
+            obj = __import__('pySlipQt_tilesets', globals(), locals(), [module_name])
             log('dir(obj)=%s' % dir(obj))
             tileset = getattr(obj, module_name)
             log('dir(tileset)=%s' % dir(tileset))

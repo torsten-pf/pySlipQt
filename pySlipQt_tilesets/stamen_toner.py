@@ -1,15 +1,14 @@
 """
-A tile source that serves Stamen Transport tiles from the internet.
+A tile source that serves Stamen Toner tiles from the internet.
 
-Map tiles by Stamen Design, under CC BY 3.0. Data by OpenStreetMap, under CC BY SA.
-(See README.rst)
+Map tiles by Stamen Design, under CC BY 3.0. Data by OpenStreetMap, under ODbL.
 
 Uses pyCacheBack to provide in-memory and on-disk caching.
 """
 
 import math
 
-import tilesets.tiles_net as tiles
+import pySlipQt_tilesets.tiles_net as tiles
 
 
 # if we don't have log.py, don't crash
@@ -37,22 +36,20 @@ except ImportError as e:
 
 # attributes used for tileset introspection
 # names must be unique amongst tile modules
-TilesetName = 'Stamen Transport Tiles'
-TilesetShortName = 'STMTR Tiles'
+TilesetName = 'Stamen Toner Tiles'
+TilesetShortName = 'STMT Tiles'
 TilesetVersion = '1.0'
 
 # the pool of tile servers used
-TileServers = ['http://a.tile2.opencyclemap.org',
-               'http://b.tile2.opencyclemap.org',
-               'http://c.tile2.opencyclemap.org',
+TileServers = ['http://tile.stamen.com',
               ]
 
 # the path on the server to a tile
 # {} params are Z=level, X=column, Y=row, origin at map top-left
-TileURLPath = '/transport/{Z}/{X}/{Y}.png'
+TileURLPath = '/toner/{Z}/{X}/{Y}.png'
 
 # tile levels to be used
-TileLevels = range(16)
+TileLevels = range(17)
 
 # maximum pending requests for each tile server
 MaxServerRequests = 2
@@ -66,7 +63,7 @@ TileHeight = 256
 
 # where earlier-cached tiles will be
 # this can be overridden in the __init__ method
-TilesDir = 'stmtr_tiles'
+TilesDir = 'stmt_tiles'
 
 ################################################################################
 # Class for these tiles.   Builds on tiles.BaseTiles.
@@ -75,7 +72,7 @@ TilesDir = 'stmtr_tiles'
 class Tiles(tiles.Tiles):
     """An object to source internet tiles for pySlip."""
 
-    def __init__(self, tiles_dir=TilesDir ,http_proxy=None):
+    def __init__(self, tiles_dir=TilesDir, http_proxy=None):
         """Override the base class for these tiles.
 
         Basically, just fill in the BaseTiles class with values from above
