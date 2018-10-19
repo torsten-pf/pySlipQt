@@ -1,0 +1,10 @@
+recursive-include examples *
+recursive-include tests *
+recursive-include docs *
+include pySlipQt_tilesets/gmt_tiles.tar.gz
+prune pySlipQt_tilesets/mq_tiles
+prune pySlipQt_tilesets/mm_tiles
+prune pySlipQt_tilesets/osm_tiles
+prune pySlipQt_tilesets/stmt_tiles
+prune pySlipQt_tilesets/stmtr_tiles
+prune pySlipQt_tilesets/stmw_tiles

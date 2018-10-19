@@ -17,5 +17,5 @@ Directory                What it is
 =======================  =======
 gmt_tiles.tar.gz         pre-generated GMT tiles
 graphics                 graphics files used by the programs here
-make_gmt_tiles.py        a very old program used to generate the GMT tiles
+make_gmt_tiles.py        a very old PYTHON2 program used to generate the GMT tiles
 =======================  =======
