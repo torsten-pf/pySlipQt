@@ -2,7 +2,11 @@
 __pycache__/
 *.swp
 *.log
-
+blue_marble_tiles/
+open_street_map_tiles/
+stamen_toner_tiles/
+stamen_transport_tiles/
+stamen_watercolor_tiles/
 
 # Distribution / packaging
 .Python

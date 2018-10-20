@@ -14,8 +14,8 @@ from urllib import request
 import queue
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import QThread, QTimer
-import pySlipQt_tilesets.tiles as tiles
-import pySlipQt_tilesets.sys_tile_data as std
+import pySlipQt.tiles as tiles
+import pySlipQt.sys_tile_data as std
 
 
 # if we don't have log.py, don't crash

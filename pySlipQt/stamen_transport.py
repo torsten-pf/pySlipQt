@@ -9,7 +9,7 @@ Uses pyCacheBack to provide in-memory and on-disk caching.
 
 import math
 
-import pySlipQt_tilesets.tiles_net as tiles
+import pySlipQt.tiles_net as tiles
 
 
 # if we don't have log.py, don't crash
