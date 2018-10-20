@@ -17,8 +17,8 @@ from PyQt5.QtGui import QPolygon, QBrush, QCursor
 
 # if we don't have log.py, don't crash
 try:
-    from .log import log
-    log = log.Log('pyslipqt.log')
+    import log
+    log = log.log.Log('pyslipqt.log')
 except AttributeError:
     # means log already set up
     pass

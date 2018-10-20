@@ -42,7 +42,7 @@ except ImportError:
 from tkinter_error import tkinter_error
 
 try:
-    import pySlipQt.PySlipQt as PySlipQt
+    import pySlipQt.pySlipQt as pySlipQt
     import pySlipQt.log as log
 except ImportError:
     msg = '*'*60 + '\nSorry, you must install pySlipQt\n' + '*'*60
@@ -231,8 +231,8 @@ class PySlipQtDemo(QMainWindow):
         num_rows = self.make_gui_controls(grid)
 
         log('dir(pySlipQt)=%s' % str(dir(pySlipQt)))
-        self.pyslipqt = PySlipQt(self, tile_src=self.tile_source,
-                                 start_level=MinTileLevel)
+        self.pyslipqt = pySlipQt.PySlipQt(self, tile_src=self.tile_source,
+                                          start_level=MinTileLevel)
         grid.addWidget(self.pyslipqt, 0, 0, num_rows, 1)
 
         # add the menus
