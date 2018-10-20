@@ -2,7 +2,7 @@
 __pycache__/
 *.swp
 *.log
-osm_tiles
+
 
 # Distribution / packaging
 .Python

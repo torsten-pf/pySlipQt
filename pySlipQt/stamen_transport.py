@@ -14,7 +14,7 @@ import pySlipQt_tilesets.tiles_net as tiles
 
 # if we don't have log.py, don't crash
 try:
-    from . import log
+    from pySlipQt import log
     log = log.Log('pyslip.log')
 except AttributeError:
     # means log already set up

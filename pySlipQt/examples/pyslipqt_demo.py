@@ -42,7 +42,7 @@ except ImportError:
 from tkinter_error import tkinter_error
 
 try:
-    import pySlipQt.pySlipQt as pySlipQt
+    import pySlipQt.PySlipQt as PySlipQt
     import pySlipQt.log as log
 except ImportError:
     msg = '*'*60 + '\nSorry, you must install pySlipQt\n' + '*'*60
@@ -52,17 +52,10 @@ except ImportError:
 
 # initialize the logging system
 log = log.Log("pyslipqt.log")
+log('dir(pySlipQt)=%s' % str(dir(pySlipQt)))
 
-try:
-    log('Doing: import pySlipQt.tilesets.gmt_local as gmt_local')
-    import pySlipQt.tilesets.gmt_local as gmt_local
-except ImportError:
-    msg = '*'*60 + '\nSorry, problem importing tilesets\n' + '*'*60
-    log('\n' + msg)
-    print(msg)
-    print('Doing: import pySlipQt.tilesets.gmt_local as gmt_local')
-    tkinter_error(msg)
-    sys.exit(1)
+log('Doing: import pySlipQt.tilesets.gmt_local as gmt_local')
+import pySlipQt.gmt_local as tiles
 
 from display_text import DisplayText
 from layer_control import LayerControl
@@ -73,7 +66,7 @@ from layer_control import LayerControl
 ######
 
 # demo name/version
-DemoName = 'pySlipQt %s - Demonstration' % pySlipQt.pySlipQt.__version__
+DemoName = 'pySlipQt %s - Demonstration' % pySlipQt.__version__
 DemoVersion = '1.0'
 
 DemoWidth = 800
@@ -205,7 +198,7 @@ class TilesetManager:
         (filename, modulename, tile_obj) = tileset_data
         if not tile_obj:
             # have never used this tileset, import and instantiate
-            obj = __import__('pySlipQt.tilesets', globals(), locals(), [modulename])
+            obj = __import__('pySlipQt', globals(), locals(), [modulename])
             log('dir(obj)=%s' % dir(obj))
             tileset = getattr(obj, modulename)
             log('dir(tileset)=%s' % dir(tileset))
@@ -237,7 +230,9 @@ class PySlipQtDemo(QMainWindow):
         # build the 'controls' part of GUI
         num_rows = self.make_gui_controls(grid)
 
-        self.pyslipqt = pySlipQt.PySlipQt(self, tile_src=self.tile_source, start_level=0)
+        log('dir(pySlipQt)=%s' % str(dir(pySlipQt)))
+        self.pyslipqt = PySlipQt(self, tile_src=self.tile_source,
+                                 start_level=MinTileLevel)
         grid.addWidget(self.pyslipqt, 0, 0, num_rows, 1)
 
         # add the menus
@@ -438,8 +433,8 @@ class PySlipQtDemo(QMainWindow):
                                % str(self.id2tiledata))
 
         if new_tile_obj is None:
-            log("change_tileset: __import__('pySlipQt_tilesets', globals(), locals(), ['%s'])" % module_name)
-            obj = __import__('pySlipQt.tilesets', globals(), locals(), [module_name])
+            log("change_tileset: __import__('pySlipQt', globals(), locals(), ['%s'])" % module_name)
+            obj = __import__('pySlipQt', globals(), locals(), [module_name])
             log('dir(obj)=%s' % dir(obj))
             tileset = getattr(obj, module_name)
             log('dir(tileset)=%s' % dir(tileset))

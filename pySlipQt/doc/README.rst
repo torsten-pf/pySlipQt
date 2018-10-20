@@ -1,1 +1,1 @@
-This directory will eventually hold Sphibnx documentation.
+Documentation here is built with Sphinx.
