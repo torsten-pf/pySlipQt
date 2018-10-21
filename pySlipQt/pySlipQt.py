@@ -1306,19 +1306,17 @@ class PySlipQt(QWidget):
 
         # extent = (left, right, top, bottom) in view coords
         # this is different for images
-        elx = px
-        erx = px + w
         if image:
+            elx = px
+            erx = px - w
             ety = py
             eby = py + h
         else:
+            elx = px
+            erx = px + w
             ety = py - h
             eby = py
 
-#        elx = px
-#        erx = px + w
-#        ety = py
-#        eby = py + h
         extent = (elx, erx, ety, eby)
 
         # decide if point is off-view

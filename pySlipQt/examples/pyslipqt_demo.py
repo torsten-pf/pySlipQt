@@ -52,9 +52,7 @@ except ImportError:
 
 # initialize the logging system
 log = log.Log("pyslipqt.log")
-log('dir(pySlipQt)=%s' % str(dir(pySlipQt)))
 
-log('Doing: import pySlipQt.tilesets.gmt_local as gmt_local')
 import pySlipQt.gmt_local as tiles
 
 from display_text import DisplayText
@@ -81,7 +79,7 @@ InitViewLevel = 0
 # this will eventually be selectable within the app
 # a selection of cities, position from WikiPedia, etc
 #InitViewPosition = (0.0, 51.48)             # Greenwich, England
-#InitViewPosition = (0.0, 0.0)                #"Null" Island
+InitViewPosition = (0.0, 0.0)                #"Null" Island
 #InitViewPosition = (5.33, 60.389444)        # Bergen, Norway
 #InitViewPosition = (153.033333, -27.466667) # Brisbane, Australia
 #InitViewPosition = (98.3786761, 7.8627326)  # Phuket (ภูเก็ต), Thailand
@@ -93,7 +91,7 @@ InitViewLevel = 0
 #InitViewPosition = (-70.933333, -53.166667) # Punta Arenas, Chile
 #InitViewPosition = (168.3475, -46.413056)   # Invercargill, New Zealand
 #InitViewPosition = (-147.723056, 64.843611) # Fairbanks, AK, USA
-InitViewPosition = (103.851959, 1.290270)   # Singapore
+#InitViewPosition = (103.851959, 1.290270)   # Singapore
 
 # levels on which various layers show
 MRPointShowLevels = [3, 4]
@@ -121,21 +119,21 @@ DefaultPolylineMapDelta = 40
 DefaultPolylineViewDelta = 40
 
 # image used for shipwrecks, glassy buttons, etc
-ShipImg = 'examples/graphics/shipwreck.png'
+ShipImg = 'graphics/shipwreck.png'
 
-GlassyImg2 = 'examples/graphics/glassy_button_2.png'
-SelGlassyImg2 = 'examples/graphics/selected_glassy_button_2.png'
-GlassyImg3 = 'examples/graphics/glassy_button_3.png'
-SelGlassyImg3 = 'examples/graphics/selected_glassy_button_3.png'
-GlassyImg4 = 'examples/graphics/glassy_button_4.png'
-SelGlassyImg4 = 'examples/graphics/selected_glassy_button_4.png'
-GlassyImg5 = 'examples/graphics/glassy_button_5.png'
-SelGlassyImg5 = 'examples/graphics/selected_glassy_button_5.png'
-GlassyImg6 = 'examples/graphics/glassy_button_6.png'
-SelGlassyImg6 = 'examples/graphics/selected_glassy_button_6.png'
+GlassyImg2 = 'graphics/glassy_button_2.png'
+SelGlassyImg2 = 'graphics/selected_glassy_button_2.png'
+GlassyImg3 = 'graphics/glassy_button_3.png'
+SelGlassyImg3 = 'graphics/selected_glassy_button_3.png'
+GlassyImg4 = 'graphics/glassy_button_4.png'
+SelGlassyImg4 = 'graphics/selected_glassy_button_4.png'
+GlassyImg5 = 'graphics/glassy_button_5.png'
+SelGlassyImg5 = 'graphics/selected_glassy_button_5.png'
+GlassyImg6 = 'graphics/glassy_button_6.png'
+SelGlassyImg6 = 'graphics/selected_glassy_button_6.png'
 
 # image used for shipwrecks
-CompassRoseGraphic = 'examples/graphics/compass_rose.png'
+CompassRoseGraphic = 'graphics/compass_rose.png'
 
 # logging levels, symbolic to numeric mapping
 LogSym2Num = {'CRITICAL': 50,
@@ -199,9 +197,7 @@ class TilesetManager:
         if not tile_obj:
             # have never used this tileset, import and instantiate
             obj = __import__('pySlipQt', globals(), locals(), [modulename])
-            log('dir(obj)=%s' % dir(obj))
             tileset = getattr(obj, modulename)
-            log('dir(tileset)=%s' % dir(tileset))
             tile_obj = tileset.Tiles()
             tileset_data[2] = tile_obj
         return tile_obj
@@ -230,7 +226,6 @@ class PySlipQtDemo(QMainWindow):
         # build the 'controls' part of GUI
         num_rows = self.make_gui_controls(grid)
 
-        log('dir(pySlipQt)=%s' % str(dir(pySlipQt)))
         self.pyslipqt = pySlipQt.PySlipQt(self, tile_src=self.tile_source,
                                           start_level=MinTileLevel)
         grid.addWidget(self.pyslipqt, 0, 0, num_rows, 1)
@@ -804,7 +799,10 @@ class PySlipQtDemo(QMainWindow):
 ##### view-relative image layer
 
     def imageViewOnOff(self, add):
-        """Handle OnOff event for view-relative image layer control."""
+        """Handle OnOff event for view-relative image layer control.
+        
+        add  the state of the leyer control master checkbox
+        """
 
         if add:
             self.image_view_layer = \
