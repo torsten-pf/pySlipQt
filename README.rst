@@ -47,11 +47,17 @@ You can clone this repository, of course, and then do:
 
     python setup.py install
 
+Then you can run *pyslipqt_demo.py* in the *examples* subdirectory of the
+cloned source tree.  It might be safer to load the latest tagged source tree.
+
 Or you could install through PyPI:
 
 ::
 
     pip install pySlipQt
+
+You could then find the *pySlipQt/examples* subdirectory and copy it to a
+place of your choosing.
 
 Using pip is the recommended way to install pySlipQt as the cheese shop code
 is guaranteed to work.  The code in the GitHub repository is, unfortunately,
