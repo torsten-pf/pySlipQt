@@ -98,7 +98,7 @@ InitViewPosition = (103.851959, 1.290270)   # Singapore
 # levels on which various layers show
 MRPointShowLevels = [3, 4]
 MRImageShowLevels = [3, 4]
-MRTextShowLevels = None #[3, 4]
+MRTextShowLevels = [3, 4]
 MRPolyShowLevels = [3, 4]
 MRPolylineShowLevels = [3, 4]
 
@@ -295,7 +295,9 @@ class PySlipQtDemo(QMainWindow):
         grid_row += 1
 
         # controls for map-relative points layer
-        self.lc_point = LayerControl(self, title='Points, map relative %s' % str(MRPointShowLevels), selectable=True)
+        self.lc_point = LayerControl(self, title='Points, map relative %s'
+                                     % (str(MRPointShowLevels) if MRPointShowLevels else ''),
+                                     selectable=True)
         self.lc_point.change_add.connect(self.pointOnOff)   # tie to event handler(s)
         self.lc_point.change_show.connect(self.pointShowOnOff)
         self.lc_point.change_select.connect(self.pointSelectOnOff)
@@ -311,7 +313,9 @@ class PySlipQtDemo(QMainWindow):
         grid_row += 1
 
         # controls for map-relative image layer
-        self.lc_image = LayerControl(self, 'Images, map relative %s' % str(MRImageShowLevels), selectable=True)
+        self.lc_image = LayerControl(self, 'Images, map relative %s'
+                                     % (str(MRImageShowLevels) if MRImageShowLevels else ''),
+                                        selectable=True)
         self.lc_image.change_add.connect(self.imageOnOff)   # tie to event handler(s)
         self.lc_image.change_show.connect(self.imageShowOnOff)
         self.lc_image.change_select.connect(self.imageSelectOnOff)
@@ -327,7 +331,9 @@ class PySlipQtDemo(QMainWindow):
         grid_row += 1
 
         # controls for map-relative text layer
-        self.lc_text = LayerControl(self, 'Text, map relative %s' % str(MRTextShowLevels), selectable=True)
+        self.lc_text = LayerControl(self, 'Text, map relative %s'
+                                    % (str(MRTextShowLevels) if MRTextShowLevels else ''),
+                                    selectable=True)
         self.lc_text.change_add.connect(self.textOnOff)     # tie to event handler(s)
         self.lc_text.change_show.connect(self.textShowOnOff)
         self.lc_text.change_select.connect(self.textSelectOnOff)
@@ -343,7 +349,9 @@ class PySlipQtDemo(QMainWindow):
         grid_row += 1
 
         # controls for map-relative polygon layer
-        self.lc_poly = LayerControl(self, 'Polygon, map relative %s' % str(MRPolyShowLevels), selectable=True)
+        self.lc_poly = LayerControl(self, 'Polygon, map relative %s'
+                                    % (str(MRPolyShowLevels) if MRPolyShowLevels else ''),
+                                       selectable=True)
         self.lc_poly.change_add.connect(self.polyOnOff)     # tie to event handler(s)
         self.lc_poly.change_show.connect(self.polyShowOnOff)
         self.lc_poly.change_select.connect(self.polySelectOnOff)
@@ -359,7 +367,9 @@ class PySlipQtDemo(QMainWindow):
         grid_row += 1
 
         # controls for map-relative polyline layer
-        self.lc_poll = LayerControl(self, 'Polyline, map relative %s' % str(MRPolyShowLevels), selectable=True)
+        self.lc_poll = LayerControl(self, 'Polyline, map relative %s'
+                                    % (str(MRPolyShowLevels) if MRPolyShowLevels else ''),
+                                       selectable=True)
         self.lc_poll.change_add.connect(self.polylineOnOff)     # tie to event handler(s)
         self.lc_poll.change_show.connect(self.polylineShowOnOff)
         self.lc_poll.change_select.connect(self.polylineSelectOnOff)
@@ -1733,12 +1743,12 @@ class PySlipQtDemo(QMainWindow):
                     (117.183333, 39.133333, '天津市 (Tianjin)', {'placement': 'sw'}),
                     (106.36, +10.36, 'Mỹ Tho', {'placement': 'ne'}),
                     (105.85, +21.033333, 'Hà Nội', capital),
+                    (109.18333, 12.25, 'Nha Trang', {'placement': 'sw'}),
                     (106.681944, 10.769444, 'Thành phố Hồ Chí Minh',
                         {'placement': 'sw'}),
                     (132.47, +34.44, '広島市 (Hiroshima City)',
-                        text_placement),
-                    (114.000, +22.450, '香港 (Hong Kong)',
                         {'placement': 'nw'}),
+                    (114.000, +22.450, '香港 (Hong Kong)', text_placement),
                     (98.392, 7.888, 'ภูเก็ต (Phuket)', text_placement),
                     ( 96.16, +16.80, 'ရန်ကုန် (Yangon)', capital),
                     (104.93, +11.54, ' ភ្នំពេញ (Phnom Penh)', capital),

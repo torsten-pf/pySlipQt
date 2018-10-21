@@ -1,4 +1,6 @@
-Release 0.1 of pySlipQt is an early-release and is therefore BETA software.
+Release 0.1 of pySlipQt is early-release and is therefore BETA software.  It is
+being released at this early stage so anyone interested in pySlipQt can run the
+"pyslipqt_demo.py" program and get comfortable with the way pySlipQt works.
 
 This release has these warnings:
 
@@ -8,7 +10,8 @@ This release has these warnings:
 2. "Box selection" (a multi-selection made by dragging a select box) doesn't
    work at the moment, but it will!
 
-3. Wrap-around of tiles doesn't work yet, but I *hope* to have it working.
+3. Wrap-around of tiles doesn't work yet, but I *hope* to have it workingi even
+   though it will come with some limitations..
 
 4. The included GMT tileset is very old and has a different zoom compared to any
    tiles from the 'net, such as OSM tiles, for instance.  I hope to fix this
@@ -17,8 +20,8 @@ This release has these warnings:
 
 The GMT example tileset is included in the "examples" subdirectory.  The
 gmt_local_tiles.py tileset code assumes that the zip file has been unzipped in
-the user's home directory (ie, ~/gmt_tiles).  If you put the tiles in any other
-place, please make the appropriate changes in gmt_local_tiles.py.
+the user's home directory (ie, ~/gmt_local_tiles).  If you put the tiles in any
+other place, please make the appropriate changes in gmt_local_tiles.py.
 
 See the API documentation for the details on how to use pySlipQt.  The
 demonstration program "examples/pyslipqt_demo.py" does work if you run it
