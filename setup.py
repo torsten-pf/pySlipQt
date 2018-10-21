@@ -5,7 +5,7 @@ def readme():
         return f.read()
 
 setup(name='pySlipQt',
-      version='0.1.0',
+      version='0.1.3',
       description='A slipmap widget for PyQt5',
       long_description=readme(),
       url='http://github.com/rzzzwilson/pySlipQt',
@@ -78,6 +78,6 @@ setup(name='pySlipQt',
                                          'pySlipQt/examples/graphics/shipwreck.png',
                                         ]),
                  ],
-      download_url='https://github.com/rzzzwilson/pySlipQt/releases/tag/0.1.0',
+      download_url='https://github.com/rzzzwilson/pySlipQt/releases/tag/0.1.3',
       include_package_data=True,
       zip_safe=False)
