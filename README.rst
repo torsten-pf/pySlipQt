@@ -1,4 +1,4 @@
-.. image:: pyslipqt/examples/graphics/pyslipqt_logo.png
+.. image:: pySlipQt/examples/graphics/pyslipqt_logo.png
 
 pySlipQt
 ========
@@ -32,11 +32,11 @@ Screenshots
 
 A few screenshots of pyslipqt_demo.py, the first showing OpenStreetMap tiles:
 
-.. image:: pyslipqt/examples/graphics/pyslip_demo_osm.png
+.. image:: pySlipQt/examples/graphics/pyslip_demo_osm.png
 
 Next, the pre-generated GMT tiles:
 
-.. image:: pyslipqt/examples/graphics/pyslip_demo_gmt.png
+.. image:: pySlipQt/examples/graphics/pyslip_demo_gmt.png
 
 Getting pySlipQt
 ================
@@ -51,7 +51,7 @@ Or you could install through PyPI:
 
 ::
 
-    pip install pyslipqt
+    pip install pySlipQt
 
 Using pip is the recommended way to install pySlipQt as the cheese shop code
 is guaranteed to work.  The code in the GitHub repository is, unfortunately,
