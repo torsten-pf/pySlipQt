@@ -16,7 +16,7 @@ from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import (QApplication, QMainWindow)
 
 try:
-    import gmt_local as tiles
+    import pySlipQt.gmt_local as tiles
 except ImportError:
     # maybe not installed properly, try relative import
     sys.path.append('../tilesets')
