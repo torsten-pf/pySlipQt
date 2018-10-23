@@ -22,7 +22,7 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QLabel,
                              QErrorMessage)
 
 try:
-    import open_street_map as tiles
+    import pySlipQt.open_street_map as tiles
 except ImportError:
     # maybe not installed correctly, try relative import
     sys.path.append('../tilesets')
