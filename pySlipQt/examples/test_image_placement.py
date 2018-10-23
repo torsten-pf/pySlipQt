@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- coding= utf-8 -*-
-
 """
 Program to test image map-relative and view-relative placement.
 Select which to show and experiment with placement parameters.
@@ -11,34 +8,44 @@ Usage: test_image_placement.py [-h|--help] [-d] [(-t|--tiles) (GMT|OSM)]
 
 import os
 import sys
-
-sys.path.append('..')
-import pyslipqt.tkinter_error as tkinter_error
+import getopt
+import traceback
 
 try:
-    import wx
+    from PyQt5.QtCore import QTimer
+    from PyQt5.QtGui import QPixmap
+    from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget,
+                                 QAction, QGridLayout, QErrorMessage)
+    from pySlipQt.tkinter_error import tkinter_error
 except ImportError:
-    msg = 'Sorry, you must install wxPython'
-    tkinter_error.tkinter_error(msg)
+    msg = '*'*60 + '\nSorry, you must install PyQt5\n' + '*'*60
+    print(msg)
+    sys.exit(1)
 
-import pyslipqt
-import log
-
+try:
+    import pySlipQt.pySlipQt as pySlipQt
+    import pySlipQt.log as log
+except ImportError:
+    msg = '*'*60 + '\nSorry, you must install pySlipQt\n' + '*'*60
+    print(msg)
+    tkinter_error(msg)
+    sys.exit(1)
 
 ######
 # Various demo constants
 ######
 
 # demo name/version
-DemoName = 'Test image placement, pySlipQt %s' % pyslipqt.__version__
+DemoName = 'Test image placement, pySlipQt %s' % pySlipQt.__version__
 DemoVersion = '1.0'
 
 # initial values
-InitialViewLevel = 4
+#InitialViewLevel = 4
+InitialViewLevel = 0
 InitialViewPosition = (145.0, -20.0)
 
 # tiles info
-TileDirectory = 'tiles'
+TileDirectory = 'test_tiles'
 MinTileLevel = 0
 
 # the number of decimal places in a lon/lat display
@@ -60,287 +67,208 @@ DefaultOffsetY = 0
 # initial values in view-relative LayerControl
 DefaultViewFilename = 'graphics/compass_rose.png'
 DefaultViewPlacement = 'ne'
-PointRadiusChoices = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10']
+DefaultPointColour = 'red'
+DefaultPointRadius = 0
 DefaultViewX = 0
 DefaultViewY = 0
 DefaultViewOffsetX = 0
 DefaultViewOffsetY = 0
 
-######
-# Various GUI layout constants
-######
-
-# sizes of various spacers
-HSpacerSize = (0,1)         # horizontal in application screen
-VSpacerSize = (1,1)         # vertical in control pane
-
-# border width when packing GUI elements
-PackBorder = 0
 
 
-###############################################################################
-# Override the wx.TextCtrl class to add read-only style and background colour
-###############################################################################
+import os
+import sys
+import platform
 
-# background colour for the 'read-only' text field
-ControlReadonlyColour = '#ffffcc'
+from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout
+from PyQt5 import QtCore
+from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtWidgets import QLabel, QComboBox, QPushButton, QLineEdit
+from PyQt5.QtWidgets import QGridLayout, QFileDialog, QColorDialog
+from PyQt5.QtGui import QColor
 
-class ROTextCtrl(wx.TextCtrl):
-    """Override the wx.TextCtrl widget to get read-only text control which
-    has a distinctive background colour."""
 
-    def __init__(self, parent, value, tooltip='', *args, **kwargs):
-        wx.TextCtrl.__init__(self, parent, wx.ID_ANY, value=value,
-                             style=wx.TE_READONLY, *args, **kwargs)
-        self.SetBackgroundColour(ControlReadonlyColour)
-        self.SetToolTip(wx.ToolTip(tooltip))
-
-###############################################################################
-# Override the wx.StaticBox class to show our style
-###############################################################################
-
-class AppStaticBox(wx.StaticBox):
-
-    def __init__(self, parent, label, *args, **kwargs):
-        if 'style' not in kwargs:
-            kwargs['style'] = wx.NO_BORDER
-        wx.StaticBox.__init__(self, parent, wx.ID_ANY, label, *args, **kwargs)
-
-###############################################################################
-# Class for a LayerControl widget.
+##################################
+# Custom ImagePlacementControl widget.
+# 
+# Constructor:
+# 
+#     ipc = ImagePlacementControl(parent)
+# 
+# Events:
+# 
+#     .change   the contents were changed
+#     .remove   the image should be removed
 #
-# This is used to control each type of layer, whether map- or view-relative.
-###############################################################################
+# The '.change' event has attached attributes holding the values from the
+# widget, all checked so they are 'sane'.
+##################################
 
-myEVT_DELETE = wx.NewEventType()
-myEVT_UPDATE = wx.NewEventType()
+class ImagePlacementControl(QWidget):
 
-EVT_DELETE = wx.PyEventBinder(myEVT_DELETE, 1)
-EVT_UPDATE = wx.PyEventBinder(myEVT_UPDATE, 1)
+    # set platform dependant values
+    if platform.system() == 'Linux':
+        pass
+    elif platform.system() == 'Darwin':
+        pass
+    elif platform.system() == 'Windows':
+        pass
+    else:
+        raise Exception('Unrecognized platform: %s' % platform.system())
 
-class LayerControlEvent(wx.PyCommandEvent):
-    """Event sent when a LayerControl is changed."""
+    # signals raised by this widget
+    change = pyqtSignal(str, str, int, QColor, int, int, int, int)
+    remove = pyqtSignal()
 
-    def __init__(self, eventType, id):
-        wx.PyCommandEvent.__init__(self, eventType, id)
+    def __init__(self, parent):
+        """Initialise a ImagePlacementControl instance.
 
-class LayerControl(wx.Panel):
-
-    def __init__(self, parent, title, filename='', placement=DefaultPlacement,
-                 pointradius=DefaultPointRadius, pointcolour=DefaultPointColour,
-                 x=0, y=0, offset_x=0, offset_y=0, **kwargs):
-        """Initialise a LayerControl instance.
-
-        parent       reference to parent object
-        title        text to show in static box outline
-        filename     filename of image to show
-        placement    placement string for image
-        pointradius  radius of the image point
-        pointcolour  colour of the image point
-        x, y         X and Y coords
-        offset_x     X offset of image
-        offset_y     Y offset of image
-        **kwargs     keyword args for Panel
+        parent      reference to parent object
         """
 
-        # create and initialise the base panel
-        wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY, **kwargs)
-        self.SetBackgroundColour(wx.WHITE)
+        QWidget.__init__(self)
 
-        self.v_filename = filename
-        self.v_placement = placement
-        self.v_pointradius = str(pointradius)
-        self.v_pointcolour = pointcolour
-        self.v_x = x
-        self.v_y = y
-        self.v_offset_x = offset_x
-        self.v_offset_y = offset_y
+        # create all widgets used in this custom widget
+        self.filename = QLabel('/file/name')
+        self.filename.setToolTip('Click here to change the image file')
+        self.placement = QComboBox()
+        for p in ['none', 'nw', 'cn', 'ne', 'ce', 'se', 'cs', 'sw', 'cw', 'cc']:
+            self.placement.addItem(p)
+        self.point_radius = QLineEdit('2')
+        self.point_colour = QPushButton('')
+        self.posn_x = QLineEdit('0')
+        self.posn_y = QLineEdit('0')
+        self.offset_x = QLineEdit('0')
+        self.offset_y = QLineEdit('0')
+        btn_remove = QPushButton('Remove')
+        btn_update = QPushButton('Update')
 
-        box = AppStaticBox(self, title)
-        sbs = wx.StaticBoxSizer(box, orient=wx.VERTICAL)
-        gbs = wx.GridBagSizer(vgap=2, hgap=2)
+        # start layout
+        grid = QGridLayout()
+        grid.setContentsMargins(5, 5, 5, 5)
+        self.setLayout(grid)
 
-        # row 0
-        row = 0
-        label = wx.StaticText(self, wx.ID_ANY, 'filename: ')
-        gbs.Add(label, (row,0), border=0,
-                flag=(wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT))
-        self.filename = ROTextCtrl(self, self.v_filename)
-        gbs.Add(self.filename, (row,1), span=(1,3), border=0, flag=wx.EXPAND)
+        label = QLabel('filename:')
+        label.setAlignment(Qt.AlignRight)
+        grid.addWidget(label, 0, 0)
+        grid.addWidget(self.filename, 0, 1, 1, 3)
 
-        # row 1
-        row += 1
-        label = wx.StaticText(self, wx.ID_ANY, 'placement: ')
-        gbs.Add(label, (row,0), border=0,
-                flag=(wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT))
-        choices = ['nw', 'cn', 'ne', 'ce', 'se', 'cs', 'sw', 'cw', 'cc', 'none']
-        style=wx.CB_DROPDOWN|wx.CB_READONLY
-        self.placement = wx.ComboBox(self, value=self.v_placement,
-                                     choices=choices, style=style)
-        gbs.Add(self.placement, (row,1), border=0)
+        label = QLabel('placement:')
+        label.setAlignment(Qt.AlignRight)
+        grid.addWidget(label, 1, 0)
+        grid.addWidget(self.placement, 1, 1)
 
-        # row 2
-        row += 1
-        label = wx.StaticText(self, wx.ID_ANY, 'point radius: ')
-        gbs.Add(label, (row,0), border=0,
-                flag=(wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT))
-        style=wx.CB_DROPDOWN|wx.CB_READONLY
-        self.pointradius = wx.ComboBox(self, value=self.v_pointradius,
-                                       choices=PointRadiusChoices, style=style)
-        gbs.Add(self.pointradius, (row,1),
-                border=0, flag=(wx.ALIGN_CENTER_VERTICAL|wx.EXPAND))
-        label = wx.StaticText(self, wx.ID_ANY, 'point colour: ')
-        gbs.Add(label, (row,2), border=0,
-        flag=(wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT))
-        self.pointcolour = wx.Button(self, label='')
-        self.pointcolour.SetBackgroundColour(self.v_pointcolour)
-        gbs.Add(self.pointcolour, (row,3), border=0, flag=wx.EXPAND)
+        label = QLabel('point radius:')
+        label.setAlignment(Qt.AlignRight)
+        grid.addWidget(label, 2, 0)
+        grid.addWidget(self.point_radius, 2, 1)
+        label = QLabel('point colour:')
+        label.setAlignment(Qt.AlignRight)
+        grid.addWidget(label, 2, 2)
+        grid.addWidget(self.point_colour, 2, 3)
 
-        # row 3
-        row += 1
-        label = wx.StaticText(self, wx.ID_ANY, 'x: ')
-        gbs.Add(label, (row,0), border=0,
-                flag=(wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT))
-        self.x = wx.TextCtrl(self, value=str(self.v_x))
-        gbs.Add(self.x, (row,1), border=0, flag=wx.EXPAND)
+        label = QLabel('X:')
+        label.setAlignment(Qt.AlignRight)
+        grid.addWidget(label, 3, 0)
+        grid.addWidget(self.posn_x, 3, 1)
+        label = QLabel('Y:')
+        label.setAlignment(Qt.AlignRight)
+        grid.addWidget(label, 3, 2)
+        grid.addWidget(self.posn_y, 3, 3)
 
-        label = wx.StaticText(self, wx.ID_ANY, 'y: ')
-        gbs.Add(label, (row,2), border=0,
-                flag=(wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT))
-        self.y = wx.TextCtrl(self, value=str(self.v_y))
-        gbs.Add(self.y, (row,3), border=0, flag=wx.EXPAND)
+        label = QLabel('X offset:')
+        label.setAlignment(Qt.AlignRight)
+        grid.addWidget(label, 4, 0)
+        grid.addWidget(self.offset_x, 4, 1)
 
-        # row 4
-        row += 1
-        label = wx.StaticText(self, wx.ID_ANY, 'offset_x: ')
-        gbs.Add(label, (row,0), border=0,
-                flag=(wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT))
-        self.offset_x = wx.TextCtrl(self, value=str(self.v_offset_x))
-        gbs.Add(self.offset_x, (row,1), border=0, flag=wx.EXPAND)
+        label = QLabel('Y offset:')
+        label.setAlignment(Qt.AlignRight)
+        grid.addWidget(label, 4, 2)
+        grid.addWidget(self.offset_y, 4, 3)
 
-        label = wx.StaticText(self, wx.ID_ANY, '  offset_y: ')
-        gbs.Add(label, (row,2), border=0,
-                flag=(wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT))
-        self.offset_y = wx.TextCtrl(self, value=str(self.v_offset_y))
-        gbs.Add(self.offset_y, (row,3), border=0, flag=wx.EXPAND)
+        grid.addWidget(btn_remove, 5, 1)
+        grid.addWidget(btn_update, 5, 3)
 
-        # row 5
-        row += 1
-        delete_button = wx.Button(self, label='Remove')
-        gbs.Add(delete_button, (row,1), border=10, flag=wx.EXPAND)
-        update_button = wx.Button(self, label='Update')
-        gbs.Add(update_button, (row,3), border=10, flag=wx.EXPAND)
+        # connect internal widget events to handlers
+        self.filename.mouseReleaseEvent = self.changeGraphicsFile
+        self.point_colour.clicked.connect(self.changePointColour)
+        btn_remove.clicked.connect(self.removeImage)
+        btn_update.clicked.connect(self.updateData)
 
-        sbs.Add(gbs)
-        self.SetSizer(sbs)
-        sbs.Fit(self)
+        self.show()
 
-        self.filename.Bind(wx.EVT_LEFT_UP, self.onFilename)
-        self.pointcolour.Bind(wx.EVT_BUTTON, self.onPointColour)
-        delete_button.Bind(wx.EVT_BUTTON, self.onDelete)
-        update_button.Bind(wx.EVT_BUTTON, self.onUpdate)
+    def changeGraphicsFile(self, event):
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseNativeDialog
+        file_types = "PNG (*.png);;JPG (*.jpg)"
+        (filename, _) = QFileDialog.getOpenFileName(self,"Open image file", "",
+                                                    file_types,
+                                                    options=options)
+        if filename:
+            # if filepath is relative to working directory, just get relative path
+            if filename.startswith(ProgramPath):
+                filename = filename[len(ProgramPath)+1:]
+            self.filename.setText(filename)
 
-    def onFilename(self, event):
-        """Change image filename."""
+    def changePointColour(self, event):
+        color = QColorDialog.getColor()
+        if color.isValid():
+            colour = color.name()
+            print(f'colour={colour}')
+            # set colour button background
+            self.point_colour.setStyleSheet(f'background-color:{colour};');
+ 
+    def removeImage(self, event):
+        self.remove.emit()
 
-        wildcard = ("PNG files (*.png)|*.png|"
-                    "JPG files (*.jpg)|*.jpg|"
-                    "All files (*.*)|*.*")
+    def updateData(self, event):
+        filepath = self.filename.text()
+        placement = str(self.placement.currentText())
+        if placement == 'none':
+            placement = None
+        radius = int(self.point_radius.text())
+        colour = self.point_colour.palette().color(1)
+        print(f'colour={colour}')
+        x = int(self.posn_x.text())
+        y = int(self.posn_y.text())
+        offset_x = int(self.offset_x.text())
+        offset_y = int(self.offset_y.text())
+        
+        self.change.emit(filepath, placement, radius, colour, x, y, offset_x, offset_y)
 
-        filepath = None
+##############################
 
-        dialog = wx.FileDialog(None, "Choose an image file",
-                               os.getcwd(), "", wildcard, wx.OPEN)
-        if dialog.ShowModal() == wx.ID_OK:
-            filepath = dialog.GetPath()
-        dialog.Destroy()
+class ImagePlacementControlExample(QWidget):
+    """Application to demonstrate the pySlipQt 'ImagePlacementControl' widget."""
 
-        if filepath:
-            self.filename.SetValue(filepath)
+    def __init__(self):
+        super().__init__()
 
-    def onPointColour(self, event):
-        """Change text colour."""
+        self.lc_group = ImagePlacementControl(self)
 
-        colour = self.pointcolour.GetBackgroundColour()
-        wxcolour = wx.ColourData()
-        wxcolour.SetColour(colour)
+        hbox = QHBoxLayout()
+        hbox.setContentsMargins(0, 0, 0, 0)
+        hbox.addWidget(self.lc_group)
+        self.setLayout(hbox)
 
-        dialog = wx.ColourDialog(self, data=wxcolour)
-        dialog.GetColourData().SetChooseFull(True)
-        new_colour = None
-        if dialog.ShowModal() == wx.ID_OK:
-            new_colour = dialog.GetColourData().Colour
-        dialog.Destroy()
+        self.setWindowTitle('ImagePlacementControl widget')
+        self.show()
 
-        if new_colour:
-            self.pointcolour.SetBackgroundColour(new_colour)
+        # connect the widget to '.changed' event handler
+        self.lc_group.remove.connect(self.remove_image)
+        self.lc_group.change.connect(self.change_image)
 
-    def onDelete(self, event):
-        """Remove image from map."""
+    def remove_image(self):
+        print('Removing image')
 
-        event = LayerControlEvent(myEVT_DELETE, self.GetId())
-        self.GetEventHandler().ProcessEvent(event)
+    def change_image(self, filepath, placement, radius, colour,
+                           x, y, offset_x, offset_y):
+        print(f'change_image: filepath={filepath}, placement={placement}, '
+              f'radius={radius}, colour={colour}, x={x}, y={y}, '
+              f'offset_x={offset_x}, offset_y={offset_y}')
 
-    def get_numeric_value(self, control):
-        """Get numeric value of a textbox.
-
-        control  the textbox to query
-
-        Return numeric value as a float.
-        """
-
-        orig_value = control.GetValue()
-        if not orig_value:
-            value = '0'
-            control.SetValue('0')
-        else:
-            value = orig_value
-
-        try:
-            value = float(value)
-        except ValueError:
-            return (orig_value, None)
-        return (orig_value, value)
-
-    def onUpdate(self, event):
-        """Update image on map."""
-
-        # get x/y/offset_x/offset_y and check valid
-        (orig_x, x) = self.get_numeric_value(self.x)
-        (orig_y, y) = self.get_numeric_value(self.y)
-        (orig_offset_x, offset_x) = self.get_numeric_value(self.offset_x)
-        (orig_offset_y, offset_y) = self.get_numeric_value(self.offset_y)
-
-        if (x is not None and y is not None
-                and offset_x is not None and offset_y is not None):
-            event = LayerControlEvent(myEVT_UPDATE, self.GetId())
-
-            event.filename = self.filename.GetValue()
-            event.placement = self.placement.GetValue()
-            event.radius = int(self.pointradius.GetValue())
-            event.colour = self.pointcolour.GetBackgroundColour()
-            event.x = self.x.GetValue()
-            event.y = self.y.GetValue()
-            event.offset_x = self.offset_x.GetValue()
-            event.offset_y = self.offset_y.GetValue()
-
-            self.GetEventHandler().ProcessEvent(event)
-        else:
-            msg = 'These controls have bad values:\n'
-            if x is None:
-                name = ('x:' + ' '*20)[:12]
-                msg += "\t%s\t%s\n" % (name, str(orig_x))
-            if y is None:
-                name = ('y:' + ' '*20)[:12]
-                msg += "\t%s\t%s\n" % (name, str(orig_y))
-            if offset_x is None:
-                name = ('offset_x:' + ' '*20)[:12]
-                msg += "\t%s\t%s\n" % (name, str(orig_offset_x))
-            if offset_y is None:
-                name = ('offset_y:' + ' '*20)[:12]
-                msg += "\t%s\t%s\n" % (name, str(orig_offset_y))
-            wx.MessageBox(msg, 'Warning', wx.OK | wx.ICON_ERROR)
-
+    def layer_select(self, select):
+        print(f'Layer SELECT={select}')
 
 ################################################################################
 # The main application frame
@@ -709,70 +637,62 @@ class AppFrame(wx.Frame):
 
 ###############################################################################
 
-if __name__ == '__main__':
-    import sys
-    import getopt
-    import traceback
+# our own handler for uncaught exceptions
+def excepthook(type, value, tb):
+    msg = '\n' + '=' * 80
+    msg += '\nUncaught exception:\n'
+    msg += ''.join(traceback.format_exception(type, value, tb))
+    msg += '=' * 80 + '\n'
+    log(msg)
+    tkinter_error.tkinter_error(msg)
+    sys.exit(1)
 
-    # our own handler for uncaught exceptions
-    def excepthook(type, value, tb):
-        msg = '\n' + '=' * 80
-        msg += '\nUncaught exception:\n'
-        msg += ''.join(traceback.format_exception(type, value, tb))
-        msg += '=' * 80 + '\n'
-        log(msg)
-        tkinter_error.tkinter_error(msg)
-        sys.exit(1)
-
-    def usage(msg=None):
-        if msg:
-            print(('*'*80 + '\n%s\n' + '*'*80) % msg)
-        print(__doc__)
+def usage(msg=None):
+    if msg:
+        print(('*'*80 + '\n%s\n' + '*'*80) % msg)
+    print(__doc__)
 
 
-    # plug our handler into the python system
-    sys.excepthook = excepthook
+# plug our handler into the python system
+sys.excepthook = excepthook
 
-    # decide which tiles to use, default is GMT
-    argv = sys.argv[1:]
+# analyse the command line args
+argv = sys.argv[1:]
 
-    try:
-        (opts, args) = getopt.getopt(argv, 'dht:', ['debug', 'help', 'tiles='])
-    except getopt.error:
+try:
+    (opts, args) = getopt.getopt(argv, 'dht:', ['debug', 'help', 'tiles='])
+except getopt.error:
+    usage()
+    sys.exit(1)
+
+tile_source = 'GMT'
+debug = False
+for (opt, param) in opts:
+    if opt in ['-h', '--help']:
         usage()
-        sys.exit(1)
+        sys.exit(0)
+    elif opt in ['-d', '--debug']:
+        debug = True
+    elif opt in ('-t', '--tiles'):
+        tile_source = param
+tile_source = tile_source.lower()
 
-    tile_source = 'GMT'
-    debug = False
-    for (opt, param) in opts:
-        if opt in ['-h', '--help']:
-            usage()
-            sys.exit(0)
-        elif opt in ['-d', '--debug']:
-            debug = True
-        elif opt in ('-t', '--tiles'):
-            tile_source = param
-    tile_source = tile_source.lower()
+# set up the appropriate tile source
+if tile_source == 'gmt':
+    import pySlipQt.gmt_local as Tiles
+elif tile_source == 'osm':
+    import pySlipQt.open_street_map as Tiles
+else:
+    usage('Bad tile source: %s' % tile_source)
+    sys.exit(3)
 
-    # set up the appropriate tile source
-    if tile_source == 'gmt':
-        import pyslipqt.gmt_local_tiles as Tiles
-    elif tile_source == 'osm':
-        import pyslipqt.osm_tiles as Tiles
-    else:
-        usage('Bad tile source: %s' % tile_source)
-        sys.exit(3)
+ProgramFile = __file__
+ProgramPath = os.getcwd()
+print(f'ProgramFile={ProgramFile}')
+print(f'ProgramPath={ProgramPath}')
 
-
-    # start wxPython app
-    app = wx.App()
-    app_frame = AppFrame()
-    app_frame.Show()
-
-    if debug:
-        log('Showing wxpython inspector')
-        import wx.lib.inspection
-        wx.lib.inspection.InspectionTool().Show()
-
-    app.MainLoop()
+# start the app
+app = QApplication(sys.argv)
+ex = ImagePlacementControlExample()
+sys.exit(app.exec())
 
