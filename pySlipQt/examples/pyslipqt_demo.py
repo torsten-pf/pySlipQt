@@ -27,6 +27,7 @@ import importlib
 import getopt
 import traceback
 from functools import partial
+from tkinter_error import tkinter_error
 
 try:
     from PyQt5.QtCore import QTimer
@@ -38,8 +39,6 @@ except ImportError:
     print(msg)
     tkinter_error(msg)
     sys.exit(1)
-
-from tkinter_error import tkinter_error
 
 try:
     import pySlipQt.pySlipQt as pySlipQt
