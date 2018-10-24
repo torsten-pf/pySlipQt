@@ -1,4 +1,4 @@
-Release 0.1.0 of pySlipQt is early-release and is therefore ALPHA software.  It
+Release 0.1 of pySlipQt is early-release and is therefore ALPHA software.  It
 is being released at this early stage so anyone interested in pySlipQt can run
 the "pyslipqt_demo.py" program and get comfortable with the way pySlipQt works.
 
