@@ -71,12 +71,13 @@ class LayerControl(QWidget):
         self.cb_select = QCheckBox('Select')
 
         # start layout
-        grid = QGridLayout()
-        grid.setContentsMargins(2, 2, 2, 2)
-
         group = QGroupBox(title)
         group.setCheckable(True)
         group.setChecked(False)
+
+        grid = QGridLayout()
+        grid.setContentsMargins(2, 2, 2, 2)
+
         grid.addWidget(group, 0, 0)
 
         hbox = QHBoxLayout()

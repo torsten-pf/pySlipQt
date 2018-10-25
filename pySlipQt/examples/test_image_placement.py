@@ -11,15 +11,17 @@ import sys
 import getopt
 import traceback
 
+import tkinter_error
+
 try:
     from PyQt5.QtCore import QTimer
     from PyQt5.QtGui import QPixmap
-    from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget,
-                                 QAction, QGridLayout, QErrorMessage)
-    from pySlipQt.tkinter_error import tkinter_error
+    from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
+                                 QAction, QGridLayout, QErrorMessage, QGroupBox)
 except ImportError:
     msg = '*'*60 + '\nSorry, you must install PyQt5\n' + '*'*60
     print(msg)
+    tkinter_error(msg)
     sys.exit(1)
 
 try:
@@ -120,10 +122,11 @@ class ImagePlacementControl(QWidget):
     change = pyqtSignal(str, str, int, QColor, int, int, int, int)
     remove = pyqtSignal()
 
-    def __init__(self, parent):
+    def __init__(self, parent, title):
         """Initialise a ImagePlacementControl instance.
 
-        parent      reference to parent object
+        parent  reference to parent object
+        title   title to give the custom widget
         """
 
         QWidget.__init__(self)
@@ -143,51 +146,66 @@ class ImagePlacementControl(QWidget):
         btn_remove = QPushButton('Remove')
         btn_update = QPushButton('Update')
 
-        # start layout
-        grid = QGridLayout()
-        grid.setContentsMargins(5, 5, 5, 5)
-        self.setLayout(grid)
+        # start the layout
+        group = QGroupBox(title)
 
+        grid = QGridLayout()
+        grid.setContentsMargins(2, 2, 2, 2)
+
+        # start layout
+        row = 1
         label = QLabel('filename:')
         label.setAlignment(Qt.AlignRight)
-        grid.addWidget(label, 0, 0)
-        grid.addWidget(self.filename, 0, 1, 1, 3)
+        grid.addWidget(label, row, 0)
+        grid.addWidget(self.filename, row, 1, 1, 3)
 
+        row += 1
         label = QLabel('placement:')
         label.setAlignment(Qt.AlignRight)
-        grid.addWidget(label, 1, 0)
-        grid.addWidget(self.placement, 1, 1)
+        grid.addWidget(label, row, 0)
+        grid.addWidget(self.placement, row, 1)
 
+        row += 1
         label = QLabel('point radius:')
         label.setAlignment(Qt.AlignRight)
-        grid.addWidget(label, 2, 0)
-        grid.addWidget(self.point_radius, 2, 1)
+        grid.addWidget(label, row, 0)
+        grid.addWidget(self.point_radius, row, 1)
         label = QLabel('point colour:')
         label.setAlignment(Qt.AlignRight)
-        grid.addWidget(label, 2, 2)
-        grid.addWidget(self.point_colour, 2, 3)
+        grid.addWidget(label, row, 2)
+        grid.addWidget(self.point_colour, row, 3)
 
+        row += 1
         label = QLabel('X:')
         label.setAlignment(Qt.AlignRight)
-        grid.addWidget(label, 3, 0)
-        grid.addWidget(self.posn_x, 3, 1)
+        grid.addWidget(label, row, 0)
+        grid.addWidget(self.posn_x, row, 1)
         label = QLabel('Y:')
         label.setAlignment(Qt.AlignRight)
-        grid.addWidget(label, 3, 2)
-        grid.addWidget(self.posn_y, 3, 3)
+        grid.addWidget(label, row, 2)
+        grid.addWidget(self.posn_y, row, 3)
 
+        row += 1
         label = QLabel('X offset:')
         label.setAlignment(Qt.AlignRight)
-        grid.addWidget(label, 4, 0)
-        grid.addWidget(self.offset_x, 4, 1)
-
+        grid.addWidget(label, row, 0)
+        grid.addWidget(self.offset_x, row, 1)
         label = QLabel('Y offset:')
         label.setAlignment(Qt.AlignRight)
-        grid.addWidget(label, 4, 2)
-        grid.addWidget(self.offset_y, 4, 3)
+        grid.addWidget(label, row, 2)
+        grid.addWidget(self.offset_y, row, 3)
 
-        grid.addWidget(btn_remove, 5, 1)
-        grid.addWidget(btn_update, 5, 3)
+        row += 1
+        grid.addWidget(btn_remove, row, 1)
+        grid.addWidget(btn_update, row, 3)
+
+        group.setLayout(grid)
+
+        hbox = QHBoxLayout()
+        hbox.setContentsMargins(1, 1, 1, 1)
+        hbox.addWidget(group)
+
+        self.setLayout(hbox)
 
         # connect internal widget events to handlers
         self.filename.mouseReleaseEvent = self.changeGraphicsFile
@@ -236,246 +254,86 @@ class ImagePlacementControl(QWidget):
         
         self.change.emit(filepath, placement, radius, colour, x, y, offset_x, offset_y)
 
-##############################
+################################################################################
+# The main application window.
+################################################################################
 
-class ImagePlacementControlExample(QWidget):
-    """Application to demonstrate the pySlipQt 'ImagePlacementControl' widget."""
-
-    def __init__(self):
+class TestImagePlacement(QMainWindow):
+    def __init__(self, tile_dir=TileDirectory):
         super().__init__()
-
-        self.lc_group = ImagePlacementControl(self)
-
-        hbox = QHBoxLayout()
-        hbox.setContentsMargins(0, 0, 0, 0)
-        hbox.addWidget(self.lc_group)
-        self.setLayout(hbox)
-
-        self.setWindowTitle('ImagePlacementControl widget')
-        self.show()
-
-        # connect the widget to '.changed' event handler
-        self.lc_group.remove.connect(self.remove_image)
-        self.lc_group.change.connect(self.change_image)
-
-    def remove_image(self):
-        print('Removing image')
-
-    def change_image(self, filepath, placement, radius, colour,
-                           x, y, offset_x, offset_y):
-        print(f'change_image: filepath={filepath}, placement={placement}, '
-              f'radius={radius}, colour={colour}, x={x}, y={y}, '
-              f'offset_x={offset_x}, offset_y={offset_y}')
-
-    def layer_select(self, select):
-        print(f'Layer SELECT={select}')
-
-################################################################################
-# The main application frame
-################################################################################
-
-class AppFrame(wx.Frame):
-    def __init__(self, tile_dir=TileDirectory, levels=None):
-        wx.Frame.__init__(self, None, size=DefaultAppSize,
-                          title='%s, test version %s' % (DemoName, DemoVersion))
-        self.SetMinSize(DefaultAppSize)
-        self.panel = wx.Panel(self, wx.ID_ANY)
-        self.panel.SetBackgroundColour(wx.WHITE)
-        self.panel.ClearBackground()
 
         self.tile_directory = tile_dir
         self.tile_source = Tiles.Tiles()
 
-        # build the GUI
-        self.make_gui(self.panel)
-
-        # set initial view position
-        self.map_level.SetLabel('%d' % InitialViewLevel)
-        wx.CallAfter(self.final_setup, InitialViewLevel, InitialViewPosition)
-
-        # force pyslipqt initialisation
-        self.pyslipqt.OnSize()
-
-        # finally, set up application window position
-        self.Centre()
-
-        # initialise state variables
-        self.image_layer = None
+        # variables for layer IDs
+        self.image_map_layer = None
         self.image_view_layer = None
 
-        # finally, bind pySlipQt events to handlers
-        self.pyslipqt.Bind(pyslipqt.EVT_PYSLIPQT_POSITION, self.handle_position_event)
-        self.pyslipqt.Bind(pyslipqt.EVT_PYSLIPQT_LEVEL, self.handle_level_change)
+        grid = QGridLayout()
+        grid.setColumnStretch(0, 1)
+        grid.setContentsMargins(2, 2, 2, 2)
 
-#####
-# Build the GUI
-#####
+        qwidget = QWidget(self)
+        qwidget.setLayout(grid)
+        self.setCentralWidget(qwidget)
+
+########
+
+        # build the GUI
+#        layout = self.make_gui(self)
+        grid = QGridLayout()
+        grid.setContentsMargins(2, 2, 2, 2)
+
+        # make all widgets
+        self.pyslipqt = pySlipQt.PySlipQt(self, tile_src=self.tile_source, start_level=0)
+        self.map_image = ImagePlacementControl(self, 'Map-relative image')
+        self.view_image = ImagePlacementControl(self, 'View-relative image')
+
+        # start the layout
+        grid.addWidget(self.pyslipqt, 0, 0)
+
+        vbox = QVBoxLayout()
+        vbox.addWidget(self.map_image)
+        vbox.addWidget(self.view_image)
+        vbox.addStretch(1)
+
+        grid.addLayout(vbox, 0, 1)
+
+        self.setLayout(vbox)
+
+        # tie events from controls to handlers
+        self.map_image.remove.connect(self.remove_image_map)
+        self.map_image.change.connect(self.change_image_map)
+
+        self.view_image.remove.connect(self.remove_image_view)
+        self.view_image.change.connect(self.change_image_view)
+
+        # set window title
+        self.setWindowTitle('%s %s' % (DemoName, DemoVersion))
+        self.show()
 
     def make_gui(self, parent):
         """Create application GUI."""
 
-        # start application layout
-        all_display = wx.BoxSizer(wx.HORIZONTAL)
-        parent.SetSizer(all_display)
+        grid = QGridLayout()
+        grid.setContentsMargins(2, 2, 2, 2)
 
-        # put map view in left of horizontal box
-        sl_box = self.make_gui_view(parent)
-        all_display.Add(sl_box, proportion=1, border=0, flag=wx.EXPAND)
+        # make all widgets
+        self.pyslipqt = pySlipQt.PySlipQt(parent, tile_src=self.tile_source, start_level=0)
+        self.map_image = ImagePlacementControl(self, 'Map-relative image')
+        self.view_image = ImagePlacementControl(self, 'View-relative image')
 
-        # small spacer here - separate view and controls
-        all_display.AddSpacer(HSpacerSize)
+        # start the layout
+        grid.addWidget(self.pyslipqt, 0, 0)
 
-        # add controls to right of spacer
-        controls = self.make_gui_controls(parent)
-        all_display.Add(controls, proportion=0, border=0)
+        vbox = QVBoxLayout()
+        vbox.addWidget(self.map_image)
+        vbox.addWidget(self.view_image)
+        vbox.addStretch(1)
 
-        parent.SetSizerAndFit(all_display)
+        grid.addLayout(vbox, 0, 1)
 
-    def make_gui_view(self, parent):
-        """Build the map view widget
-
-        parent  reference to the widget parent
-
-        Returns the static box sizer.
-        """
-
-        # create gui objects
-        sb = AppStaticBox(parent, '')
-        self.pyslipqt = pyslipqt.PySlipQt(parent, tile_src=self.tile_source)
-
-        # lay out objects
-        box = wx.StaticBoxSizer(sb, orient=wx.HORIZONTAL)
-        box.Add(self.pyslipqt, proportion=1, border=0, flag=wx.EXPAND)
-
-        return box
-
-    def make_gui_controls(self, parent):
-        """Build the 'controls' part of the GUI
-
-        parent  reference to parent
-
-        Returns reference to containing sizer object.
-        """
-
-        # all controls in vertical box sizer
-        controls = wx.BoxSizer(wx.VERTICAL)
-
-        # add the map level in use widget
-        level = self.make_gui_level(parent)
-        controls.Add(level, proportion=0, flag=wx.EXPAND|wx.ALL)
-
-        # vertical spacer
-        controls.AddSpacer(VSpacerSize)
-
-        # add the mouse position feedback stuff
-        mouse = self.make_gui_mouse(parent)
-        controls.Add(mouse, proportion=0, flag=wx.EXPAND|wx.ALL)
-
-        # vertical spacer
-        controls.AddSpacer(VSpacerSize)
-
-        # controls for map-relative image layer
-        self.image = self.make_gui_image(parent)
-        controls.Add(self.image, proportion=0, flag=wx.EXPAND|wx.ALL)
-        self.image.Bind(EVT_DELETE, self.imageDelete)
-        self.image.Bind(EVT_UPDATE, self.imageUpdate)
-
-        # vertical spacer
-        controls.AddSpacer(VSpacerSize)
-
-        # controls for image-relative image layer
-        self.image_view = self.make_gui_image_view(parent)
-        controls.Add(self.image_view, proportion=0, flag=wx.EXPAND|wx.ALL)
-        self.image_view.Bind(EVT_DELETE, self.imageViewDelete)
-        self.image_view.Bind(EVT_UPDATE, self.imageViewUpdate)
-
-        # vertical spacer
-        controls.AddSpacer(VSpacerSize)
-
-        return controls
-
-    def make_gui_level(self, parent):
-        """Build the control that shows the level.
-
-        parent  reference to parent
-
-        Returns reference to containing sizer object.
-        """
-
-        # create objects
-        txt = wx.StaticText(parent, wx.ID_ANY, 'Level: ')
-        self.map_level = wx.StaticText(parent, wx.ID_ANY, ' ')
-
-        # lay out the controls
-        sb = AppStaticBox(parent, 'Map level')
-        box = wx.StaticBoxSizer(sb, orient=wx.HORIZONTAL)
-        box.Add(txt, border=PackBorder, flag=(wx.ALIGN_CENTER_VERTICAL
-                                     |wx.ALIGN_RIGHT|wx.LEFT))
-        box.Add(self.map_level, proportion=0, border=PackBorder,
-                flag=wx.RIGHT|wx.TOP)
-
-        return box
-
-    def make_gui_mouse(self, parent):
-        """Build the mouse part of the controls part of GUI.
-
-        parent  reference to parent
-
-        Returns reference to containing sizer object.
-        """
-
-        # create objects
-        txt = wx.StaticText(parent, wx.ID_ANY, 'Lon/Lat: ')
-        self.mouse_position = ROTextCtrl(parent, '', size=(150,-1),
-                                         tooltip=('Shows the mouse '
-                                                  'longitude and latitude '
-                                                  'on the map'))
-
-        # lay out the controls
-        sb = AppStaticBox(parent, 'Mouse position')
-        box = wx.StaticBoxSizer(sb, orient=wx.HORIZONTAL)
-        box.Add(txt, border=PackBorder, flag=(wx.ALIGN_CENTER_VERTICAL
-                                     |wx.ALIGN_RIGHT|wx.LEFT))
-        box.Add(self.mouse_position, proportion=1, border=PackBorder,
-                flag=wx.RIGHT|wx.TOP|wx.BOTTOM)
-
-        return box
-
-    def make_gui_image(self, parent):
-        """Build the image part of the controls part of GUI.
-
-        parent  reference to parent
-
-        Returns reference to containing sizer object.
-        """
-
-        # create widgets
-        image_obj = LayerControl(parent, 'Image, map-relative',
-                                 filename=DefaultFilename,
-                                 placement=DefaultPlacement,
-                                 x=DefaultX, y=DefaultY,
-                                 offset_x=DefaultOffsetX,
-                                 offset_y=DefaultOffsetY)
-
-        return image_obj
-
-    def make_gui_image_view(self, parent):
-        """Build the view-relative image part of the controls part of GUI.
-
-        parent  reference to parent
-
-        Returns reference to containing sizer object.
-        """
-
-        # create widgets
-        image_obj = LayerControl(parent, 'Image, view-relative',
-                                 filename=DefaultViewFilename,
-                                 placement=DefaultViewPlacement,
-                                 x=DefaultViewX, y=DefaultViewY,
-                                 offset_x=DefaultViewOffsetX,
-                                 offset_y=DefaultViewOffsetY)
-
-        return image_obj
+        return vbox
 
     ######
     # event handlers
@@ -483,107 +341,46 @@ class AppFrame(wx.Frame):
 
 ##### map-relative image layer
 
-    def imageUpdate(self, event):
+    def change_image_map(self, filepath, placement, radius, colour,
+                           x, y, offset_x, offset_y):
+        print(f'change_image: filepath={filepath}, placement={placement}, '
+              f'radius={radius}, colour={colour}, x={x}, y={y}, '
+              f'offset_x={offset_x}, offset_y={offset_y}')
+
+    def change_image_mapX(self, image, placement, radius, colour,
+                           x, y, off_x, off_y):
         """Display updated image."""
 
         # remove any previous layer
-        if self.image_layer:
-            self.pyslipqt.DeleteLayer(self.image_layer)
+        if self.image_map_layer:
+            self.pyslipqt.DeleteLayer(self.image_map_layer)
 
-        # convert values to sanity for layer attributes
-        image = event.filename
-
-        placement = event.placement
-        if placement == 'none':
-            placement= ''
-
-        x = event.x
-        if not x:
-            x = 0
-        try:
-            x = float(x)
-        except ValueError:
-            x = 0.0
-
-        y = event.y
-        if not y:
-            y = 0
-        try:
-            y = float(y)
-        except ValueError:
-            y = 0.0
-
-        off_x = event.offset_x
-        if not off_x:
-            off_x = 0
-        try:
-            off_x = int(off_x)
-        except ValueError:
-            off_x = 0
-
-        off_y = event.offset_y
-        if not off_y:
-            off_y = 0
-        try:
-            off_y = int(off_y)
-        except ValueError:
-            off_y = 0
-
-        radius = event.radius
-        colour = event.colour
-
+        # create the new layer
         image_data = [(x, y, image, {'placement': placement,
                                      'radius': radius,
                                      'colour': colour,
                                      'offset_x': off_x,
                                      'offset_y': off_y})]
-        self.image_layer = self.pyslipqt.AddImageLayer(image_data, map_rel=True,
-                                                       visible=True,
-                                                       name='<image_layer>')
+        self.image_map_layer = self.pyslipqt.AddImageLayer(image_data,
+                                                           map_rel=True,
+                                                           visible=True,
+                                                           name='<image_layer>')
 
-    def imageDelete(self, event):
+    def remove_image_map(self):
         """Delete the image map-relative layer."""
 
-        if self.image_layer:
-            self.pyslipqt.DeleteLayer(self.image_layer)
+        if self.image_map_layer:
+            self.pyslipqt.DeleteLayer(self.image_map_layer)
         self.image_layer = None
 
 ##### view-relative image layer
 
-    def imageViewUpdate(self, event):
+    def change_image_view(self, image, placement, radius, colour,
+                           x, y, off_x, off_y):
         """Display updated image."""
 
         if self.image_view_layer:
             self.pyslip.DeleteLayer(self.image_view_layer)
-
-        # convert values to sanity for layer attributes
-        image = event.filename
-        placement = event.placement
-        if placement == 'none':
-            placement= ''
-
-        x = event.x
-        if not x:
-            x = 0
-        x = int(x)
-
-        y = event.y
-        if not y:
-            y = 0
-        y = int(y)
-
-        off_x = event.offset_x
-        if not off_x:
-            off_x = 0
-        off_x = int(off_x)
-
-        off_y = event.offset_y
-        if not off_y:
-            off_y = 0
-        off_y = int(off_y)
-
-        radius = event.radius
-        colour = event.colour
 
         # create a new image layer
         image_data = [(x, y, image, {'placement': placement,
@@ -596,7 +393,7 @@ class AppFrame(wx.Frame):
                                                             visible=True,
                                                             name='<image_layer>')
 
-    def imageViewDelete(self, event):
+    def remove_image_view(self):
         """Delete the image view-relative layer."""
 
         if self.image_view_layer:
@@ -665,6 +462,7 @@ except getopt.error:
     usage()
     sys.exit(1)
 
+tile_dir = 'test_tiles'
 tile_source = 'GMT'
 debug = False
 for (opt, param) in opts:
@@ -693,6 +491,6 @@ print(f'ProgramPath={ProgramPath}')
 
 # start the app
 app = QApplication(sys.argv)
-ex = ImagePlacementControlExample()
+ex = TestImagePlacement(tile_dir)
 sys.exit(app.exec())
 

@@ -214,9 +214,9 @@ class PySlipQtDemo(QMainWindow):
         grid.setColumnStretch(0, 1)
         grid.setContentsMargins(2, 2, 2, 2)
 
-        qwidget = QWidget(self)
-        qwidget.setLayout(grid)
-        self.setCentralWidget(qwidget)
+#        qwidget = QWidget(self)
+#        qwidget.setLayout(grid)
+#        self.setCentralWidget(qwidget)
 
         # initialize the tileset handler
         self.tileset_manager = self.init_tiles()

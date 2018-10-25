@@ -5,7 +5,7 @@ Test the DisplayText custom widget used by pySlipQt.
 """
 
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout
+from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QHBoxLayout
 
 try:
     from display_text import DisplayText

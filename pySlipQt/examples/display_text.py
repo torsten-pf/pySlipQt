@@ -42,13 +42,11 @@ class DisplayText(QWidget):
     def __init__(self, title, label, tooltip=None, text_width=None):
         QWidget.__init__(self)
 
-        grid = QGridLayout()
-        grid.setContentsMargins(2, 2, 2, 2)
-
         group = QGroupBox(title)
 
         lbl_label = QLabel(label)
         lbl_label.setFixedHeight(20)
+
         self.lbl_text = QLabel()
         self.lbl_text.setStyleSheet(DisplayText.text_style)
         if text_width:
@@ -57,13 +55,14 @@ class DisplayText(QWidget):
 
         hbox = QHBoxLayout()
         hbox.setContentsMargins(1, 1, 1, 1)
+
         hbox.addWidget(lbl_label)
         hbox.addWidget(self.lbl_text)
         hbox.addStretch(1)
+
         group.setLayout(hbox)
 
-        grid.addWidget(group)
-        self.setLayout(grid)
+        self.setLayout(hbox)
 
         if tooltip:
             self.setToolTip(tooltip)
