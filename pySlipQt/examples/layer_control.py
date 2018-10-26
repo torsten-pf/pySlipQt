@@ -34,8 +34,8 @@ Events:
 import platform
 from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtWidgets import (QWidget, QCheckBox, QGroupBox, QVBoxLayout,
-                             QHBoxLayout, QSpacerItem, QSizePolicy, QGridLayout)
+from PyQt5.QtWidgets import QWidget, QCheckBox, QGroupBox
+from PyQt5.QtWidgets import QHBoxLayout, QGridLayout
 
 class LayerControl(QWidget):
 

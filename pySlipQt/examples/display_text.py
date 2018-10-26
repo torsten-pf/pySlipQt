@@ -40,9 +40,7 @@ class DisplayText(QWidget):
                   'border-radius: 3px;')
 
     def __init__(self, title, label, tooltip=None, text_width=None):
-        QWidget.__init__(self)
-
-        group = QGroupBox(title)
+        super().__init__()
 
         lbl_label = QLabel(label)
         lbl_label.setFixedHeight(20)
@@ -53,16 +51,21 @@ class DisplayText(QWidget):
             self.lbl_text.setFixedWidth(text_width)
         self.lbl_text.setFixedHeight(20)
 
-        hbox = QHBoxLayout()
-        hbox.setContentsMargins(1, 1, 1, 1)
+        option_box = QGroupBox(title)
 
-        hbox.addWidget(lbl_label)
-        hbox.addWidget(self.lbl_text)
-        hbox.addStretch(1)
+        box_layout = QHBoxLayout()
+        box_layout.setContentsMargins(0, 0, 1, 1)
 
-        group.setLayout(hbox)
+        box_layout.addWidget(lbl_label)
+        box_layout.addWidget(self.lbl_text)
+        box_layout.addStretch(1)
 
-        self.setLayout(hbox)
+        option_box.setLayout(box_layout)
+
+        layout = QVBoxLayout()
+        layout.addWidget(option_box)
+
+        self.setLayout(layout)
 
         if tooltip:
             self.setToolTip(tooltip)
