@@ -11,27 +11,22 @@ import sys
 import getopt
 import traceback
 
-import tkinter_error
+from PyQt5.QtCore import QTimer
+from PyQt5.QtGui import QPixmap
+from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
+                             QAction, QGridLayout, QErrorMessage, QGroupBox)
 
-try:
-    from PyQt5.QtCore import QTimer
-    from PyQt5.QtGui import QPixmap
-    from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
-                                 QAction, QGridLayout, QErrorMessage, QGroupBox)
-except ImportError:
-    msg = '*'*60 + '\nSorry, you must install PyQt5\n' + '*'*60
-    print(msg)
-    tkinter_error(msg)
-    sys.exit(1)
+import pySlipQt.pySlipQt as pySlipQt
+import pySlipQt.log as log
 
-try:
-    import pySlipQt.pySlipQt as pySlipQt
-    import pySlipQt.log as log
-except ImportError:
-    msg = '*'*60 + '\nSorry, you must install pySlipQt\n' + '*'*60
-    print(msg)
-    tkinter_error(msg)
-    sys.exit(1)
+from display_text import DisplayText
+from layer_control import LayerControl
+from image_placement_control import ImagePlacementControl
+
+#from tkinter_error import tkinter_error
+
+# initialize the logging system
+log = log.Log("pyslipqt.log")
 
 ######
 # Various demo constants
@@ -40,6 +35,9 @@ except ImportError:
 # demo name/version
 DemoName = 'Test image placement, pySlipQt %s' % pySlipQt.__version__
 DemoVersion = '1.0'
+
+DemoHeight = 800
+DemoWidth = 1000
 
 # initial values
 #InitialViewLevel = 4
@@ -89,178 +87,19 @@ from PyQt5.QtWidgets import QLabel, QComboBox, QPushButton, QLineEdit
 from PyQt5.QtWidgets import QGridLayout, QFileDialog, QColorDialog
 from PyQt5.QtGui import QColor
 
+from image_placement_control import ImagePlacementControl
 
-##################################
-# Custom ImagePlacementControl widget.
-# 
-# Constructor:
-# 
-#     ipc = ImagePlacementControl(parent)
-# 
-# Events:
-# 
-#     .change   the contents were changed
-#     .remove   the image should be removed
-#
-# The '.change' event has attached attributes holding the values from the
-# widget, all checked so they are 'sane'.
-##################################
-
-class ImagePlacementControl(QWidget):
-
-    # set platform dependant values
-    if platform.system() == 'Linux':
-        pass
-    elif platform.system() == 'Darwin':
-        pass
-    elif platform.system() == 'Windows':
-        pass
-    else:
-        raise Exception('Unrecognized platform: %s' % platform.system())
-
-    # signals raised by this widget
-    change = pyqtSignal(str, str, int, QColor, int, int, int, int)
-    remove = pyqtSignal()
-
-    def __init__(self, parent, title):
-        """Initialise a ImagePlacementControl instance.
-
-        parent  reference to parent object
-        title   title to give the custom widget
-        """
-
-        QWidget.__init__(self)
-
-        # create all widgets used in this custom widget
-        self.filename = QLabel('/file/name')
-        self.filename.setToolTip('Click here to change the image file')
-        self.placement = QComboBox()
-        for p in ['none', 'nw', 'cn', 'ne', 'ce', 'se', 'cs', 'sw', 'cw', 'cc']:
-            self.placement.addItem(p)
-        self.point_radius = QLineEdit('2')
-        self.point_colour = QPushButton('')
-        self.posn_x = QLineEdit('0')
-        self.posn_y = QLineEdit('0')
-        self.offset_x = QLineEdit('0')
-        self.offset_y = QLineEdit('0')
-        btn_remove = QPushButton('Remove')
-        btn_update = QPushButton('Update')
-
-        # start the layout
-        group = QGroupBox(title)
-
-        grid = QGridLayout()
-        grid.setContentsMargins(2, 2, 2, 2)
-
-        # start layout
-        row = 1
-        label = QLabel('filename:')
-        label.setAlignment(Qt.AlignRight)
-        grid.addWidget(label, row, 0)
-        grid.addWidget(self.filename, row, 1, 1, 3)
-
-        row += 1
-        label = QLabel('placement:')
-        label.setAlignment(Qt.AlignRight)
-        grid.addWidget(label, row, 0)
-        grid.addWidget(self.placement, row, 1)
-
-        row += 1
-        label = QLabel('point radius:')
-        label.setAlignment(Qt.AlignRight)
-        grid.addWidget(label, row, 0)
-        grid.addWidget(self.point_radius, row, 1)
-        label = QLabel('point colour:')
-        label.setAlignment(Qt.AlignRight)
-        grid.addWidget(label, row, 2)
-        grid.addWidget(self.point_colour, row, 3)
-
-        row += 1
-        label = QLabel('X:')
-        label.setAlignment(Qt.AlignRight)
-        grid.addWidget(label, row, 0)
-        grid.addWidget(self.posn_x, row, 1)
-        label = QLabel('Y:')
-        label.setAlignment(Qt.AlignRight)
-        grid.addWidget(label, row, 2)
-        grid.addWidget(self.posn_y, row, 3)
-
-        row += 1
-        label = QLabel('X offset:')
-        label.setAlignment(Qt.AlignRight)
-        grid.addWidget(label, row, 0)
-        grid.addWidget(self.offset_x, row, 1)
-        label = QLabel('Y offset:')
-        label.setAlignment(Qt.AlignRight)
-        grid.addWidget(label, row, 2)
-        grid.addWidget(self.offset_y, row, 3)
-
-        row += 1
-        grid.addWidget(btn_remove, row, 1)
-        grid.addWidget(btn_update, row, 3)
-
-        group.setLayout(grid)
-
-        hbox = QHBoxLayout()
-        hbox.setContentsMargins(1, 1, 1, 1)
-        hbox.addWidget(group)
-
-        self.setLayout(hbox)
-
-        # connect internal widget events to handlers
-        self.filename.mouseReleaseEvent = self.changeGraphicsFile
-        self.point_colour.clicked.connect(self.changePointColour)
-        btn_remove.clicked.connect(self.removeImage)
-        btn_update.clicked.connect(self.updateData)
-
-        self.show()
-
-    def changeGraphicsFile(self, event):
-        options = QFileDialog.Options()
-        options |= QFileDialog.DontUseNativeDialog
-        file_types = "PNG (*.png);;JPG (*.jpg)"
-        (filename, _) = QFileDialog.getOpenFileName(self,"Open image file", "",
-                                                    file_types,
-                                                    options=options)
-        if filename:
-            # if filepath is relative to working directory, just get relative path
-            if filename.startswith(ProgramPath):
-                filename = filename[len(ProgramPath)+1:]
-            self.filename.setText(filename)
-
-    def changePointColour(self, event):
-        color = QColorDialog.getColor()
-        if color.isValid():
-            colour = color.name()
-            print(f'colour={colour}')
-            # set colour button background
-            self.point_colour.setStyleSheet(f'background-color:{colour};');
- 
-    def removeImage(self, event):
-        self.remove.emit()
-
-    def updateData(self, event):
-        filepath = self.filename.text()
-        placement = str(self.placement.currentText())
-        if placement == 'none':
-            placement = None
-        radius = int(self.point_radius.text())
-        colour = self.point_colour.palette().color(1)
-        print(f'colour={colour}')
-        x = int(self.posn_x.text())
-        y = int(self.posn_y.text())
-        offset_x = int(self.offset_x.text())
-        offset_y = int(self.offset_y.text())
-        
-        self.change.emit(filepath, placement, radius, colour, x, y, offset_x, offset_y)
 
 ################################################################################
 # The main application window.
 ################################################################################
 
 class TestImagePlacement(QMainWindow):
+
     def __init__(self, tile_dir=TileDirectory):
         super().__init__()
+
+        print('Start of __init__()')
 
         self.tile_directory = tile_dir
         self.tile_source = Tiles.Tiles()
@@ -268,38 +107,36 @@ class TestImagePlacement(QMainWindow):
         # variables for layer IDs
         self.image_map_layer = None
         self.image_view_layer = None
+        print('point 1')
 
+        # build the GUI
         grid = QGridLayout()
         grid.setColumnStretch(0, 1)
         grid.setContentsMargins(2, 2, 2, 2)
+        print('point 2')
 
         qwidget = QWidget(self)
         qwidget.setLayout(grid)
         self.setCentralWidget(qwidget)
+        print('point 3')
 
-########
+        # build the 'controls' part of GUI
+        num_rows = self.make_gui_controls(grid)
+        print('point 4')
 
-        # build the GUI
-#        layout = self.make_gui(self)
-        grid = QGridLayout()
-        grid.setContentsMargins(2, 2, 2, 2)
+        self.pyslipqt = pySlipQt.PySlipQt(self, tile_src=self.tile_source,
+                                          start_level=MinTileLevel)
+        grid.addWidget(self.pyslipqt, 0, 0, num_rows, 1)
+        print('point 5')
 
-        # make all widgets
-        self.pyslipqt = pySlipQt.PySlipQt(self, tile_src=self.tile_source, start_level=0)
-        self.map_image = ImagePlacementControl(self, 'Map-relative image')
-        self.view_image = ImagePlacementControl(self, 'View-relative image')
+        # set the size of the demo window, etc
+        self.setGeometry(100, 100, DemoWidth, DemoHeight)
+        self.setWindowTitle('%s %s' % (DemoName, DemoVersion))
+        print('point 6')
 
-        # start the layout
-        grid.addWidget(self.pyslipqt, 0, 0)
-
-        vbox = QVBoxLayout()
-        vbox.addWidget(self.map_image)
-        vbox.addWidget(self.view_image)
-        vbox.addStretch(1)
-
-        grid.addLayout(vbox, 0, 1)
-
-        self.setLayout(vbox)
+        # set initial view position
+#        self.map_level.set_text('%d' % InitViewLevel)
+        print('point 7')
 
         # tie events from controls to handlers
         self.map_image.remove.connect(self.remove_image_map)
@@ -307,33 +144,58 @@ class TestImagePlacement(QMainWindow):
 
         self.view_image.remove.connect(self.remove_image_view)
         self.view_image.change.connect(self.change_image_view)
+        print('point 8')
 
-        # set window title
-        self.setWindowTitle('%s %s' % (DemoName, DemoVersion))
+        # set initial view position
+        QTimer.singleShot(1, self.final_setup)
+        print('point 9')
+
         self.show()
+        print('point 10')
 
-    def make_gui(self, parent):
-        """Create application GUI."""
+    def make_gui_controls(self, grid):
+        """Build the 'controls' part of the GUI
 
-        grid = QGridLayout()
-        grid.setContentsMargins(2, 2, 2, 2)
+        grid  reference to grid that we populate
 
-        # make all widgets
-        self.pyslipqt = pySlipQt.PySlipQt(parent, tile_src=self.tile_source, start_level=0)
-        self.map_image = ImagePlacementControl(self, 'Map-relative image')
-        self.view_image = ImagePlacementControl(self, 'View-relative image')
+        Returns the number of rows added to the 'grid' layout.
+        """
 
-        # start the layout
-        grid.addWidget(self.pyslipqt, 0, 0)
+        # the 'grid_row' variable is row to add into
+        grid_row = 0
 
-        vbox = QVBoxLayout()
-        vbox.addWidget(self.map_image)
-        vbox.addWidget(self.view_image)
-        vbox.addStretch(1)
+        # put level and position into grid at top right
+        self.map_level = DisplayText(title='Map level', label='Level:',
+                                     tooltip=None)
+        grid.addWidget(self.map_level, grid_row, 1, 1, 1)
+        self.mouse_position = DisplayText(title='Cursor position',
+                                          label='Lon/Lat:', text_width=100,
+                                          tooltip='Shows the mouse longitude and latitude on the map',)
+        grid.addWidget(self.mouse_position, grid_row, 2, 1, 1)
+        grid_row += 1
 
-        grid.addLayout(vbox, 0, 1)
 
-        return vbox
+        # conrol for map-relative placement
+        self.map_image = ImagePlacementControl('Map-relative image placement')
+        grid.addWidget(self.map_image, grid_row, 1, 1, 3)
+        grid_row += 1
+
+        # controls for view-relative placement
+        self.view_image = ImagePlacementControl('View-relative image placement')
+        grid.addWidget(self.view_image, grid_row, 1, 1, 3)
+        grid_row += 1
+
+        return grid_row
+
+    def final_setup(self):
+        """Perform final setup.
+
+        We do this in a OneShot() function for those operations that
+        must not be done while the GUI is "fluid".
+        """
+
+        self.pyslipqt.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
+
 
     ######
     # event handlers
@@ -441,7 +303,7 @@ def excepthook(type, value, tb):
     msg += ''.join(traceback.format_exception(type, value, tb))
     msg += '=' * 80 + '\n'
     log(msg)
-    tkinter_error.tkinter_error(msg)
+#    tkinter_error.tkinter_error(msg)
     sys.exit(1)
 
 def usage(msg=None):
@@ -484,13 +346,7 @@ else:
     usage('Bad tile source: %s' % tile_source)
     sys.exit(3)
 
-ProgramFile = __file__
-ProgramPath = os.getcwd()
-print(f'ProgramFile={ProgramFile}')
-print(f'ProgramPath={ProgramPath}')
-
 # start the app
-app = QApplication(sys.argv)
+app = QApplication(args)
 ex = TestImagePlacement(tile_dir)
-sys.exit(app.exec())
-
+sys.exit(app.exec_())
