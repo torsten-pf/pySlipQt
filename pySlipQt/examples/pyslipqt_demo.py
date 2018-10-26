@@ -214,9 +214,9 @@ class PySlipQtDemo(QMainWindow):
         grid.setColumnStretch(0, 1)
         grid.setContentsMargins(2, 2, 2, 2)
 
-#        qwidget = QWidget(self)
-#        qwidget.setLayout(grid)
-#        self.setCentralWidget(qwidget)
+        qwidget = QWidget(self)
+        qwidget.setLayout(grid)
+        self.setCentralWidget(qwidget)
 
         # initialize the tileset handler
         self.tileset_manager = self.init_tiles()
@@ -295,7 +295,7 @@ class PySlipQtDemo(QMainWindow):
         self.lc_point.change_add.connect(self.pointOnOff)   # tie to event handler(s)
         self.lc_point.change_show.connect(self.pointShowOnOff)
         self.lc_point.change_select.connect(self.pointSelectOnOff)
-        grid.addWidget(self.lc_point, grid_row, 1, 1, 3)
+        grid.addWidget(self.lc_point, grid_row, 1, 1, 2)
         grid_row += 1
 
         # controls for view-relative points layer
@@ -303,7 +303,7 @@ class PySlipQtDemo(QMainWindow):
         self.lc_point_v.change_add.connect(self.pointViewOnOff)   # tie to event handler(s)
         self.lc_point_v.change_show.connect(self.pointViewShowOnOff)
         self.lc_point_v.change_select.connect(self.pointViewSelectOnOff)
-        grid.addWidget(self.lc_point_v, grid_row, 1, 1, 3)
+        grid.addWidget(self.lc_point_v, grid_row, 1, 1, 2)
         grid_row += 1
 
         # controls for map-relative image layer
@@ -313,7 +313,7 @@ class PySlipQtDemo(QMainWindow):
         self.lc_image.change_add.connect(self.imageOnOff)   # tie to event handler(s)
         self.lc_image.change_show.connect(self.imageShowOnOff)
         self.lc_image.change_select.connect(self.imageSelectOnOff)
-        grid.addWidget(self.lc_image, grid_row, 1, 1, 3)
+        grid.addWidget(self.lc_image, grid_row, 1, 1, 2)
         grid_row += 1
 
         # controls for map-relative image layer
@@ -321,7 +321,7 @@ class PySlipQtDemo(QMainWindow):
         self.lc_image_v.change_add.connect(self.imageViewOnOff)   # tie to event handler(s)
         self.lc_image_v.change_show.connect(self.imageViewShowOnOff)
         self.lc_image_v.change_select.connect(self.imageViewSelectOnOff)
-        grid.addWidget(self.lc_image_v, grid_row, 1, 1, 3)
+        grid.addWidget(self.lc_image_v, grid_row, 1, 1, 2)
         grid_row += 1
 
         # controls for map-relative text layer
@@ -331,7 +331,7 @@ class PySlipQtDemo(QMainWindow):
         self.lc_text.change_add.connect(self.textOnOff)     # tie to event handler(s)
         self.lc_text.change_show.connect(self.textShowOnOff)
         self.lc_text.change_select.connect(self.textSelectOnOff)
-        grid.addWidget(self.lc_text, grid_row, 1, 1, 3)
+        grid.addWidget(self.lc_text, grid_row, 1, 1, 2)
         grid_row += 1
 
         # controls for view-relative text layer
@@ -339,7 +339,7 @@ class PySlipQtDemo(QMainWindow):
         self.lc_text_v.change_add.connect(self.textViewOnOff)    # tie to event handler(s)
         self.lc_text_v.change_show.connect(self.textViewShowOnOff)
         self.lc_text_v.change_select.connect(self.textViewSelectOnOff)
-        grid.addWidget(self.lc_text_v, grid_row, 1, 1, 3)
+        grid.addWidget(self.lc_text_v, grid_row, 1, 1, 2)
         grid_row += 1
 
         # controls for map-relative polygon layer
@@ -349,7 +349,7 @@ class PySlipQtDemo(QMainWindow):
         self.lc_poly.change_add.connect(self.polyOnOff)     # tie to event handler(s)
         self.lc_poly.change_show.connect(self.polyShowOnOff)
         self.lc_poly.change_select.connect(self.polySelectOnOff)
-        grid.addWidget(self.lc_poly, grid_row, 1, 1, 3)
+        grid.addWidget(self.lc_poly, grid_row, 1, 1, 2)
         grid_row += 1
 
         # controls for view-relative polygon layer
@@ -357,7 +357,7 @@ class PySlipQtDemo(QMainWindow):
         self.lc_poly_v.change_add.connect(self.polyViewOnOff)    # tie to event handler(s)
         self.lc_poly_v.change_show.connect(self.polyViewShowOnOff)
         self.lc_poly_v.change_select.connect(self.polyViewSelectOnOff)
-        grid.addWidget(self.lc_poly_v, grid_row, 1, 1, 3)
+        grid.addWidget(self.lc_poly_v, grid_row, 1, 1, 2)
         grid_row += 1
 
         # controls for map-relative polyline layer
@@ -367,7 +367,7 @@ class PySlipQtDemo(QMainWindow):
         self.lc_poll.change_add.connect(self.polylineOnOff)     # tie to event handler(s)
         self.lc_poll.change_show.connect(self.polylineShowOnOff)
         self.lc_poll.change_select.connect(self.polylineSelectOnOff)
-        grid.addWidget(self.lc_poll, grid_row, 1, 1, 3)
+        grid.addWidget(self.lc_poll, grid_row, 1, 1, 2)
         grid_row += 1
 
         # controls for view-relative polyline layer
@@ -375,7 +375,7 @@ class PySlipQtDemo(QMainWindow):
         self.lc_poll_v.change_add.connect(self.polylineViewOnOff)    # tie to event handler(s)
         self.lc_poll_v.change_show.connect(self.polylineViewShowOnOff)
         self.lc_poll_v.change_select.connect(self.polylineViewSelectOnOff)
-        grid.addWidget(self.lc_poll_v, grid_row, 1, 1, 3)
+        grid.addWidget(self.lc_poll_v, grid_row, 1, 1, 2)
         grid_row += 1
 
         return grid_row
