@@ -1749,7 +1749,11 @@ class PySlipQt(QWidget):
                 b = int(colour[5:7], 16)
                 a = int(colour[7:9], 16)
                 result = (r, g, b, a)
+        elif isinstance(colour, QColor):
+            # if it's a QColor, get float RGBA values, convert to ints
+            result = [int(v*255) for v in colour.getRgbF()]
         else:
+
             # we assume a list or tuple
             try:
                 len_colour = len(colour)

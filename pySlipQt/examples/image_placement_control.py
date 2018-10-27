@@ -2,15 +2,14 @@
 The custom control for test_image_placement.py program.
 """
 
+
 import os
 import sys
-import platform
-
-from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout
-from PyQt5.QtWidgets import QLabel, QComboBox, QPushButton, QLineEdit
-from PyQt5.QtWidgets import QGridLayout, QFileDialog, QColorDialog, QGroupBox
+from PyQt5.QtWidgets import (QApplication, QMainWindow, QGridLayout, QWidget,
+                             QHBoxLayout, QVBoxLayout, QGroupBox, QPushButton,
+                             QLabel, QComboBox, QLineEdit,
+                             QFileDialog, QColorDialog)
 from PyQt5.QtGui import QColor
 
 
@@ -32,16 +31,6 @@ from PyQt5.QtGui import QColor
 
 class ImagePlacementControl(QWidget):
 
-    # set platform dependant values
-    if platform.system() == 'Linux':
-        pass
-    elif platform.system() == 'Darwin':
-        pass
-    elif platform.system() == 'Windows':
-        pass
-    else:
-        raise Exception('Unrecognized platform: %s' % platform.system())
-
     # signals raised by this widget
     change = pyqtSignal(str, str, int, QColor, int, int, int, int)
     remove = pyqtSignal()
@@ -54,12 +43,18 @@ class ImagePlacementControl(QWidget):
 
         super().__init__()
 
+        # some state
+        self.image_path = None      # path to the image file
+
         # create subwidgets used in this custom widget
-        self.filename = QLabel('/file/name')
+        self.filename = QLabel('')
+        self.filename.setStyleSheet("QLabel { background-color : #f0f0f0; border: 1px solid gray; border-radius: 3px; }")
         self.filename.setToolTip('Click here to change the image file')
+
         self.placement = QComboBox()
         for p in ['none', 'nw', 'cn', 'ne', 'ce', 'se', 'cs', 'sw', 'cw', 'cc']:
             self.placement.addItem(p)
+
         self.point_radius = QLineEdit('2')
         self.point_colour = QPushButton('')
         self.posn_x = QLineEdit('0')
@@ -73,47 +68,48 @@ class ImagePlacementControl(QWidget):
         option_box = QGroupBox(title)
 
         box_layout = QGridLayout()
-#        box_layout.setContentsMargins(2, 2, 2, 2)
+        box_layout.setContentsMargins(2, 2, 2, 2)
+        box_layout.setHorizontalSpacing(1)
 
         # start layout
         row = 1
-        label = QLabel('filename:')
+        label = QLabel('filename: ')
         label.setAlignment(Qt.AlignRight)
         box_layout.addWidget(label, row, 0)
         box_layout.addWidget(self.filename, row, 1, 1, 3)
 
         row += 1
-        label = QLabel('placement:')
+        label = QLabel('placement: ')
         label.setAlignment(Qt.AlignRight)
         box_layout.addWidget(label, row, 0)
         box_layout.addWidget(self.placement, row, 1)
 
         row += 1
-        label = QLabel('point radius:')
+        label = QLabel('point radius: ')
         label.setAlignment(Qt.AlignRight)
         box_layout.addWidget(label, row, 0)
         box_layout.addWidget(self.point_radius, row, 1)
-        label = QLabel('point colour:')
+        label = QLabel('colour: ')
         label.setAlignment(Qt.AlignRight)
         box_layout.addWidget(label, row, 2)
         box_layout.addWidget(self.point_colour, row, 3)
 
         row += 1
-        label = QLabel('X:')
+        label = QLabel('X: ')
         label.setAlignment(Qt.AlignRight)
         box_layout.addWidget(label, row, 0)
         box_layout.addWidget(self.posn_x, row, 1)
-        label = QLabel('Y:')
+        label = QLabel('Y: ')
         label.setAlignment(Qt.AlignRight)
         box_layout.addWidget(label, row, 2)
         box_layout.addWidget(self.posn_y, row, 3)
 
         row += 1
-        label = QLabel('X offset:')
+        label = QLabel('offset X: ')
         label.setAlignment(Qt.AlignRight)
         box_layout.addWidget(label, row, 0)
         box_layout.addWidget(self.offset_x, row, 1)
-        label = QLabel('Y offset:')
+        label = QLabel('Y: ')
         label.setAlignment(Qt.AlignRight)
         box_layout.addWidget(label, row, 2)
         box_layout.addWidget(self.offset_y, row, 3)
@@ -125,7 +121,7 @@ class ImagePlacementControl(QWidget):
         option_box.setLayout(box_layout)
 
         layout = QHBoxLayout()
-#        layout.setContentsMargins(1, 1, 1, 1)
+        layout.setContentsMargins(1, 1, 1, 1)
         layout.addWidget(option_box)
 
         self.setLayout(layout)
@@ -136,8 +132,6 @@ class ImagePlacementControl(QWidget):
         btn_remove.clicked.connect(self.removeImage)
         btn_update.clicked.connect(self.updateData)
 
-        self.show()
-
     def changeGraphicsFile(self, event):
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
@@ -146,16 +140,15 @@ class ImagePlacementControl(QWidget):
                                                     file_types,
                                                     options=options)
         if filename:
-            # if filepath is relative to working directory, just get relative path
-            if filename.startswith(ProgramPath):
-                filename = filename[len(ProgramPath)+1:]
+            # just dislay the filename in the text field
+            self.image_path = filename
+            filename = os.path.basename(filename)
             self.filename.setText(filename)
 
     def changePointColour(self, event):
         color = QColorDialog.getColor()
         if color.isValid():
             colour = color.name()
-            print(f'colour={colour}')
             # set colour button background
             self.point_colour.setStyleSheet(f'background-color:{colour};');
  
@@ -163,16 +156,14 @@ class ImagePlacementControl(QWidget):
         self.remove.emit()
 
     def updateData(self, event):
-        filepath = self.filename.text()
         placement = str(self.placement.currentText())
         if placement == 'none':
             placement = None
         radius = int(self.point_radius.text())
         colour = self.point_colour.palette().color(1)
-        print(f'colour={colour}')
         x = int(self.posn_x.text())
         y = int(self.posn_y.text())
         offset_x = int(self.offset_x.text())
         offset_y = int(self.offset_y.text())
         
-        self.change.emit(filepath, placement, radius, colour, x, y, offset_x, offset_y)
+        self.change.emit(self.image_path, placement, radius, colour, x, y, offset_x, offset_y)
