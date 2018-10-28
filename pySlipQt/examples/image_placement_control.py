@@ -2,13 +2,13 @@
 The custom control for test_image_placement.py program.
 """
 
-
 import os
 import sys
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QGridLayout, QWidget,
                              QHBoxLayout, QVBoxLayout, QGroupBox, QPushButton,
                              QLabel, QComboBox, QLineEdit,
+                             QSizePolicy,
                              QFileDialog, QColorDialog)
 from PyQt5.QtGui import QColor
 
@@ -52,7 +52,7 @@ class ImagePlacementControl(QWidget):
         self.filename.setToolTip('Click here to change the image file')
 
         self.placement = QComboBox()
-        for p in ['none', 'nw', 'cn', 'ne', 'ce', 'se', 'cs', 'sw', 'cw', 'cc']:
+        for p in ['nw', 'cn', 'ne', 'ce', 'se', 'cs', 'sw', 'cw', 'cc']:
             self.placement.addItem(p)
 
         self.point_radius = QLineEdit('2')
@@ -62,7 +62,9 @@ class ImagePlacementControl(QWidget):
         self.offset_x = QLineEdit('0')
         self.offset_y = QLineEdit('0')
         btn_remove = QPushButton('Remove')
+        btn_remove.resize(btn_remove.sizeHint())
         btn_update = QPushButton('Update')
+        btn_update.resize(btn_update.sizeHint())
 
         # start the layout
         option_box = QGroupBox(title)
@@ -70,6 +72,9 @@ class ImagePlacementControl(QWidget):
         box_layout = QGridLayout()
         box_layout.setContentsMargins(2, 2, 2, 2)
         box_layout.setHorizontalSpacing(1)
+        box_layout.setColumnStretch(0, 1)
+#        for i in range(1, 4):
+#            box_layout.setColumnStretch(i, 0)
 
         # start layout
         row = 1
@@ -125,6 +130,11 @@ class ImagePlacementControl(QWidget):
         layout.addWidget(option_box)
 
         self.setLayout(layout)
+
+        # set size hints
+        self.setMinimumSize(150, 200)
+        size_policy = QSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setSizePolicy(size_policy)
 
         # connect internal widget events to handlers
         self.filename.mouseReleaseEvent = self.changeGraphicsFile

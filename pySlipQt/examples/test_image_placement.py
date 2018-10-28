@@ -49,7 +49,7 @@ TileDirectory = 'test_tiles'
 MinTileLevel = 0
 
 # the number of decimal places in a lon/lat display
-LonLatPrecision = 3
+LonLatPrecision = 2
 
 # startup size of the application
 DefaultAppSize = (1000, 700)
@@ -129,6 +129,7 @@ class TestImagePlacement(QMainWindow):
         vbox.addWidget(self.map_image)
         self.view_image = ImagePlacementControl('View-relative Image')
         vbox.addWidget(self.view_image)
+        vbox.addStretch(1)
 
         # add the map widget to the overall HBox
         self.pyslipqt = pySlipQt.PySlipQt(self, tile_src=self.tile_source,
