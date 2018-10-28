@@ -22,7 +22,7 @@ class DisplayTextExample(QWidget):
 
         self.dt_group = DisplayText(title='Group title longer', label='Label:',
                                     tooltip='A tooltip')
-        self.dt_group.set_text("A longer text")
+        self.dt_group.set_text("14")
 
         hbox = QHBoxLayout()
         hbox.setSpacing(5)

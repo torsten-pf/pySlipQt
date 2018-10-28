@@ -31,6 +31,10 @@ from PyQt5.QtGui import QColor
 
 class ImagePlacementControl(QWidget):
 
+    # various sizes
+    LineEditWidth = 40
+    ButtonWidth = 40
+
     # signals raised by this widget
     change = pyqtSignal(str, str, int, QColor, int, int, int, int)
     remove = pyqtSignal()
@@ -56,11 +60,18 @@ class ImagePlacementControl(QWidget):
             self.placement.addItem(p)
 
         self.point_radius = QLineEdit('2')
+        self.point_radius.setFixedWidth(ImagePlacementControl.LineEditWidth)
         self.point_colour = QPushButton('')
+        self.point_colour.setFixedWidth(ImagePlacementControl.ButtonWidth)
+        self.point_colour.setToolTip('Click here to change the point colour')
         self.posn_x = QLineEdit('0')
+        self.posn_x.setFixedWidth(ImagePlacementControl.LineEditWidth)
         self.posn_y = QLineEdit('0')
+        self.posn_y.setFixedWidth(ImagePlacementControl.LineEditWidth)
         self.offset_x = QLineEdit('0')
+        self.offset_x.setFixedWidth(ImagePlacementControl.LineEditWidth)
         self.offset_y = QLineEdit('0')
+        self.offset_y.setFixedWidth(ImagePlacementControl.LineEditWidth)
         btn_remove = QPushButton('Remove')
         btn_remove.resize(btn_remove.sizeHint())
         btn_update = QPushButton('Update')
@@ -132,7 +143,7 @@ class ImagePlacementControl(QWidget):
         self.setLayout(layout)
 
         # set size hints
-        self.setMinimumSize(150, 200)
+        self.setMinimumSize(300, 200)
         size_policy = QSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.setSizePolicy(size_policy)
 

@@ -35,18 +35,23 @@ from PyQt5.QtCore import Qt
 
 class DisplayText(QWidget):
 
-    text_style = ('background-color: rgb(255, 255, 255);'
-                  'border:1px solid rgb(128, 128, 128);'
-                  'border-radius: 3px;')
+    # some subwidget sizes
+    LabelWidth = 40
+
+    # styles strings
+    TextStyle = ('background-color: rgb(255, 255, 255);'
+                 'border:1px solid rgb(128, 128, 128);'
+                 'border-radius: 3px;')
 
     def __init__(self, title, label, tooltip=None, text_width=None):
         super().__init__()
 
         lbl_label = QLabel(label)
         lbl_label.setFixedHeight(20)
+        lbl_label.setFixedHeight(DisplayText.LabelWidth)
 
         self.lbl_text = QLabel()
-        self.lbl_text.setStyleSheet(DisplayText.text_style)
+        self.lbl_text.setStyleSheet(DisplayText.TextStyle)
         if text_width:
             self.lbl_text.setFixedWidth(text_width)
         self.lbl_text.setFixedHeight(20)
