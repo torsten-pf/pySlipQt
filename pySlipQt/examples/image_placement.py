@@ -5,11 +5,9 @@ The custom control for test_image_placement.py program.
 import os
 import sys
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtWidgets import (QApplication, QMainWindow, QGridLayout, QWidget,
-                             QHBoxLayout, QVBoxLayout, QGroupBox, QPushButton,
-                             QLabel, QComboBox, QLineEdit,
-                             QSizePolicy,
-                             QFileDialog, QColorDialog)
+from PyQt5.QtWidgets import (QWidget, QGridLayout, QHBoxLayout, QGroupBox,
+                             QPushButton, QLabel, QComboBox, QLineEdit,
+                             QSizePolicy, QFileDialog, QColorDialog)
 from PyQt5.QtGui import QColor
 
 

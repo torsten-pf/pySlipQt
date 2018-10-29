@@ -13,20 +13,20 @@ import traceback
 
 from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QPixmap
-from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
-                             QAction, QGridLayout, QErrorMessage, QGroupBox)
+from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget,
+                             QVBoxLayout, QHBoxLayout)
 
 import pySlipQt.pySlipQt as pySlipQt
 import pySlipQt.log as log
 
 from display_text import DisplayText
 from layer_control import LayerControl
-from image_placement_control import ImagePlacementControl
+from image_placement import ImagePlacementControl
 
 #from tkinter_error import tkinter_error
 
 # initialize the logging system
-log = log.Log("pyslipqt.log")
+log = log.Log('test_image_placement.log')
 
 ######
 # Various demo constants
@@ -74,20 +74,6 @@ DefaultViewY = 0
 DefaultViewOffsetX = 0
 DefaultViewOffsetY = 0
 
-
-
-import os
-import sys
-import platform
-
-from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout
-from PyQt5 import QtCore
-from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtWidgets import QLabel, QComboBox, QPushButton, QLineEdit
-from PyQt5.QtWidgets import QGridLayout, QFileDialog, QColorDialog
-from PyQt5.QtGui import QColor
-
-from image_placement_control import ImagePlacementControl
 
 
 ################################################################################
@@ -208,7 +194,7 @@ class TestImagePlacement(QMainWindow):
 
         if self.image_map_layer:
             self.pyslipqt.DeleteLayer(self.image_map_layer)
-        self.image_layer = None
+        self.image_map_layer = None
 
 ##### view-relative image layer
 
@@ -301,14 +287,17 @@ for (opt, param) in opts:
         tile_source = param
 tile_source = tile_source.lower()
 
-# set up the appropriate tile source
-if tile_source == 'gmt':
-    import pySlipQt.gmt_local as Tiles
-elif tile_source == 'osm':
-    import pySlipQt.open_street_map as Tiles
-else:
-    usage('Bad tile source: %s' % tile_source)
-    sys.exit(3)
+import pySlipQt.gmt_local as Tiles
+## set up the appropriate tile source
+#if tile_source == 'gmt':
+#    print('importing pySlipQt.gmt_local')
+#    import pySlipQt.gmt_local as Tiles
+#elif tile_source == 'osm':
+#    print('importing pySlipQt.open_street_map')
+#    import pySlipQt.open_street_map as Tiles
+#else:
+#    usage('Bad tile source: %s' % tile_source)
+#    sys.exit(3)
 
 # start the app
 app = QApplication(args)
