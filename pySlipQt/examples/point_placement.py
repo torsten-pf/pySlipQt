@@ -13,18 +13,6 @@ from PyQt5.QtGui import QColor
 
 ##################################
 # Custom PointPlacementControl widget.
-# 
-# Constructor:
-# 
-#     ipc = PointPlacementControl('test title')
-# 
-# Events:
-# 
-#     .change   the contents were changed
-#     .remove   the image should be removed
-#
-# The '.change' event has attached attributes holding the values from the
-# widget, all checked so they are 'sane'.
 ##################################
 
 class PointPlacementControl(QWidget):
