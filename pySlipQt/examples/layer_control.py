@@ -54,6 +54,24 @@ class LayerControl(QWidget):
     change_show = pyqtSignal(bool)      # signal raised when user toggles "show" checkbox
     change_select = pyqtSignal(bool)    # signal raised when user toggles "select" checkbox
 
+    # some stylesheets
+    TextStyle = ('QLabel { background-color: white; '
+                          'border:1px solid rgb(128, 128, 128); '
+                          'border-radius: 3px; }')
+    LabelStyle = ('QLabel { background-color: white; '
+                           'border:1px solid rgb(128, 128, 128); '
+                           'border-radius: 3px; }')
+#    GroupStyle = 'QGroupBox { background-color: rgb(230, 230, 230); }'
+
+#    LabelStyle = 'QLabel { background-color : #f0f0f0; border: 1px solid gray; border-radius: 3px; }'
+    GroupStyle = ('QGroupBox { background-color: rgb(230, 230, 230); }'
+                  'QGroupBox::title { subcontrol-origin: margin; '
+                                 '    background-color: rgb(215, 215, 215); '
+                                 '    border-radius: 3px; '
+                                 '    padding: 2 2px; '
+                                 '    color: black; }')
+
+
     def __init__(self, parent, title, selectable=False, tooltip=None):
         """Initialise a LayerControl instance.
 
@@ -74,6 +92,7 @@ class LayerControl(QWidget):
         group = QGroupBox(title)
         group.setCheckable(True)
         group.setChecked(False)
+        group.setStyleSheet(LayerControl.GroupStyle)
 
         grid = QGridLayout()
         grid.setContentsMargins(2, 2, 2, 2)

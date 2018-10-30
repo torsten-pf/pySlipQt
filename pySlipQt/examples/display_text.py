@@ -36,18 +36,29 @@ from PyQt5.QtCore import Qt
 class DisplayText(QWidget):
 
     # some subwidget sizes
-    LabelWidth = 40
+    LabelWidth = 20
 
     # styles strings
-    TextStyle = ('background-color: rgb(255, 255, 255);'
-                 'border:1px solid rgb(128, 128, 128);'
-                 'border-radius: 3px;')
+    TextStyle = ('QLabel { background-color: white; '
+                          'border:1px solid rgb(128, 128, 128); '
+                          'border-radius: 3px; }')
+    LabelStyle = ('QLabel { background-color: white; '
+                           'border:1px solid rgb(128, 128, 128); '
+                           'border-radius: 3px; }')
+#    GroupStyle = 'QGroupBox { background-color: rgb(230, 230, 230); border-radius: 3px; }'
+
+#    LabelStyle = 'QLabel { background-color : #f0f0f0; border: 1px solid gray; border-radius: 3px; }'
+    GroupStyle = ('QGroupBox { background-color: rgb(230, 230, 230); }'
+                  'QGroupBox::title { subcontrol-origin: margin; '
+                                 '    background-color: rgb(215, 215, 215); '
+                                 '    border-radius: 3px; '
+                                 '    padding: 2 2px; '
+                                 '    color: black; }')
 
     def __init__(self, title, label, tooltip=None, text_width=None):
         super().__init__()
 
         lbl_label = QLabel(label)
-        lbl_label.setFixedHeight(20)
         lbl_label.setFixedHeight(DisplayText.LabelWidth)
 
         self.lbl_text = QLabel()
@@ -57,6 +68,7 @@ class DisplayText(QWidget):
         self.lbl_text.setFixedHeight(20)
 
         option_box = QGroupBox(title)
+        option_box.setStyleSheet(DisplayText.GroupStyle)
 
         box_layout = QHBoxLayout()
         box_layout.setContentsMargins(0, 0, 1, 1)

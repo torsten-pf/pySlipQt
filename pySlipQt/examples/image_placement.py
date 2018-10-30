@@ -37,6 +37,15 @@ class ImagePlacementControl(QWidget):
     change = pyqtSignal(str, str, int, QColor, int, int, int, int)
     remove = pyqtSignal()
 
+    # some stylesheets
+    LabelStyle = 'QLabel { background-color : #f0f0f0; border: 1px solid gray; border-radius: 3px; }'
+    GroupStyle = ('QGroupBox { background-color: rgb(230, 230, 230); }'
+                  'QGroupBox::title { subcontrol-origin: margin; '
+                                 '    background-color: rgb(215, 215, 215); '
+                                 '    border-radius: 3px; '
+                                 '    padding: 2 2px; '
+                                 '    color: black; }')
+
     def __init__(self, title):
         """Initialise a ImagePlacementControl instance.
 
@@ -50,7 +59,7 @@ class ImagePlacementControl(QWidget):
 
         # create subwidgets used in this custom widget
         self.filename = QLabel('')
-        self.filename.setStyleSheet("QLabel { background-color : #f0f0f0; border: 1px solid gray; border-radius: 3px; }")
+        self.filename.setStyleSheet(ImagePlacementControl.LabelStyle)
         self.filename.setToolTip('Click here to change the image file')
 
         self.placement = QComboBox()
@@ -77,13 +86,12 @@ class ImagePlacementControl(QWidget):
 
         # start the layout
         option_box = QGroupBox(title)
+        option_box.setStyleSheet(ImagePlacementControl.GroupStyle)
 
         box_layout = QGridLayout()
         box_layout.setContentsMargins(2, 2, 2, 2)
         box_layout.setHorizontalSpacing(1)
         box_layout.setColumnStretch(0, 1)
-#        for i in range(1, 4):
-#            box_layout.setColumnStretch(i, 0)
 
         # start layout
         row = 1

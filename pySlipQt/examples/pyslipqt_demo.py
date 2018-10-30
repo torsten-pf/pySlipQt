@@ -279,10 +279,10 @@ class PySlipQtDemo(QMainWindow):
         grid_row = 0
 
         # put level and position into grid at top right
-        self.map_level = DisplayText(title='Map level', label='Level:',
+        self.map_level = DisplayText(title='', label='Level:',
                                      tooltip=None)
         grid.addWidget(self.map_level, grid_row, 1, 1, 1)
-        self.mouse_position = DisplayText(title='Cursor position',
+        self.mouse_position = DisplayText(title='',
                                           label='Lon/Lat:', text_width=100,
                                           tooltip='Shows the mouse longitude and latitude on the map',)
         grid.addWidget(self.mouse_position, grid_row, 2, 1, 1)

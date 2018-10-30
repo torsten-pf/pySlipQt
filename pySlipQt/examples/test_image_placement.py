@@ -14,7 +14,7 @@ import traceback
 from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget,
-                             QVBoxLayout, QHBoxLayout)
+                             QGridLayout, QVBoxLayout, QHBoxLayout)
 
 import pySlipQt.pySlipQt as pySlipQt
 import pySlipQt.log as log
@@ -93,42 +93,21 @@ class TestImagePlacement(QMainWindow):
         self.image_view_layer = None
 
         # build the GUI
-        outer_hbox = QHBoxLayout()
+        grid = QGridLayout()
+        grid.setColumnStretch(0, 1)
+        grid.setContentsMargins(2, 2, 2, 2)
 
-        # build the right part of ther display
-        vbox = QVBoxLayout()
+        qwidget = QWidget(self)
+        qwidget.setLayout(grid)
+        self.setCentralWidget(qwidget)
 
-        # add the map level and mouse position parts to right VBox
-        hbox = QHBoxLayout()
-        self.map_level = DisplayText(title='Map level', label='Level:',
-                                     tooltip=None)
-        hbox.addWidget(self.map_level)
-        hbox.addStretch(1)
-        self.mouse_position = DisplayText(title='Cursor position',
-                                          label='Lon/Lat:', text_width=100,
-                                          tooltip='Shows the mouse longitude and latitude on the map',)
-        hbox.addWidget(self.mouse_position)
-        vbox.addLayout(hbox)
+        # build the 'controls' part of GUI
+        num_rows = self.make_gui_controls(grid)
 
-        # now add the two image control widgets to right VBox
-        self.map_image = ImagePlacementControl('Map-relative Image')
-        vbox.addWidget(self.map_image)
-        self.view_image = ImagePlacementControl('View-relative Image')
-        vbox.addWidget(self.view_image)
-        vbox.addStretch(1)
-
-        # add the map widget to the overall HBox
         self.pyslipqt = pySlipQt.PySlipQt(self, tile_src=self.tile_source,
                                           start_level=MinTileLevel)
-        outer_hbox.addWidget(self.pyslipqt)
-
-        # add the right VBox to overall HBox
-        outer_hbox.addLayout(vbox)
-
-        # create a widget, use outer_hbox layout above and make it replace the main window
-        qwidget = QWidget(self)
-        qwidget.setLayout(outer_hbox)
-        self.setCentralWidget(qwidget)
+        grid.addWidget(self.pyslipqt, 0, 0, num_rows + 1, 1)
+        grid.setRowStretch(num_rows, 1)
 
         # set the size of the demo window, etc
         self.setGeometry(100, 100, DemoWidth, DemoHeight)
@@ -147,11 +126,38 @@ class TestImagePlacement(QMainWindow):
         self.pyslipqt.events.EVT_PYSLIPQT_LEVEL.connect(self.handle_level_change)
         self.pyslipqt.events.EVT_PYSLIPQT_POSITION.connect(self.handle_position_event)
 
-
         # set initial view position
 #        QTimer.singleShot(1, self.final_setup)
+        self.map_level.set_text('0')
 
         self.show()
+
+    def make_gui_controls(self, grid):
+        """Build the controls in the right side of the grid."""
+
+        # the 'grid_row' variable is row to add into
+        grid_row = 0
+
+        # put level and position into grid at top right
+        self.map_level = DisplayText(title='', label='Level:',
+                                     tooltip=None)
+        grid.addWidget(self.map_level, grid_row, 1, 1, 1)
+        self.mouse_position = DisplayText(title='',
+                                          label='Lon/Lat:', text_width=100,
+                                          tooltip='Shows the mouse longitude and latitude on the map',)
+        grid.addWidget(self.mouse_position, grid_row, 2, 1, 1)
+        grid_row += 1
+
+        # now add the two image control widgets to right part of grid
+        self.map_image = ImagePlacementControl('Map-relative Image')
+        grid.addWidget(self.map_image, grid_row, 1, 1, 2)
+        grid_row += 1
+
+        self.view_image = ImagePlacementControl('View-relative Image')
+        grid.addWidget(self.view_image, grid_row, 1, 1, 2)
+        grid_row += 1
+
+        return grid_row
 
     def final_setup(self):
         """Perform final setup.
