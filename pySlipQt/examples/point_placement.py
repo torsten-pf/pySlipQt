@@ -47,6 +47,7 @@ class PointPlacementControl(QWidget):
     # various sizes
     LineEditWidth = 40
     ButtonWidth = 40
+    ComboboxWidth = 70
 
     # signals raised by this widget
     change = pyqtSignal(str, int, QColor, int, int, int, int)
@@ -73,22 +74,45 @@ class PointPlacementControl(QWidget):
         self.placement = QComboBox()
         for p in ['none', 'nw', 'cn', 'ne', 'ce', 'se', 'cs', 'sw', 'cw', 'cc']:
             self.placement.addItem(p)
+        self.placement.setCurrentIndex(9)
 
-        self.point_radius = QLineEdit('3')
-        self.point_radius.setFixedWidth(PointPlacementControl.LineEditWidth)
+        self.point_radius = QComboBox()
+        for p in range(21):
+            self.point_radius.addItem(str(p))
+        self.point_radius.setCurrentIndex(3)
+        self.point_radius.setFixedWidth(PointPlacementControl.ComboboxWidth)
+
         self.point_colour = QPushButton('')
         self.point_colour.setFixedWidth(PointPlacementControl.ButtonWidth)
         self.point_colour.setToolTip('Click here to change the point colour')
-        self.posn_x = QLineEdit('0')
-        self.posn_x.setFixedWidth(PointPlacementControl.LineEditWidth)
-        self.posn_y = QLineEdit('0')
-        self.posn_y.setFixedWidth(PointPlacementControl.LineEditWidth)
-        self.offset_x = QLineEdit('0')
-        self.offset_x.setFixedWidth(PointPlacementControl.LineEditWidth)
-        self.offset_y = QLineEdit('0')
-        self.offset_y.setFixedWidth(PointPlacementControl.LineEditWidth)
+
+        self.x_posn = QComboBox()
+        for p in range(0, 51, 5):
+            self.x_posn.addItem(str(p - 25))
+        self.x_posn.setCurrentIndex(5)
+        self.x_posn.setFixedWidth(PointPlacementControl.ComboboxWidth)
+
+        self.y_posn = QComboBox()
+        for p in range(0, 51, 5):
+            self.y_posn.addItem(str(p - 25))
+        self.y_posn.setCurrentIndex(5)
+        self.y_posn.setFixedWidth(PointPlacementControl.ComboboxWidth)
+
+        self.x_offset = QComboBox()
+        for p in range(0, 51, 5):
+            self.x_offset.addItem(str(p - 25))
+        self.x_offset.setCurrentIndex(5)
+        self.x_offset.setFixedWidth(PointPlacementControl.ComboboxWidth)
+
+        self.y_offset = QComboBox()
+        for p in range(0, 51, 5):
+            self.y_offset.addItem(str(p - 25))
+        self.y_offset.setCurrentIndex(5)
+        self.y_offset.setFixedWidth(PointPlacementControl.ComboboxWidth)
+
         btn_remove = QPushButton('Remove')
         btn_remove.resize(btn_remove.sizeHint())
+
         btn_update = QPushButton('Update')
         btn_update.resize(btn_update.sizeHint())
 
@@ -122,21 +146,21 @@ class PointPlacementControl(QWidget):
         label = QLabel('X: ')
         label.setAlignment(Qt.AlignRight)
         box_layout.addWidget(label, row, 0)
-        box_layout.addWidget(self.posn_x, row, 1)
+        box_layout.addWidget(self.x_posn, row, 1)
         label = QLabel('Y: ')
         label.setAlignment(Qt.AlignRight)
         box_layout.addWidget(label, row, 2)
-        box_layout.addWidget(self.posn_y, row, 3)
+        box_layout.addWidget(self.y_posn, row, 3)
 
         row += 1
         label = QLabel('offset X: ')
         label.setAlignment(Qt.AlignRight)
         box_layout.addWidget(label, row, 0)
-        box_layout.addWidget(self.offset_x, row, 1)
+        box_layout.addWidget(self.x_offset, row, 1)
         label = QLabel('Y: ')
         label.setAlignment(Qt.AlignRight)
         box_layout.addWidget(label, row, 2)
-        box_layout.addWidget(self.offset_y, row, 3)
+        box_layout.addWidget(self.y_offset, row, 3)
 
         row += 1
         box_layout.addWidget(btn_remove, row, 1)
@@ -171,14 +195,17 @@ class PointPlacementControl(QWidget):
         self.remove.emit()
 
     def updateData(self, event):
+        # get data from the widgets
         placement = str(self.placement.currentText())
         if placement == 'none':
             placement = None
-        radius = int(self.point_radius.text())
+        radius = int(self.point_radius.currentText())
         colour = self.point_colour.palette().color(1)
-        x = int(self.posn_x.text())
-        y = int(self.posn_y.text())
-        offset_x = int(self.offset_x.text())
-        offset_y = int(self.offset_y.text())
+        x_posn = int(self.x_posn.currentText())
+        y_posn = int(self.y_posn.currentText())
+        x_offset = int(self.x_offset.currentText())
+        y_offset = int(self.y_offset.currentText())
+
+        print(f'updateData: placement={placement}, radius={radius}, x_posn={x_posn}, y_posn={y_posn}, x_offset={x_offset}, y_offset={y_offset}')
         
-        self.change.emit(placement, radius, colour, x, y, offset_x, offset_y)
+        self.change.emit(placement, radius, colour, x_posn, y_posn, x_offset, y_offset)
