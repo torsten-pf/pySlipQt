@@ -1524,8 +1524,10 @@ class PySlipQt(QWidget):
         w2 = w/2
         h2 = h/2
 
-        dcw2 = self.view_width / 2
-        dch2 = self.view_height / 2
+        dcw = self.view_width
+        dch = self.view_height
+        dcw2 = dcw / 2
+        dch2 = dch / 2
 
 # TODO: these two bits of code are the same        
         if image:

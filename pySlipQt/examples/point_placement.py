@@ -87,27 +87,27 @@ class PointPlacementControl(QWidget):
         self.point_colour.setToolTip('Click here to change the point colour')
 
         self.x_posn = QComboBox()
-        for p in range(0, 51, 5):
-            self.x_posn.addItem(str(p - 25))
-        self.x_posn.setCurrentIndex(5)
+        for p in range(0, 121, 10):
+            self.x_posn.addItem(str(p - 60))
+        self.x_posn.setCurrentIndex(6)
         self.x_posn.setFixedWidth(PointPlacementControl.ComboboxWidth)
 
         self.y_posn = QComboBox()
-        for p in range(0, 51, 5):
-            self.y_posn.addItem(str(p - 25))
-        self.y_posn.setCurrentIndex(5)
+        for p in range(0, 121, 10):
+            self.y_posn.addItem(str(p - 60))
+        self.y_posn.setCurrentIndex(6)
         self.y_posn.setFixedWidth(PointPlacementControl.ComboboxWidth)
 
         self.x_offset = QComboBox()
-        for p in range(0, 51, 5):
-            self.x_offset.addItem(str(p - 25))
-        self.x_offset.setCurrentIndex(5)
+        for p in range(0, 121, 10):
+            self.x_offset.addItem(str(p - 60))
+        self.x_offset.setCurrentIndex(6)
         self.x_offset.setFixedWidth(PointPlacementControl.ComboboxWidth)
 
         self.y_offset = QComboBox()
-        for p in range(0, 51, 5):
-            self.y_offset.addItem(str(p - 25))
-        self.y_offset.setCurrentIndex(5)
+        for p in range(0, 121, 10):
+            self.y_offset.addItem(str(p - 60))
+        self.y_offset.setCurrentIndex(6)
         self.y_offset.setFixedWidth(PointPlacementControl.ComboboxWidth)
 
         btn_remove = QPushButton('Remove')

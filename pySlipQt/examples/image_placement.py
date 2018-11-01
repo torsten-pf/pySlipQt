@@ -32,6 +32,7 @@ class ImagePlacementControl(QWidget):
     # various sizes
     LineEditWidth = 40
     ButtonWidth = 40
+    ComboboxWidth = 70
 
     # signals raised by this widget
     change = pyqtSignal(str, str, int, QColor, int, int, int, int)
@@ -66,19 +67,40 @@ class ImagePlacementControl(QWidget):
         for p in ['nw', 'cn', 'ne', 'ce', 'se', 'cs', 'sw', 'cw', 'cc']:
             self.placement.addItem(p)
 
-        self.point_radius = QLineEdit('2')
-        self.point_radius.setFixedWidth(ImagePlacementControl.LineEditWidth)
+        self.point_radius = QComboBox()
+        for p in range(21):
+            self.point_radius.addItem(str(p))
+        self.point_radius.setCurrentIndex(3)
+        self.point_radius.setFixedWidth(ImagePlacementControl.ComboboxWidth)
+
         self.point_colour = QPushButton('')
         self.point_colour.setFixedWidth(ImagePlacementControl.ButtonWidth)
         self.point_colour.setToolTip('Click here to change the point colour')
-        self.posn_x = QLineEdit('0')
-        self.posn_x.setFixedWidth(ImagePlacementControl.LineEditWidth)
-        self.posn_y = QLineEdit('0')
-        self.posn_y.setFixedWidth(ImagePlacementControl.LineEditWidth)
-        self.offset_x = QLineEdit('0')
-        self.offset_x.setFixedWidth(ImagePlacementControl.LineEditWidth)
-        self.offset_y = QLineEdit('0')
-        self.offset_y.setFixedWidth(ImagePlacementControl.LineEditWidth)
+
+        self.posn_x = QComboBox()
+        for p in range(0, 121, 10):
+            self.posn_x.addItem(str(p - 60))
+        self.posn_x.setCurrentIndex(6)
+        self.posn_x.setFixedWidth(ImagePlacementControl.ComboboxWidth)
+
+        self.posn_y = QComboBox()
+        for p in range(0, 121, 10):
+            self.posn_y.addItem(str(p - 60))
+        self.posn_y.setCurrentIndex(6)
+        self.posn_y.setFixedWidth(ImagePlacementControl.ComboboxWidth)
+
+        self.offset_x = QComboBox()
+        for p in range(0, 121, 10):
+            self.offset_x.addItem(str(p - 60))
+        self.offset_x.setCurrentIndex(6)
+        self.offset_x.setFixedWidth(ImagePlacementControl.ComboboxWidth)
+
+        self.offset_y  = QComboBox()
+        for p in range(0, 121, 10):
+            self.offset_y.addItem(str(p - 60))
+        self.offset_y.setCurrentIndex(6)
+        self.offset_y.setFixedWidth(ImagePlacementControl.ComboboxWidth)
+
         btn_remove = QPushButton('Remove')
         btn_remove.resize(btn_remove.sizeHint())
         btn_update = QPushButton('Update')
@@ -183,14 +205,15 @@ class ImagePlacementControl(QWidget):
         self.remove.emit()
 
     def updateData(self, event):
+        # get data from the widgets
         placement = str(self.placement.currentText())
         if placement == 'none':
             placement = None
-        radius = int(self.point_radius.text())
+        radius = int(self.point_radius.currentText())
         colour = self.point_colour.palette().color(1)
-        x = int(self.posn_x.text())
-        y = int(self.posn_y.text())
-        offset_x = int(self.offset_x.text())
-        offset_y = int(self.offset_y.text())
+        x = int(self.posn_x.currentText())
+        y = int(self.posn_y.currentText())
+        offset_x = int(self.offset_x.currentText())
+        offset_y = int(self.offset_y.currentText())
         
         self.change.emit(self.image_path, placement, radius, colour, x, y, offset_x, offset_y)
