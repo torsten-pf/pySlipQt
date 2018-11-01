@@ -1274,13 +1274,17 @@ class PySlipQt(QWidget):
         An extent object can be either an image object or a text object.
         """
 
+        print(f'pex_extent: place={place}, geo={geo}, x_off={x_off}, y_off={y_off}, w={w}, h={h}, image={image}')
+
         # get point view coords
         vpoint = self.geo_to_view(geo)
+        print(f'pex_extent: after .geo_to_view(), vpoint={vpoint}')
         (vpx, vpy) = vpoint
 
         # get extent limits
         # must take into account 'place', 'x_off' and 'y_off'
         point = self.extent_placement(place, vpx, vpy, x_off, y_off, w, h, image=image)
+        print(f'pex_extent: after extent_placement(), point={point}')
         (px, py) = point
 
         # extent = (left, right, top, bottom) in view coords
@@ -1296,6 +1300,8 @@ class PySlipQt(QWidget):
 
         extent = (elx, erx, ety, eby)
 
+        print(f'pex_extent: extent={extent} (elx, erx, ety, eby)')
+
         # decide if point is off-view
         if vpx < 0 or vpx > self.view_width or vpy < 0 or vpy > self.view_height:
             vpoint = None
@@ -1304,6 +1310,8 @@ class PySlipQt(QWidget):
         if erx < 0 or elx > self.view_width or eby < 0 or ety > self.view_height:
             # no extent if ALL of extent is off-view
             extent = None
+
+        print(f'pex_extent: returning ({vpoint}, {extent})')
 
         return (vpoint, extent)
 
@@ -1328,8 +1336,10 @@ class PySlipQt(QWidget):
         print(f'pex_extent_view: self.view_width={self.view_width}, self.view_height={self.view_height}')
 
         # get point view coords and perturb point to placement origin
+        # we ignore offsets for the point as they apply to the extent only
         (xview, yview) = view
-        point = self.point_placement_view(place, xview, yview, x_off, y_off)
+#        point = self.point_placement_view(place, xview, yview, x_off, y_off)
+        point = self.point_placement_view(place, xview, yview, 0, 0)
 
         print(f'pex_extent_view: after .point_placement_view(), point={point}')
 
@@ -1344,15 +1354,16 @@ class PySlipQt(QWidget):
         # this is different for images
         (ix, iy) = point
         if image:
-            if place == 'cc':   elx = ix - w/2;       ety = iy - h/2
-            elif place == 'cn': elx = ix - w/2;       ety = iy + y_off
-            elif place == 'ne': elx = ix - w - x_off; ety = iy + y_off
-            elif place == 'ce': elx = ix - w - x_off; ety = iy - h/2
-            elif place == 'se': elx = ix - w - x_off; ety = iy - h - y_off
-            elif place == 'cs': elx = ix - w/2;       ety = iy - h - y_off
-            elif place == 'sw': elx = ix + x_off;     ety = iy - h - y_off
-            elif place == 'cw': elx = ix + x_off;     ety = iy - h/2
-            elif place == 'nw': elx = ix + x_off;     ety = iy - y_off
+            # perturb extent coords to edges of image
+            if   place == 'cc': elx = ix - w/2;        ety = iy - h/2
+            elif place == 'cn': elx = ix - w/2;        ety = iy + y_off
+            elif place == 'ne': elx = ix - w - x_off;  ety = iy - y_off
+            elif place == 'ce': elx = ix - w - x_off;  ety = iy - h/2
+            elif place == 'se': elx = ix - w - x_off;  ety = iy - h - y_off
+            elif place == 'cs': elx = ix - w/2;        ety = iy - h - y_off
+            elif place == 'sw': elx = ix + x_off;      ety = iy - h - y_off
+            elif place == 'cw': elx = ix + x_off;      ety = iy - h/2
+            elif place == 'nw': elx = ix + x_off;      ety = iy + y_off
             erx = elx + w
             eby = ety + h
         else:
@@ -1507,10 +1518,10 @@ class PySlipQt(QWidget):
         return (x, y)
 
     def extent_placement(self, place, x, y, x_off, y_off, w, h, image=False):
-        """Perform map- and view-relative placement for an extent object.
+        """Perform map-relative placement of an extent.
 
         place         placement key string
-        x, y          point relative to placement origin (pixels)
+        x, y          view coords of point
         x_off, y_off  offset from point (pixels)
         w, h          width, height of the extent (pixels)
         image         True if we are placing an image.  Required because an image
@@ -1521,37 +1532,32 @@ class PySlipQt(QWidget):
 
         print(f'extent_placement: place={place}, x={x}, y={y}, x_off={x_off}, y_off={y_off}, w={w}, h={h}, image={image}')
 
-        w2 = w/2
-        h2 = h/2
-
-        dcw = self.view_width
-        dch = self.view_height
-        dcw2 = dcw / 2
-        dch2 = dch / 2
+        w2 = w / 2
+        h2 = h / 2
 
 # TODO: these two bits of code are the same        
         if image:
             print(f'extent_placement: IS image')
-            if   place == 'cc': x += dcw2 - w2;        y += dch2 - h2
-            elif place == 'nw': x += x_off;            y += y_off
-            elif place == 'cn': x += dcw2 - w2;        y += y_off
-            elif place == 'ne': x += dcw - w - x_off;  y += y_off
-            elif place == 'ce': x += dcw - w - x_off;  y += dch2 - h2
-            elif place == 'se': x += dcw - w - x_off;  y += dch - h - y_off
-            elif place == 'cs': x += dcw2 - w2;        y += dch - h - y_off
-            elif place == 'sw': x += x_off;            y += dch - h - y_off
-            elif place == 'cw': x += x_off;            y += dch2 - h2
+            if   place == 'cc': x += -w2;            y += -h2
+            elif place == 'nw': x += x_off;          y += y_off
+            elif place == 'cn': x += -w2;            y += y_off
+            elif place == 'ne': x += -x_off - w;     y += y_off
+            elif place == 'ce': x += -x_off - w;     y += -h2
+            elif place == 'se': x += -x_off - w;     y += -y_off - h
+            elif place == 'cs': x += -w2;            y += -y_off - h
+            elif place == 'sw': x += x_off;          y += -y_off - h
+            elif place == 'cw': x += x_off;          y += -h2
         else:
             print(f'extent_placement: NOT image')
-            if   place == 'cc': x += dcw2 - w2;        y += dch2 + h2
-            elif place == 'nw': x += x_off;            y += h + y_off
-            elif place == 'cn': x += dcw2 - w2;        y += h + y_off
-            elif place == 'ne': x += dcw - w - x_off;  y += h + y_off
-            elif place == 'ce': x += dcw - w - x_off;  y += dch2 + h2
-            elif place == 'se': x += dcw - w - x_off;  y += dch - y_off
-            elif place == 'cs': x += dcw2 - w2;        y += dch - y_off
-            elif place == 'sw': x += x_off;            y += dch - y_off
-            elif place == 'cw': x += x_off;            y += dch2 + h2
+            if   place == 'cc': x += x_off - w2;     y += y_off - h2
+            elif place == 'nw': x += x_off;          y += y_off
+            elif place == 'cn': x += x_off - w2;     y += y_off
+            elif place == 'ne': x += x_off - w;      y += y_off
+            elif place == 'ce': x += x_off - w;      y += y_off - h2
+            elif place == 'se': x += x_off - w;      y += y_off - h
+            elif place == 'cs': x += x_off - w2;     y += y_off - h
+            elif place == 'sw': x += x_off;          y += y_off - h
+            elif place == 'cw': x += x_off;          y += y_off - h2
 
         return (x, y)
 
