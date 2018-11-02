@@ -932,14 +932,10 @@ class PySlipQt(QWidget):
         map_rel  points relative to map if True, else relative to view
         """
 
-        print(f'draw_image_layer: images={images}, map_rel={map_rel}')
-
         # get correct pex function
         # we do this once here rather than many times inside the loop
-        print(f'draw_image_layer: assuming .pex_extent_view()')
         pex = self.pex_extent_view
         if map_rel:
-            print(f'draw_image_layer: using .pex_extent()')
             pex = self.pex_extent
 
         # speed up drawing by caching previous point colour
@@ -948,10 +944,7 @@ class PySlipQt(QWidget):
         # draw the images
         for (lon, lat, pmap, w, h, place,
                  x_off, y_off, pradius, pcolour, idata) in images:
-            print(f'draw_image_layer: lon={lon}, lat={lat}, pmap={pmap}, w={w}, h={h}, place={place}, x_off={x_off}, y_off={y_off}, pradius={pradius}, pcolour={pcolour}')
-            print(f'draw_image_layer: self.view_width={self.view_width}, self.view_height={self.view_height}')
             (pt, ex) = pex(place, (lon, lat), x_off, y_off, w, h, image=True)
-            print(f'draw_image_layer: after pex(): pt={pt}, ex={ex}')
 
             if pt and pradius:
                 # if we need to change colours
@@ -964,13 +957,11 @@ class PySlipQt(QWidget):
 
                 # draw the image 'point'
                 (px, py) = pt
-                print(f'draw_image_layer: drawing point at pt={pt}')
                 dc.drawEllipse(QPoint(px, py), pradius, pradius)
 
             if ex:
                 # draw the image itself
                 (ix, _, iy, _) = ex
-                print(f'draw_image_layer: drawing image at ({ix}, {iy})')
                 dc.drawPixmap(QPoint(ix, iy), pmap)
 
     def draw_text_layer(self, dc, text, map_rel):
@@ -983,10 +974,13 @@ class PySlipQt(QWidget):
         map_rel  points relative to map if True, else relative to view
         """
 
-        # get correct pex function for mode (map/view)
+        print(f'draw_text_layer: text={text}, map_rel={map_rel}')
 
+        # get correct pex function for mode (map/view)
+        print(f'Assuming pex_extent_view()')
         pex = self.pex_extent_view
         if map_rel:
+            print(f'Using pex_extent_()')
             pex = self.pex_extent
 
         # set some caching to speed up mostly unchanging data
@@ -997,13 +991,8 @@ class PySlipQt(QWidget):
         # draw text on map/view
         for (lon, lat, tdata, place, radius, colour,
                 textcolour, fontname, fontsize, x_off, y_off, data) in text:
+            print(f'loop: lon={lon}, lat={lat}, tdata={tdata}, place={place}, radius={radius}, colour={colour}, textcolour={textcolour}, x_off={x_off}, y_off={y_off}')
             # set font characteristics so we can calculate text width/height
-            if cache_textcolour != textcolour:
-                qcolour = QColor(*textcolour)
-                pen = QPen(qcolour, radius, Qt.SolidLine)
-                dc.setPen(pen)
-                cache_textcolour = textcolour
-
             if cache_font != (fontname, fontsize):
                 font = QFont(fontname, fontsize)
                 dc.setFont(font)
@@ -1016,6 +1005,7 @@ class PySlipQt(QWidget):
 
             # get point + extent information (each can be None if off-view)
             (pt, ex) = pex(place, (lon, lat), x_off, y_off, w, h)
+            print(f'After pex(), pt={pt}, ex={ex}')
 
             if pt and radius:   # don't draw point if off screen or zero radius
                 (pt_x, pt_y) = pt
@@ -1025,10 +1015,17 @@ class PySlipQt(QWidget):
                     dc.setPen(pen)
                     dc.setBrush(qcolour)
                     cache_colour = colour
+                print(f'Drawing point at ({pt_x}, {pt_y})')
                 dc.drawEllipse(QPoint(pt_x, pt_y), radius, radius)
 
             if ex:              # don't draw text if off screen
                 (lx, _, _, by) = ex
+                print(f'Drawing text at ({lx}, {by})')
+                if cache_textcolour != textcolour:
+                    qcolour = QColor(*textcolour)
+                    pen = QPen(qcolour, radius, Qt.SolidLine)
+                    dc.setPen(pen)
+                    cache_textcolour = textcolour
                 dc.drawText(QPointF(lx, by), tdata)
 
     def draw_polygon_layer(self, dc, data, map_rel):
@@ -1346,27 +1343,36 @@ class PySlipQt(QWidget):
         # get extent view coords (ix and iy)
         (px, py) = point
         (ix, iy) = self.extent_placement(place, px, py, x_off, y_off,
-                                         w, h, image=True)
+                                         w, h, image=False)
 
         print(f'pex_extent_view: after .extent_placement(), (ix, iy)=({ix},{iy})')
 
         # extent = (left, right, top, bottom) in view coords
         # this is different for images
-        (ix, iy) = point
+#        (px, py) = point
         if image:
             # perturb extent coords to edges of image
-            if   place == 'cc': elx = ix - w/2;        ety = iy - h/2
-            elif place == 'cn': elx = ix - w/2;        ety = iy + y_off
-            elif place == 'ne': elx = ix - w - x_off;  ety = iy - y_off
-            elif place == 'ce': elx = ix - w - x_off;  ety = iy - h/2
-            elif place == 'se': elx = ix - w - x_off;  ety = iy - h - y_off
-            elif place == 'cs': elx = ix - w/2;        ety = iy - h - y_off
-            elif place == 'sw': elx = ix + x_off;      ety = iy - h - y_off
-            elif place == 'cw': elx = ix + x_off;      ety = iy - h/2
-            elif place == 'nw': elx = ix + x_off;      ety = iy + y_off
+            print(f'pex_extent_view: perturbing an image')
+            if   place == 'cc': elx = px - w/2;        ety = py - h/2
+            elif place == 'cn': elx = px - w/2;        ety = py + y_off
+            elif place == 'ne': elx = px - w - x_off;  ety = py - y_off
+            elif place == 'ce': elx = px - w - x_off;  ety = py - h/2
+            elif place == 'se': elx = px - w - x_off;  ety = py - h - y_off
+            elif place == 'cs': elx = px - w/2;        ety = py - h - y_off
+            elif place == 'sw': elx = px + x_off;      ety = py - h - y_off
+            elif place == 'cw': elx = px + x_off;      ety = py - h/2
+            elif place == 'nw': elx = px + x_off;      ety = py + y_off
             erx = elx + w
             eby = ety + h
+#        else:
+#            print(f'pex_extent_view: NOT an image, (ix, iy)=({ix},{iy})')
+#            elx = ix
+#            erx = ix + w
+#            ety = iy - h
+#            eby = iy
+
         else:
+            print(f'pex_extent_view: NOT an image, (ix, iy)=({ix},{iy})')
             elx = ix
             erx = ix + w
             ety = iy - h
@@ -1549,15 +1555,25 @@ class PySlipQt(QWidget):
             elif place == 'cw': x += x_off;          y += -h2
         else:
             print(f'extent_placement: NOT image')
-            if   place == 'cc': x += x_off - w2;     y += y_off - h2
-            elif place == 'nw': x += x_off;          y += y_off
-            elif place == 'cn': x += x_off - w2;     y += y_off
-            elif place == 'ne': x += x_off - w;      y += y_off
-            elif place == 'ce': x += x_off - w;      y += y_off - h2
-            elif place == 'se': x += x_off - w;      y += y_off - h
-            elif place == 'cs': x += x_off - w2;     y += y_off - h
-            elif place == 'sw': x += x_off;          y += y_off - h
-            elif place == 'cw': x += x_off;          y += y_off - h2
+            if   place == 'cc': x += - w2;           y += h2
+            elif place == 'nw': x += x_off;          y += y_off + h
+            elif place == 'cn': x += -w2;            y += y_off + h
+            elif place == 'ne': x += -x_off - w;     y += y_off + h
+            elif place == 'ce': x += -x_off - w;     y += h2
+            elif place == 'se': x += -x_off - w;     y += -y_off
+            elif place == 'cs': x += - w2;           y += -y_off
+            elif place == 'sw': x += x_off;          y += -y_off
+            elif place == 'cw': x += x_off;          y += + h2
+
+#            if   place == 'cc': x += - w2;           y += -h2
+#            elif place == 'nw': x += x_off;          y += y_off
+#            elif place == 'cn': x += x_off - w2;     y += y_off
+#            elif place == 'ne': x += x_off - w;      y += y_off
+#            elif place == 'ce': x += x_off - w;      y += y_off - h2
+#            elif place == 'se': x += x_off - w;      y += y_off - h
+#            elif place == 'cs': x += x_off - w2;     y += y_off - h
+#            elif place == 'sw': x += x_off;          y += y_off - h
+#            elif place == 'cw': x += x_off;          y += y_off - h2
 
         return (x, y)
 
@@ -2870,6 +2886,8 @@ class PySlipQt(QWidget):
                      these supply any data missing in 'data'
         """
 
+        print(f'AddTextLayer: text={text}, map_rel={map_rel}')
+
         # merge global and layer defaults
         if map_rel:
             default_placement = kwargs.get('placement', self.DefaultTextPlacement)
@@ -2898,6 +2916,8 @@ class PySlipQt(QWidget):
             default_offset_y = kwargs.get('offset_y', self.DefaultTextViewOffsetY)
             default_data = kwargs.get('data', self.DefaultTextData)
 
+        print(f"After merge, default_placement='{default_placement}'")
+
         # create data iterable ready for drawing
         draw_data = []
         for t in text:
@@ -2925,6 +2945,8 @@ class PySlipQt(QWidget):
             offset_x = attributes.get('offset_x', default_offset_x)
             offset_y = attributes.get('offset_y', default_offset_y)
             udata = attributes.get('data', default_data)
+
+            print(f"After checking placement, placement='{placement}'")
 
             # check values that can be wrong
             placement = placement.lower()
