@@ -1,4 +1,6 @@
-"""Test PySlipQt "zoom cancel" AFTER zoom has occurred.
+"""
+Test if we can have a list of "allowable levels" and if a user requests
+the display of a level not in that list we CANCEL the zoom operation.
 
 Usage: test_displayable_levels.py [-h] [-t (OSM|GMT)]
 """
@@ -11,21 +13,28 @@ import traceback
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QLabel,
                              QHBoxLayout)
+try:
+    from display_text import DisplayText
+except ImportError:
+    # maybe not installed properly, try relative import
+    sys.path.append('../examples')
+    from display_text import DisplayText
 
-sys.path.append('..')
-import pyslipqt
+import pySlipQt.log as log
+log = log.Log('test_displayable_levels.log')
+import pySlipQt.pySlipQt as pySlipQt
 
 
 ######
 # Various constants
 ######
 
-DemoName = 'PySlipQt %s - zoom undo test' % pyslipqt.__version__
-DemoWidth = 600
-DemoHeight = 400
+DemoName = 'PySlipQt %s - Zoom undo test' % pySlipQt.__version__
+DemoWidth = 1000
+DemoHeight = 800
 
 InitViewLevel = 2
-InitViewPosition = (158.0, -20.0)
+InitViewPosition = (100.494167, 13.7525)    # Bangkok
 
 
 ################################################################################
@@ -33,21 +42,25 @@ InitViewPosition = (158.0, -20.0)
 ################################################################################
 
 class AppFrame(QMainWindow):
-    def __init__(self):
+    def __init__(self, tiles):
         super().__init__()
+
         self.setGeometry(300, 300, DemoWidth, DemoHeight)
         self.setWindowTitle(DemoName)
         self.show()
 
         # create the tile source object
-        self.tile_src = Tiles.Tiles()
+        self.tile_src = tiles.Tiles()
 
         # build the GUI
         box = QHBoxLayout()
         box.setContentsMargins(1, 1, 1, 1)
-#        self.setLayout(box)
 
-        self.pyslipqt = pyslipqt.PySlipQt(self, tile_src=self.tile_src, start_level=InitViewLevel)
+        qwidget = QWidget(self)
+        qwidget.setLayout(box)
+        self.setCentralWidget(qwidget)
+
+        self.pyslipqt = pySlipQt.PySlipQt(self, tile_src=self.tile_src, start_level=InitViewLevel)
         box.addWidget(self.pyslipqt)
 
         # set initial view position
@@ -66,6 +79,8 @@ class AppFrame(QMainWindow):
         method below will trigger another exception, which we catch, etc, etc.
         """
 
+        print(f'on_zoom: entered')
+
         for _ in range(1000):
             pass
 
@@ -77,6 +92,7 @@ class AppFrame(QMainWindow):
             ]
 
         if event.level not in l:
+            print(f'on_zoom: undoing zoom')
             self.pyslipqt.GotoLevel(InitViewLevel)
 
 
@@ -117,16 +133,14 @@ tile_source = tile_source.lower()
 
 # set up the appropriate tile source
 if tile_source == 'gmt':
-#    import pyslipqt.gmt_local_tiles as Tiles
-    import gmt_local_tiles as Tiles
+    import pySlipQt.gmt_local as Tiles
 elif tile_source == 'osm':
-#    import pyslipqt.osm_tiles as Tiles
-    import osm_tiles as Tiles
+    import pySlipQt.open_street_map as Tiles
 else:
     usage('Bad tile source: %s' % tile_source)
     sys.exit(3)
 
 # start the app
 app = QApplication(sys.argv)
-ex = AppFrame()
+ex = AppFrame(Tiles)
 sys.exit(app.exec_())

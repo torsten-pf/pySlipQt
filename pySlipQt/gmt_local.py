@@ -95,6 +95,8 @@ class Tiles(tiles.BaseTiles):
         self.deg_span_x = 295.0 + 65.0
         self.deg_span_y = 66.66 + 66.66
 
+        self.levels = TileLevels
+
         # get tile information into instance
         self.level = min(TileLevels)
         (self.num_tiles_x, self.num_tiles_y,
