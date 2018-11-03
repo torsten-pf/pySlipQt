@@ -1,25 +1,35 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 """Test PySlipQt map-relative polygons.
 
 Usage: test_maprel_poly.py [-h] [-t (OSM|GMT)]
 """
 
-
 import sys
+import getopt
+import traceback
 
-import wx
+from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QHBoxLayout
 
-sys.path.append('..')
-import pyslipqt
+import pySlipQt.log as log
+
+# initialize the logging system
+log = log.Log('test_maprel_polygon.log')
+
+import pySlipQt.pySlipQt as pySlipQt
+from display_text import DisplayText
+from layer_control import LayerControl
+from image_placement import ImagePlacementControl
 
 
 ######
 # Various demo constants
 ######
 
-DefaultAppSize = (600, 400)
+# demo name/version
+DemoVersion = '1.0'
+DemoName = f'Test map-relative image placement {DemoVersion} (pySlipQt {pySlipQt.__version__})'
+
+DemoHeight = 800
+DemoWidth = 1000
 
 MinTileLevel = 0
 InitViewLevel = 2
@@ -55,94 +65,94 @@ TextMapData = [(135, 5, 'open', {'placement': 'ce', 'radius': 0}),
 # The main application frame
 ################################################################################
 
-class TestFrame(wx.Frame):
-    def __init__(self):
-        wx.Frame.__init__(self, None, size=DefaultAppSize,
-                          title=('PySlipQt %s - map-relative polygon test'
-                                 % pyslipqt.__version__))
-        self.SetMinSize(DefaultAppSize)
-        self.panel = wx.Panel(self, wx.ID_ANY)
-        self.panel.SetBackgroundColour(wx.WHITE)
-        self.panel.ClearBackground()
+class TestFrame(QMainWindow):
 
-        # create the tile source object
-        self.tile_src = Tiles.Tiles()
+    def __init__(self, tile_dir):
+        super().__init__()
+
+        self.tile_directory = tile_dir
+        self.tile_source = Tiles.Tiles()
 
         # build the GUI
-        box = wx.BoxSizer(wx.HORIZONTAL)
-        self.panel.SetSizer(box)
-        self.pyslipqt = pyslipqt.PySlipQt(self.panel, tile_src=self.tile_src)
-        box.Add(self.pyslipqt, proportion=1, border=1, flag=wx.EXPAND)
-        self.panel.SetSizerAndFit(box)
-        self.panel.Layout()
-        self.Centre()
-        self.Show(True)
+        hbox = QHBoxLayout()
 
-        # set initial view position
-        self.pyslipqt.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
+        qwidget = QWidget(self)
+        qwidget.setLayout(hbox)
+        self.setCentralWidget(qwidget)
 
-        # add test text layer
+        self.pyslipqt = pySlipQt.PySlipQt(self, tile_src=self.tile_source,
+                                          start_level=MinTileLevel)
+        hbox.addWidget(self.pyslipqt)
+
+        # set the size of the demo window, etc
+        self.setGeometry(100, 100, DemoWidth, DemoHeight)
+        self.setWindowTitle(DemoName)
+
+        # add test layers
         self.poly_layer = self.pyslipqt.AddPolygonLayer(PolyMapData,
                                                         map_rel=True,
-                                                        name='<poly_map_layer>',
-                                                        size=DefaultAppSize)
+                                                        name='<poly_map_layer>')
+#                                                        size=DefaultAppSize)
         self.text_layer = self.pyslipqt.AddTextLayer(TextMapData, map_rel=True,
                                                      name='<text_map_layer>')
 
+        # set initial view position
+        self.pyslipqt.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
+                
+        # set initial view position
+        self.pyslipqt.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
+
+        self.show()
+
 ################################################################################
 
-if __name__ == '__main__':
-    import sys
-    import getopt
-    import traceback
+# print some usage information
+def usage(msg=None):
+    if msg:
+        print(msg+'\n')
+    print(__doc__)        # module docstring used
 
-    # print some usage information
-    def usage(msg=None):
-        if msg:
-            print(msg+'\n')
-        print(__doc__)        # module docstring used
+# our own handler for uncaught exceptions
+def excepthook(type, value, tb):
+    msg = '\n' + '=' * 80
+    msg += '\nUncaught exception:\n'
+    msg += ''.join(traceback.format_exception(type, value, tb))
+    msg += '=' * 80 + '\n'
+    print(msg)
+    sys.exit(1)
 
-    # our own handler for uncaught exceptions
-    def excepthook(type, value, tb):
-        msg = '\n' + '=' * 80
-        msg += '\nUncaught exception:\n'
-        msg += ''.join(traceback.format_exception(type, value, tb))
-        msg += '=' * 80 + '\n'
-        print msg
-        sys.exit(1)
+# plug our handler into the python system
+sys.excepthook = excepthook
 
-    # plug our handler into the python system
-    sys.excepthook = excepthook
+# decide which tiles to use, default is GMT
+argv = sys.argv[1:]
 
-    # decide which tiles to use, default is GMT
-    argv = sys.argv[1:]
+try:
+    (opts, args) = getopt.getopt(argv, 'ht:', ['help', 'tiles='])
+except getopt.error:
+    usage()
+    sys.exit(1)
 
-    try:
-        (opts, args) = getopt.getopt(argv, 'ht:', ['help', 'tiles='])
-    except getopt.error:
+tile_source = 'GMT'
+for (opt, param) in opts:
+    if opt in ['-h', '--help']:
         usage()
-        sys.exit(1)
+        sys.exit(0)
+    elif opt in ('-t', '--tiles'):
+        tile_source = param
+tile_source = tile_source.lower()
 
-    tile_source = 'GMT'
-    for (opt, param) in opts:
-        if opt in ['-h', '--help']:
-            usage()
-            sys.exit(0)
-        elif opt in ('-t', '--tiles'):
-            tile_source = param
-    tile_source = tile_source.lower()
+# set up the appropriate tile source
+if tile_source == 'gmt':
+    import pySlipQt.gmt_local as Tiles
+elif tile_source == 'osm':
+    import pySlipQt.open_street_map as Tiles
+else:
+    usage('Bad tile source: %s' % tile_source)
+    sys.exit(3)
 
-    # set up the appropriate tile source
-    if tile_source == 'gmt':
-        import pyslipqt.gmt_local_tiles as Tiles
-    elif tile_source == 'osm':
-        import pyslipqt.osm_tiles as Tiles
-    else:
-        usage('Bad tile source: %s' % tile_source)
-        sys.exit(3)
-
-    # start wxPython app
-    app = wx.App()
-    TestFrame().Show()
-    app.MainLoop()
-
+# start wxPython app
+tile_dir = 'test_maprel_polygon.tiles'
+app = QApplication(args)
+ex = TestFrame(tile_dir)
+sys.exit(app.exec_())
