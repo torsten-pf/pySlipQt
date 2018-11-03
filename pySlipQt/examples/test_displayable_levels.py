@@ -79,9 +79,7 @@ class AppFrame(QMainWindow):
         method below will trigger another exception, which we catch, etc, etc.
         """
 
-        print(f'on_zoom: entered')
-
-        for _ in range(1000):
+        for _ in range(10000):
             pass
 
         l = [InitViewLevel, InitViewLevel, InitViewLevel, InitViewLevel,
@@ -92,7 +90,7 @@ class AppFrame(QMainWindow):
             ]
 
         if event.level not in l:
-            print(f'on_zoom: undoing zoom')
+            # undo zoom
             self.pyslipqt.GotoLevel(InitViewLevel)
 
 
