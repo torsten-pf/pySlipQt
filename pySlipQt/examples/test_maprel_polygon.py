@@ -26,7 +26,7 @@ from image_placement import ImagePlacementControl
 
 # demo name/version
 DemoVersion = '1.0'
-DemoName = f'Test map-relative image placement {DemoVersion} (pySlipQt {pySlipQt.__version__})'
+DemoName = f'Test map-relative polygon placement {DemoVersion} (pySlipQt {pySlipQt.__version__})'
 
 DemoHeight = 800
 DemoWidth = 1000
