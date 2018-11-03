@@ -18,11 +18,10 @@ from PyQt5.QtGui import (QPainter, QColor, QPixmap, QPen, QFont, QFontMetrics,
 # if we don't have log.py, don't crash
 try:
     import log
-    log = log.log.Log('pyslipqt.log')
-    print('log setup -> pyslipqt.log')
+    log = log.Log('pyslipqt.log')
 except AttributeError:
     # means log already set up
-    print('log already defined')
+    print(f'log already defined, log={type(log)}')
     pass
 except ImportError as e:
     # if we don't have log.py, don't crash
