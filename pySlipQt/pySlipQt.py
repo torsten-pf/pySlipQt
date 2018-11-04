@@ -325,7 +325,8 @@ class PySlipQt(QWidget):
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.setMinimumSize(self.tile_width, self.tile_height)
 
-        tile_src.setCallback(self.update)
+#        tile_src.setCallback(self.update)
+        tile_src.setCallback(self.fudge)
 
         self.setMouseTracking(True)
 #        self.setEnabled(True)       # to receive key events?
@@ -335,6 +336,9 @@ class PySlipQt(QWidget):
 
         # do a "resize" after this function
         QTimer.singleShot(10, self.resizeEvent)
+
+    def fudge(self, level, x, y, image, error):
+        self.update()
 
     ######
     # Code for events raised by this widget
@@ -847,8 +851,6 @@ class PySlipQt(QWidget):
         Returns unique ID of the new layer.
         """
 
-        print(f'add_layer: painter={painter}, data={data}, map_rel={map_rel}, ltype={ltype}')
-
         # get unique layer ID
         id = self.next_layer_id
         self.next_layer_id += 1
@@ -867,10 +869,7 @@ class PySlipQt(QWidget):
 
         # force display of new layer if it's visible
         if visible:
-            print(f'add_layer: calling update(), layer.visible={visible}')
             self.update()
-        else:
-            print(f'add_layer: not calling update(), layer.visible={visible}')
 
         return id
 
@@ -973,13 +972,9 @@ class PySlipQt(QWidget):
         map_rel  points relative to map if True, else relative to view
         """
 
-        print(f'draw_text_layer: text={text}, map_rel={map_rel}')
-
         # get correct pex function for mode (map/view)
-        print(f'Assuming pex_extent_view()')
         pex = self.pex_extent_view
         if map_rel:
-            print(f'Using pex_extent_()')
             pex = self.pex_extent
 
         # set some caching to speed up mostly unchanging data
@@ -990,7 +985,6 @@ class PySlipQt(QWidget):
         # draw text on map/view
         for (lon, lat, tdata, place, radius, colour,
                 textcolour, fontname, fontsize, x_off, y_off, data) in text:
-            print(f'loop: lon={lon}, lat={lat}, tdata={tdata}, place={place}, radius={radius}, colour={colour}, textcolour={textcolour}, x_off={x_off}, y_off={y_off}')
             # set font characteristics so we can calculate text width/height
             if cache_font != (fontname, fontsize):
                 font = QFont(fontname, fontsize)
@@ -1004,8 +998,6 @@ class PySlipQt(QWidget):
 
             # get point + extent information (each can be None if off-view)
             (pt, ex) = pex(place, (lon, lat), x_off, y_off, w, h)
-            print(f'After pex(), pt={pt}, ex={ex}')
-
             if pt and radius:   # don't draw point if off screen or zero radius
                 (pt_x, pt_y) = pt
                 if cache_colour != colour:
@@ -1014,12 +1006,10 @@ class PySlipQt(QWidget):
                     dc.setPen(pen)
                     dc.setBrush(qcolour)
                     cache_colour = colour
-                print(f'Drawing point at ({pt_x}, {pt_y})')
                 dc.drawEllipse(QPoint(pt_x, pt_y), radius, radius)
 
             if ex:              # don't draw text if off screen
                 (lx, _, _, by) = ex
-                print(f'Drawing text at ({lx}, {by})')
                 if cache_textcolour != textcolour:
                     qcolour = QColor(*textcolour)
                     pen = QPen(qcolour, radius, Qt.SolidLine)
@@ -1038,13 +1028,9 @@ class PySlipQt(QWidget):
         map_rel  points relative to map if True, else relative to view
         """
 
-        print(f'draw_polygon_layer: data={data}, map_rel={map_rel}')
-
         # get the correct pex function for mode (map/view)
-        print(f'draw_polygon_layer: Assuming .pex_polygon_view()')
         pex = self.pex_polygon_view
         if map_rel:
-            print(f'draw_polygon_layer: Using .pex_polygon()')
             pex = self.pex_polygon
 
         # draw polygons
@@ -1055,9 +1041,7 @@ class PySlipQt(QWidget):
 
         for (p, place, width, colour, closed,
                  filled, fillcolour, x_off, y_off, udata) in data:
-            print(f'loop: place={place}, width={width}, colour={colour}, closed={closed}, filled={filled}, fillcolour={fillcolour}, x_off={x_off}, y_off={y_off}')
             (poly, extent) = pex(place, p, x_off, y_off)
-            print(f'After pex(), poly={poly}, extent={extent}')
             if poly:
                 if (colour, width) != cache_colour_width:
                     dc.setPen(QPen(QColor(*colour), width, Qt.SolidLine))
@@ -1068,7 +1052,6 @@ class PySlipQt(QWidget):
                     cache_fillcolour = fillcolour
 
                 qpoly = [QPoint(*p) for p in poly]
-                print(f'loop: drawing qpoly={qpoly}')
                 dc.drawPolygon(QPolygon(qpoly))
 
     def draw_polyline_layer(self, dc, data, map_rel):
@@ -1200,13 +1183,9 @@ class PySlipQt(QWidget):
         The 'extent' here is the extent of the point+radius.
         """
 
-        print(f'pex_point: place={place}, geo={geo}, x_off={x_off}, y_off={y_off}, radius={radius}')
-
         # get point view coords
         (xview, yview) = self.geo_to_view(geo)
-        print(f'pex_point: xview={xview}, yview={yview}')
         point = self.point_placement(place, xview, yview, x_off, y_off)
-        print(f'pex_point: after .point_placement(), point={point}')
         (px, py) = point
 
         # extent = (left, right, top, bottom) in view coords
@@ -1236,13 +1215,10 @@ class PySlipQt(QWidget):
         The 'extent' here is the extent of the point+radius.
         """
 
-        print(f'pex_point_view: place={place}, view={view}, x_off={x_off}, y_off={y_off}, radius={radius}')
-
         # get point view coords and perturb point to placement
         (xview, yview) = view
         point = self.point_placement_view(place, xview, yview, x_off, y_off)
 #                                     self.view_width, self.view_height)
-        print(f'pex_point_view: after point_placement_view(), point={point}')
         (px, py) = point
 
         # extent = (left, right, top, bottom) in view coords
@@ -1277,17 +1253,13 @@ class PySlipQt(QWidget):
         An extent object can be either an image object or a text object.
         """
 
-        print(f'pex_extent: place={place}, geo={geo}, x_off={x_off}, y_off={y_off}, w={w}, h={h}, image={image}')
-
         # get point view coords
         vpoint = self.geo_to_view(geo)
-        print(f'pex_extent: after .geo_to_view(), vpoint={vpoint}')
         (vpx, vpy) = vpoint
 
         # get extent limits
         # must take into account 'place', 'x_off' and 'y_off'
         point = self.extent_placement(place, vpx, vpy, x_off, y_off, w, h, image=image)
-        print(f'pex_extent: after extent_placement(), point={point}')
         (px, py) = point
 
         # extent = (left, right, top, bottom) in view coords
@@ -1303,8 +1275,6 @@ class PySlipQt(QWidget):
 
         extent = (elx, erx, ety, eby)
 
-        print(f'pex_extent: extent={extent} (elx, erx, ety, eby)')
-
         # decide if point is off-view
         if vpx < 0 or vpx > self.view_width or vpy < 0 or vpy > self.view_height:
             vpoint = None
@@ -1313,8 +1283,6 @@ class PySlipQt(QWidget):
         if erx < 0 or elx > self.view_width or eby < 0 or ety > self.view_height:
             # no extent if ALL of extent is off-view
             extent = None
-
-        print(f'pex_extent: returning ({vpoint}, {extent})')
 
         return (vpoint, extent)
 
@@ -1335,30 +1303,22 @@ class PySlipQt(QWidget):
         Takes size of extent object into consideration.
         """
 
-        print(f'pex_extent_view: place={place}, view={view}, x_off={x_off}, y_off={y_off}, w={w}, h={h}, image={image}')
-        print(f'pex_extent_view: self.view_width={self.view_width}, self.view_height={self.view_height}')
-
         # get point view coords and perturb point to placement origin
         # we ignore offsets for the point as they apply to the extent only
         (xview, yview) = view
 #        point = self.point_placement_view(place, xview, yview, x_off, y_off)
         point = self.point_placement_view(place, xview, yview, 0, 0)
 
-        print(f'pex_extent_view: after .point_placement_view(), point={point}')
-
         # get extent view coords (ix and iy)
         (px, py) = point
         (ix, iy) = self.extent_placement(place, px, py, x_off, y_off,
                                          w, h, image=False)
-
-        print(f'pex_extent_view: after .extent_placement(), (ix, iy)=({ix},{iy})')
 
         # extent = (left, right, top, bottom) in view coords
         # this is different for images
 #        (px, py) = point
         if image:
             # perturb extent coords to edges of image
-            print(f'pex_extent_view: perturbing an image')
             if   place == 'cc': elx = px - w/2;        ety = py - h/2
             elif place == 'cn': elx = px - w/2;        ety = py + y_off
             elif place == 'ne': elx = px - w - x_off;  ety = py - y_off
@@ -1371,22 +1331,18 @@ class PySlipQt(QWidget):
             erx = elx + w
             eby = ety + h
 #        else:
-#            print(f'pex_extent_view: NOT an image, (ix, iy)=({ix},{iy})')
 #            elx = ix
 #            erx = ix + w
 #            ety = iy - h
 #            eby = iy
 
         else:
-            print(f'pex_extent_view: NOT an image, (ix, iy)=({ix},{iy})')
             elx = ix
             erx = ix + w
             ety = iy - h
             eby = iy
 
         extent = (elx, erx, ety, eby)
-
-        print(f'pex_extent_view: extent={extent}')
 
         # decide if point is off-view
         if px < 0 or px > self.view_width or py < 0 or py > self.view_height:
@@ -1395,8 +1351,6 @@ class PySlipQt(QWidget):
         # decide if extent is off-view
         if erx < 0 or elx > self.view_width or eby < 0 or ety > self.view_height:
             extent = None
-
-        print(f'pex_extent_view: returning ({point}, {extent})')
 
         return (point, extent)
 
@@ -1487,14 +1441,10 @@ class PySlipQt(QWidget):
         Returns a tuple (x, y) in view coordinates.
         """
 
-        print(f'point_placement: place={place}, x={x}, y={y}, x_off={x_off}, y_off={y_off}')
-
         # adjust the X, Y coordinates relative to the origin
         # in map-rel mode we just add the offsets to the point position
         x += x_off
         y += y_off
-
-        print(f'point_placement: place={place}, new x={x}, new y={y}')
 
         return (x, y)
 
@@ -1507,8 +1457,6 @@ class PySlipQt(QWidget):
 
         Returns a tuple (x, y) in view coordinates.
         """
-
-        print(f'point_placement_view: place={place}, x={x}, y={y}, x_off={x_off}, y_off={y_off}')
 
         dcw = self.view_width
         dch = self.view_height
@@ -1542,14 +1490,11 @@ class PySlipQt(QWidget):
         Returns a tuple (x, y).
         """
 
-        print(f'extent_placement: place={place}, x={x}, y={y}, x_off={x_off}, y_off={y_off}, w={w}, h={h}, image={image}')
-
         w2 = w / 2
         h2 = h / 2
 
 # TODO: these two bits of code are the same        
         if image:
-            print(f'extent_placement: IS image')
             if   place == 'cc': x += -w2;            y += -h2
             elif place == 'nw': x += x_off;          y += y_off
             elif place == 'cn': x += -w2;            y += y_off
@@ -1560,7 +1505,6 @@ class PySlipQt(QWidget):
             elif place == 'sw': x += x_off;          y += -y_off - h
             elif place == 'cw': x += x_off;          y += -h2
         else:
-            print(f'extent_placement: NOT image')
             if   place == 'cc': x += - w2;           y += h2
             elif place == 'nw': x += x_off;          y += y_off + h
             elif place == 'cn': x += -w2;            y += y_off + h
@@ -1821,7 +1765,7 @@ class PySlipQt(QWidget):
         We don't use any of the above - just redraw the entire canvas.
         This is because the new tile is already in the in-memory cache.
 
-        On a slow display we could just redraw the new tile.
+        On a slow display we could just redraw just the new tile.
         """
 
         self.update()
@@ -2705,8 +2649,6 @@ class PySlipQt(QWidget):
                          'data'       point user data object
         """
 
-        print(f'AddPointLayer: points={points}, map_rel={map_rel}')
-
         # merge global and layer defaults
         if map_rel:
             default_placement = kwargs.get('placement', self.DefaultPointPlacement)
@@ -2763,8 +2705,6 @@ class PySlipQt(QWidget):
             draw_data.append((float(x), float(y), placement,
                               radius, colour, offset_x, offset_y, udata))
 
-        print(f'AddPointLayer: draw_data={draw_data}')
-
         return self.add_layer(self.draw_point_layer, draw_data, map_rel,
                               visible=visible, show_levels=show_levels,
                               selectable=selectable, name=name,
@@ -2800,8 +2740,6 @@ class PySlipQt(QWidget):
         The hotspot is placed at (lon, lat) or (x, y).  'placement' controls
         where the image is displayed relative to the hotspot.
         """
-
-        print(f'AddImageLayer: data={data}, map_rel={map_rel}')
 
         # merge global and layer defaults
         if map_rel:
@@ -2892,8 +2830,6 @@ class PySlipQt(QWidget):
                      these supply any data missing in 'data'
         """
 
-        print(f'AddTextLayer: text={text}, map_rel={map_rel}')
-
         # merge global and layer defaults
         if map_rel:
             default_placement = kwargs.get('placement', self.DefaultTextPlacement)
@@ -2922,8 +2858,6 @@ class PySlipQt(QWidget):
             default_offset_y = kwargs.get('offset_y', self.DefaultTextViewOffsetY)
             default_data = kwargs.get('data', self.DefaultTextData)
 
-        print(f"After merge, default_placement='{default_placement}'")
-
         # create data iterable ready for drawing
         draw_data = []
         for t in text:
@@ -2951,8 +2885,6 @@ class PySlipQt(QWidget):
             offset_x = attributes.get('offset_x', default_offset_x)
             offset_y = attributes.get('offset_y', default_offset_y)
             udata = attributes.get('data', default_data)
-
-            print(f"After checking placement, placement='{placement}'")
 
             # check values that can be wrong
             placement = placement.lower()
