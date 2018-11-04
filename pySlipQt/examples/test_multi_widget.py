@@ -1,7 +1,5 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
-"""Test PySlipQt with multiple widget instances.
+"""
+Test PySlipQt with multiple widget instances.
 
 Usage: test_multi_widget.py [-h]
 
@@ -11,24 +9,30 @@ the widget instances.
 
 
 import sys
+import getopt
+import traceback
 
-import wx
+from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QHBoxLayout, QGridLayout
 
-sys.path.append('..')
-import pyslipqt
-import gmt_local_tiles as GMTTiles
-import osm_tiles as NetTiles
+import pySlipQt.log as log
 
+# initialize the logging system
+log = log.Log('test_maprel_image.log')
+
+import pySlipQt.pySlipQt as pySlipQt
+
+import pySlipQt.gmt_local as GMTTiles
+import pySlipQt.open_street_map as NetTiles
 
 ######
 # Various demo constants
 ######
 
-DefaultAppSize = (600, 400)
-MinW = 400
-MinH = 300
-MaxW = 1000
-MaxH = 800
+DemoVersion = '1.0'
+DemoName = f'Test multi-widget use {DemoVersion} (pySlipQt {pySlipQt.__version__})'
+
+DemoHeight = 800
+DemoWidth = 1000
 
 MinTileLevel = 0
 InitViewLevel = 2
@@ -38,17 +42,12 @@ InitViewPosition = (100.51, 13.75)      # Bangkok
 # The main application frame
 ################################################################################
 
-class TestFrame(wx.Frame):
-    def __init__(self):
-        """Initialize the widget."""
+class TestFrame(QMainWindow):
 
-        wx.Frame.__init__(self, None, size=DefaultAppSize,
-                          title=('PySlipQt %s - multiwidget test'
-                                 % pyslipqt.__version__))
-        self.SetMinSize(DefaultAppSize)
-        self.panel = wx.Panel(self, wx.ID_ANY)
-        self.panel.SetBackgroundColour(wx.WHITE)
-        self.panel.ClearBackground()
+    def __init__(self, tile_dir):
+        super().__init__()
+
+        self.tile_directory = tile_dir
 
         # note that we need a unique Tile source for each widget
         # sharing directories is OK
@@ -58,76 +57,75 @@ class TestFrame(wx.Frame):
         osm_tile_src_2 = NetTiles.Tiles()
 
         # build the GUI
-        box = wx.BoxSizer(wx.VERTICAL)
-        gsz = wx.GridSizer(rows=2, cols=2, vgap=5, hgap=5)
+        grid = QGridLayout()
 
-        self.pyslipqt1 = pyslipqt.PySlipQt(self.panel, tile_src=gmt_tile_src_1)
-        gsz.Add(self.pyslipqt1, flag=wx.ALL|wx.EXPAND)
+        qwidget = QWidget(self)
+        qwidget.setLayout(grid)
+        self.setCentralWidget(qwidget)
 
-        self.pyslipqt2 = pyslipqt.PySlipQt(self.panel, tile_src=osm_tile_src_1)
-        gsz.Add(self.pyslipqt2, flag=wx.ALL|wx.EXPAND)
+        self.pyslipqt1  = pySlipQt.PySlipQt(self, tile_src=gmt_tile_src_1,
+                                            start_level=MinTileLevel)
+        grid.addWidget(self.pyslipqt1, 0, 0)
+        self.pyslipqt2  = pySlipQt.PySlipQt(self, tile_src=osm_tile_src_1,
+                                            start_level=MinTileLevel)
+        grid.addWidget(self.pyslipqt2, 0, 1)
+        self.pyslipqt3  = pySlipQt.PySlipQt(self, tile_src=osm_tile_src_2,
+                                            start_level=MinTileLevel)
+        grid.addWidget(self.pyslipqt3, 1, 0)
+        self.pyslipqt4  = pySlipQt.PySlipQt(self, tile_src=gmt_tile_src_2,
+                                            start_level=MinTileLevel)
+        grid.addWidget(self.pyslipqt4, 1, 1)
 
-        self.pyslipqt3 = pyslipqt.PySlipQt(self.panel, tile_src=osm_tile_src_2)
-        gsz.Add(self.pyslipqt3, flag=wx.ALL|wx.EXPAND)
-
-        self.pyslipqt4 = pyslipqt.PySlipQt(self.panel, tile_src=gmt_tile_src_2)
-        gsz.Add(self.pyslipqt4, flag=wx.ALL|wx.EXPAND)
-
-        box.Add(gsz, proportion=1, flag=wx.ALL|wx.EXPAND)
-
-        self.panel.SetSizer(box)
-        self.SetSizeHints(MinW, MinH, MaxW, MaxH)
-        self.panel.Fit()
-        self.Centre()
-        self.Show(True)
+        # set the size of the demo window, etc
+        self.setGeometry(100, 100, DemoWidth, DemoHeight)
+        self.setWindowTitle(DemoName)
 
         # set initial view position
-        self.pyslipqt1.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
-        self.pyslipqt2.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
-        self.pyslipqt3.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
-        self.pyslipqt4.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
+#        gmt_tile_src_1.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
+#        gmt_tile_src_2.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
+#        osm_tile_src_1.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
+#        osm_tile_src_2.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
+
+        self.show()
 
 ################################################################################
 
-if __name__ == '__main__':
-    import sys
-    import getopt
-    import traceback
+# print some usage information
+def usage(msg=None):
+    if msg:
+        print(msg+'\n')
+    print(__doc__)        # module docstring used
 
-    # print some usage information
-    def usage(msg=None):
-        if msg:
-            print(msg+'\n')
-        print(__doc__)        # module docstring used
+# our own handler for uncaught exceptions
+def excepthook(type, value, tb):
+    msg = '\n' + '=' * 80
+    msg += '\nUncaught exception:\n'
+    msg += ''.join(traceback.format_exception(type, value, tb))
+    msg += '=' * 80 + '\n'
+    print(msg)
+    sys.exit(1)
 
-    # our own handler for uncaught exceptions
-    def excepthook(type, value, tb):
-        msg = '\n' + '=' * 80
-        msg += '\nUncaught exception:\n'
-        msg += ''.join(traceback.format_exception(type, value, tb))
-        msg += '=' * 80 + '\n'
-        print msg
-        sys.exit(1)
+# plug our handler into the python system
+sys.excepthook = excepthook
 
-    # plug our handler into the python system
-    sys.excepthook = excepthook
+# decide which tiles to use, default is GMT
+argv = sys.argv[1:]
 
-    # decide which tiles to use, default is GMT
-    argv = sys.argv[1:]
+try:
+    (opts, args) = getopt.getopt(argv, 'h', ['help'])
+except getopt.error:
+    usage()
+    sys.exit(1)
 
-    try:
-        (opts, args) = getopt.getopt(argv, 'h', ['help'])
-    except getopt.error:
+for (opt, param) in opts:
+    if opt in ['-h', '--help']:
         usage()
-        sys.exit(1)
+        sys.exit(0)
 
-    for (opt, param) in opts:
-        if opt in ['-h', '--help']:
-            usage()
-            sys.exit(0)
+# start the app
+tile_dir = 'test_multi_widget'
 
-    # start wxPython app
-    app = wx.App()
-    TestFrame().Show()
-    app.MainLoop()
+app = QApplication(args)
+ex = TestFrame(tile_dir)
+sys.exit(app.exec_())
 
