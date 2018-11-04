@@ -1038,9 +1038,13 @@ class PySlipQt(QWidget):
         map_rel  points relative to map if True, else relative to view
         """
 
+        print(f'draw_polygon_layer: data={data}, map_rel={map_rel}')
+
         # get the correct pex function for mode (map/view)
+        print(f'draw_polygon_layer: Assuming .pex_polygon_view()')
         pex = self.pex_polygon_view
         if map_rel:
+            print(f'draw_polygon_layer: Using .pex_polygon()')
             pex = self.pex_polygon
 
         # draw polygons
@@ -1051,7 +1055,9 @@ class PySlipQt(QWidget):
 
         for (p, place, width, colour, closed,
                  filled, fillcolour, x_off, y_off, udata) in data:
+            print(f'loop: place={place}, width={width}, colour={colour}, closed={closed}, filled={filled}, fillcolour={fillcolour}, x_off={x_off}, y_off={y_off}')
             (poly, extent) = pex(place, p, x_off, y_off)
+            print(f'After pex(), poly={poly}, extent={extent}')
             if poly:
                 if (colour, width) != cache_colour_width:
                     dc.setPen(QPen(QColor(*colour), width, Qt.SolidLine))
@@ -1062,6 +1068,7 @@ class PySlipQt(QWidget):
                     cache_fillcolour = fillcolour
 
                 qpoly = [QPoint(*p) for p in poly]
+                print(f'loop: drawing qpoly={qpoly}')
                 dc.drawPolygon(QPolygon(qpoly))
 
     def draw_polyline_layer(self, dc, data, map_rel):
@@ -1480,7 +1487,7 @@ class PySlipQt(QWidget):
         Returns a tuple (x, y) in view coordinates.
         """
 
-        print(f'point_placement: place={place}, x={x}, y={y}, x_off={x_off}, y_off={y_off} XYZZY`')
+        print(f'point_placement: place={place}, x={x}, y={y}, x_off={x_off}, y_off={y_off}')
 
         # adjust the X, Y coordinates relative to the origin
         # in map-rel mode we just add the offsets to the point position
