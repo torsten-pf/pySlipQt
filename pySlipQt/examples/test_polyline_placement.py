@@ -25,7 +25,6 @@ log = log.Log('test_polyline_placement.log')
 import pySlipQt.pySlipQt as pySlipQt
 from display_text import DisplayText
 from layer_control import LayerControl
-from image_placement import ImagePlacementControl
 
 ######
 # Various demo constants
@@ -136,6 +135,8 @@ class LayerControl(QWidget):
                                  'border-radius: 3px;'
                                  'border-width: 1px;'
                                  'color: black;'
+#                                 'background-color: lightgray;'
+                                 'background-color: white;'
                                '}')
     ButtonColourStyle = ('QPushButton {'
                                        'margin: 1px;'
@@ -182,7 +183,8 @@ class LayerControl(QWidget):
         self.line_width.setFixedWidth(LayerControl.ComboboxWidth)
 
         self.line_colour = QPushButton('')
-        self.line_colour.setFixedWidth(ImagePlacementControl.ButtonWidth)
+        self.line_colour.setFixedWidth(LayerControl.ButtonWidth)
+        self.line_colour.setStyleSheet(LayerControl.ButtonStyle)
         self.line_colour.setToolTip('Click here to change the point colour')
 
         self.x_offset = QComboBox()
