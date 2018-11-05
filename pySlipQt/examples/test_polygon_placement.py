@@ -141,6 +141,7 @@ class LayerControl(QWidget):
                                  'border-radius: 3px;'
                                  'border-width: 1px;'
                                  'color: black;'
+                                 'background-color: white;'
                                '}')
     ButtonColourStyle = ('QPushButton {'
                                        'margin: 1px;'
@@ -197,10 +198,12 @@ class LayerControl(QWidget):
         self.line_colour = QPushButton('')
         self.line_colour.setFixedWidth(ImagePlacementControl.ButtonWidth)
         self.line_colour.setToolTip('Click here to change the point colour')
+        self.line_colour.setStyleSheet(LayerControl.ButtonStyle)
 
         self.fill_colour = QPushButton('')
         self.fill_colour.setFixedWidth(ImagePlacementControl.ButtonWidth)
         self.fill_colour.setToolTip('Click here to change the fill colour')
+        self.fill_colour.setStyleSheet(LayerControl.ButtonStyle)
 
         self.cb_closed = QCheckBox('closed: ',self)
         self.cb_filled = QCheckBox('filled: ',self)
@@ -301,7 +304,6 @@ class LayerControl(QWidget):
         if color.isValid():
             colour = color.name()
             # set colour button background
-#            self.line_colour.setStyleSheet(f'background-color:{colour};');
             self.line_colour.setStyleSheet(LayerControl.ButtonColourStyle % colour);
  
     def changeFillColour(self, event):
@@ -309,7 +311,6 @@ class LayerControl(QWidget):
         if color.isValid():
             colour = color.name()
             # set colour button background
-#            self.fill_colour.setStyleSheet(f'background-color:{colour};');
             self.fill_colour.setStyleSheet(LayerControl.ButtonColourStyle % colour);
  
     def removeImage(self, event):

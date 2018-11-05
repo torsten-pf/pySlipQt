@@ -1,6 +1,5 @@
-#!/usr/bin/env python2
-
-"""A program to generate a set of mapping tiles from GMT.
+"""
+A program to generate a set of mapping tiles from GMT.
 
 Usage: make_gmt_tiles [-t] [-s <size>] [-v] <tile_dir> <stop_level> [<start_level>]
 
@@ -19,7 +18,7 @@ You *must* have installed the GMT package (and data files)
 as well as the GEBCO data file if you want oceanfloor topo
 [http://www.gebco.net/].
 
-Note: this requires python 2.6 or greater, but NOT python 3.x.
+Note: this requires python 3.x.
 """
 
 import sys
@@ -29,11 +28,11 @@ import tempfile
 import shutil
 import pickle
 import multiprocessing
-import Queue
+import queue
 import traceback
 import datetime
 
-import Image
+from PIL import Image
 import numofcpus
 
 # number of worker processes
@@ -123,7 +122,7 @@ class Worker(multiprocessing.Process):
             # get a task
             try:
                 (tile_file, tile_size, d_opt, r_opt) = self.work_queue.get(timeout=1)
-            except Queue.Empty, e:
+            except queue.Empty as e:
                 self.log('Empty queue: %s' % str(e))
                 break
  
@@ -133,10 +132,10 @@ class Worker(multiprocessing.Process):
 
             # draw the coastline tiles
             if UseTopo:
-                cmd = ('grdimage %s %s -JX17.5d -fig -P -C%s -I%s -K > %s'
+                cmd = ('gmt grdimage %s %s -JX17.5d -fig -P -C%s -I%s -K > %s'
                        % (GEBCOElevationFile, r_opt, CptFile, GridFile, ps_file))
                 self.do_cmd(cmd)
-                cmd = ('pscoast -P %s -JX17.5d %s '
+                cmd = ('gmt pscoast -P %s -JX17.5d %s '
                        '-N1/%s,%s -N3/%s,%s -W0.5 -S%s -G%s -O >> %s'
                        % (r_opt, d_opt,
                           PoliticalBorderWidth, PoliticalBorderColour,
@@ -144,7 +143,7 @@ class Worker(multiprocessing.Process):
                           WaterColour, LandColour, ps_file))
                 self.do_cmd(cmd)
             else:
-                cmd = ('pscoast -P %s -JX17.5d %s '
+                cmd = ('gmt pscoast -P %s -JX17.5d %s '
                        '-N1/%s,%s -N3/%s,%s -W0.5 -S%s -G%s > %s'
                        % (r_opt, d_opt,
                           PoliticalBorderWidth, PoliticalBorderColour,
@@ -152,11 +151,13 @@ class Worker(multiprocessing.Process):
                           WaterColour, LandColour, ps_file))
                 self.do_cmd(cmd)
 
-            cmd = 'ps2raster %s -A -Tg' % ps_file
+            cmd = 'gmt psconvert %s -A -Tg' % ps_file
             self.do_cmd(cmd)
 
-            cmd = ('convert -quality 100 -resize %dx%d! %s %s'
-                   % (tile_size, tile_size, png_file, tile_file))
+#            cmd = ('gmt convert -quality 100 -resize %dx%d! %s %s'
+#                   % (tile_size, tile_size, png_file, tile_file))
+            cmd = ('gmt convert %s %s'
+                   % (png_file, tile_file))
             self.do_cmd(cmd)
  
         self.log('stopping')
@@ -201,13 +202,13 @@ def make_gmt_tiles(tile_dir, min_level, max_level, tile_size):
         global GridFile, CptFile
 
         CptFile = './bath.cpt'
-        cmd = 'makecpt -Cglobe > %s' % CptFile
+        cmd = 'gmt makecpt -Cglobe > %s' % CptFile
         do_cmd(cmd)
-        print cmd
+        print(cmd)
         GridFile = './IO_int.grd'
-        cmd = 'grdgradient %s -A0 -Nt -G%s' % (GEBCOElevationFile, GridFile)
+        cmd = 'gmt grdgradient %s -A0 -Nt -G%s' % (GEBCOElevationFile, GridFile)
         do_cmd(cmd)
-        print cmd
+        print(cmd)
 
     # prepare queue for workers
     work_queue = multiprocessing.Queue()
@@ -294,8 +295,8 @@ def make_tileset(q, tmp_dir, tile_dir, extent, level, tile_size):
 
     w_num = 0
     # step through each tile
-    for x in xrange(num_tiles_x):
-        for y in xrange(num_tiles_y):
+    for x in range(num_tiles_x):
+        for y in range(num_tiles_y):
             # get a worker number
             w_num += 1
             if w_num > NumberOfWorkers:
@@ -317,12 +318,11 @@ def make_tileset(q, tmp_dir, tile_dir, extent, level, tile_size):
     # now create a tileset info file
     info_file = os.path.join(tile_dir, TileInfoFilename)
     obj = (num_tiles_x, num_tiles_y, ppd_x, ppd_y)
-    fd = open(info_file, 'wb')
-    pickle.dump(obj, fd)
-    fd.close()
+    with open(info_file, 'wb') as fd:
+        pickle.dump(obj, fd)
 
 ################################################################################
-# 
+# Program start
 ################################################################################
 
 def usage(msg=None):
@@ -342,7 +342,7 @@ def main(argv=None):
     try:
         opts, args = getopt.getopt(sys.argv[1:], 'hs:tv',
                                    ['help', 'size=', 'topo', 'verbose'])
-    except getopt.error, msg:
+    except getopt.error as msg:
         usage()
         return 1
 

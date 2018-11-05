@@ -135,7 +135,6 @@ class LayerControl(QWidget):
                                  'border-radius: 3px;'
                                  'border-width: 1px;'
                                  'color: black;'
-#                                 'background-color: lightgray;'
                                  'background-color: white;'
                                '}')
     ButtonColourStyle = ('QPushButton {'
@@ -268,7 +267,6 @@ class LayerControl(QWidget):
         if color.isValid():
             colour = color.name()
             # set colour button background
-#            self.line_colour.setStyleSheet(f'background-color:{colour};');
             self.line_colour.setStyleSheet(LayerControl.ButtonColourStyle % colour);
  
     def removeImage(self, event):

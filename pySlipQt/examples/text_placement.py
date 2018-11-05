@@ -66,6 +66,15 @@ class TextPlacementControl(QWidget):
                                  '    border-radius: 3px; '
                                  '    padding: 2 2px; '
                                  '    color: black; }')
+    ButtonColourStyle = ('QPushButton {'
+                                       'margin: 1px;'
+                                       'border-color: #0c457e;'
+                                       'border-style: outset;'
+                                       'border-radius: 3px;'
+                                       'border-width: 1px;'
+                                       'color: black;'
+                                       'background-color: %s;'
+                                     '}')
 
     def __init__(self, title):
         """Initialise a TextPlacementControl instance.
@@ -218,22 +227,26 @@ class TextPlacementControl(QWidget):
         btn_update.clicked.connect(self.updateData)
 
         # finally, put default colours into the colour selector buttons
-        self.text_colour.setStyleSheet(f"background-color:{TextPlacementControl.DefaultTextColour};");
-        self.point_colour.setStyleSheet(f"background-color:{TextPlacementControl.DefaultPointColour};");
+        self.text_colour.setStyleSheet(TextPlacementControl.ButtonColourStyle
+                                       % TextPlacementControl.DefaultTextColour)
+        self.point_colour.setStyleSheet(TextPlacementControl.ButtonColourStyle
+                                        % TextPlacementControl.DefaultPointColour)
 
     def changePointColour(self, event):
         color = QColorDialog.getColor()
         if color.isValid():
             colour = color.name()
             # set colour button background
-            self.point_colour.setStyleSheet(f'background-color:{colour};');
+            self.point_colour.setStyleSheet(TextPlacementControl.ButtonColourStyle
+                                            % colour)
  
     def changeTextColour(self, event):
         color = QColorDialog.getColor()
         if color.isValid():
             colour = color.name()
             # set colour button background
-            self.text_colour.setStyleSheet(f'background-color:{colour};');
+            self.text_colour.setStyleSheet(TextPlacementControl.ButtonColourStyle
+                                           % colour)
  
     def removeLayer(self, event):
         self.remove.emit()

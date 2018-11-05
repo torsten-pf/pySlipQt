@@ -74,6 +74,7 @@ def tkinter_error(msg, title=None):
 
 
 if __name__ == '__main__':
+    # just a simple "smoke test" of the error notification
     long_msg = ('Lorem ipsum dolor sit amet, consectetur adipiscing elit, '
                 'sed do eiusmod tempor incididunt ut labore et dolore magna '
                 'aliqua. Ut enim ad minim veniam, quis nostrud exercitation '
