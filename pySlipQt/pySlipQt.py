@@ -312,7 +312,7 @@ class PySlipQt(QWidget):
         # create the events raised by PySlipQt
         self.events = PySlipQt.Events()
 
-        # a dictionary to map event number to raising function    
+        # a dictionary to map event number to raising function
         self.pyslipqt_event_dict = {
            PySlipQt.EVT_PYSLIPQT_LEVEL:         self.events.EVT_PYSLIPQT_LEVEL.emit,
            PySlipQt.EVT_PYSLIPQT_POSITION:      self.events.EVT_PYSLIPQT_POSITION.emit,
@@ -321,7 +321,7 @@ class PySlipQt(QWidget):
            PySlipQt.EVT_PYSLIPQT_POLYSELECT:    self.events.EVT_PYSLIPQT_POLYSELECT.emit,
 #           PySlipQt.EVT_PYSLIPQT_POLYBOXSELECT: self.events.EVT_PYSLIPQT_POLYBOXSELECT.emit,
           }
-    
+
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.setMinimumSize(self.tile_width, self.tile_height)
 
@@ -365,7 +365,7 @@ class PySlipQt(QWidget):
 
     def raise_event(self, etype, **kwargs):
         """Raise event with attributes in 'kwargs'.
-        
+
         etype  type of event to raise
         kwargs  a dictionary of attributes to attach to event
         """
@@ -462,7 +462,7 @@ class PySlipQt(QWidget):
             self.right_mbutton_down = False
         else:
             log('mouseReleaseEvent: unknown button')
- 
+
     def mouseDoubleClickEvent(self, event):
         b = event.button()
         if b == Qt.NoButton:
@@ -475,7 +475,7 @@ class PySlipQt(QWidget):
             pass
         else:
             log('mouseDoubleClickEvent: unknown button')
- 
+
     def mouseMoveEvent(self, event):
         """Handle a mouse move event."""
 
@@ -648,7 +648,7 @@ class PySlipQt(QWidget):
                 # 'key' tile too far right, move one left
                 self.key_tile_left -= 1
                 self.key_tile_xoffset -= self.tile_width
-    
+
             while self.key_tile_xoffset <= -self.tile_width:
                 # 'key' tile too far left, move one right
                 self.key_tile_left += 1
@@ -671,7 +671,7 @@ class PySlipQt(QWidget):
                     # 'key' tile too far right
                     self.key_tile_left -= 1
                     self.key_tile_xoffset -= self.tile_width
-        
+
                 while self.key_tile_xoffset <= -self.tile_width:
                     # 'key' tile too far left
                     self.key_tile_left += 1
@@ -701,7 +701,7 @@ class PySlipQt(QWidget):
                 # 'key' tile too far right, move one left
                 self.key_tile_top -= 1
                 self.key_tile_yoffset -= self.tile_height
-    
+
             while self.key_tile_yoffset <= -self.tile_height:
                 # 'key' tile too far left, move one right
                 self.key_tile_top += 1
@@ -723,7 +723,7 @@ class PySlipQt(QWidget):
                     # 'key' tile too far right
                     self.key_tile_top -= 1
                     self.key_tile_yoffset -= self.tile_height
-        
+
                 while self.key_tile_yoffset <= -self.tile_height:
                     # 'key' tile too far left
                     self.key_tile_top += 1
@@ -800,7 +800,7 @@ class PySlipQt(QWidget):
             else:
                 tile_left = tile_left*2 + 1
                 tile_xoff = tile_xoff*2 - self.tile_width
-    
+
             if tile_yoff < self.tile_height // 2:
                 tile_top = tile_top * 2
                 tile_yoff = tile_yoff * 2
@@ -825,7 +825,7 @@ class PySlipQt(QWidget):
             else:
                 # point in bottom half of 2x2
                 tile_yoff = (tile_yoff + self.tile_height) // 2
-    
+
         zx_frac = self.tile_parts_to_frac(tile_left, tile_xoff, self.tile_width)
         zy_frac = self.tile_parts_to_frac(tile_top, tile_yoff, self.tile_height)
 
@@ -1347,7 +1347,7 @@ class PySlipQt(QWidget):
         # decide if point is off-view
         if px < 0 or px > self.view_width or py < 0 or py > self.view_height:
             point = None
-            
+
         # decide if extent is off-view
         if erx < 0 or elx > self.view_width or eby < 0 or ety > self.view_height:
             extent = None
@@ -1493,7 +1493,7 @@ class PySlipQt(QWidget):
         w2 = w / 2
         h2 = h / 2
 
-# TODO: these two bits of code are the same        
+# TODO: these two bits of code are the same
         if image:
             if   place == 'cc': x += -w2;            y += -h2
             elif place == 'nw': x += x_off;          y += y_off
@@ -1586,7 +1586,7 @@ class PySlipQt(QWidget):
         # figure out number of tiles from centre point to edges
         tx = (self.view_width / 2) / self.tile_width
         ty = (self.view_height / 2) / self.tile_height
-        
+
         # calculate tile coordinates of the top-left corner of the view
         key_tx = tile_x - tx
         key_ty = tile_y - ty
@@ -1608,7 +1608,7 @@ class PySlipQt(QWidget):
     def rectify_key_tile(self):
         """Adjust state variables to ensure map centred if map is smaller than
         view.  Otherwise don't allow edges to be exposed.
-       
+
         Adjusts the "key" tile variables to ensure proper presentation.
 
         Relies on .map_width, .map_height and .key_tile_* being set.
@@ -3251,6 +3251,7 @@ class PySlipQt(QWidget):
         """
 
         if not self.tile_src.UseLevel(level):
+            print(f'GotoLevel: returning False since self.tile_src.UseLevel({level}) failed')
             return False        # couldn't change level
 
         self.level = level
@@ -3264,6 +3265,7 @@ class PySlipQt(QWidget):
         self.resizeEvent()
 
         # raise level change event
+        print(f'GotoLevel: raising PySlipQt.EVT_PYSLIPQT_LEVEL event, level={level}')
         self.raise_event(PySlipQt.EVT_PYSLIPQT_LEVEL, level=level)
 
         return True
@@ -3276,40 +3278,39 @@ class PySlipQt(QWidget):
         Recalculates the key tile info.
         """
 
+        print(f'GotoPosition: geo={geo}')
+
         # get fractional tile coords of required centre of view
         (xtile, ytile) = self.tile_src.Geo2Tile(geo)
+        print(f'GotoPosition: xtile={xtile}, ytile={ytile}')
 
-        # calculate pixels from view edges to centre tile edges
-        half_width = self.view_width / 2
-        half_height = self.view_height / 2
+        # get view size in half widths and height
+        w2 = self.view_width / 2
+        h2 = self.view_height / 2
 
-        int_xtile = int(xtile)
-        int_ytile = int(ytile)
+        # get tile coords of view left and top edges
+        view_tile_x = xtile - (w2 / self.tile_width)
+        view_tile_y = ytile - (h2 / self.tile_height)
+        print(f'GotoPosition: view_tile_x={view_tile_x}, view_tile_y={view_tile_y}')
 
-        frac_xtile = xtile - int_xtile
-        frac_ytile = ytile - int_ytile
+        # calculate the key tile coords and offsets
+        keytile_x = int(view_tile_x)
+        keytile_y = int(view_tile_y)
+        print(f'GotoPosition: keytile_x={keytile_x}, keytile_y={keytile_y}')
 
-        pix_xtile = frac_xtile * self.tile_width
-        piy_ytile = frac_ytile * self.tile_height
+        keyoffset_x = - int((view_tile_x - keytile_x) * self.tile_width)
+        keyoffset_y = - int((view_tile_y - keytile_y) * self.tile_height)
+        print(f'GotoPosition: keyoffset_x={keyoffset_x}, keyoffset_y={keyoffset_y}')
 
-        tile_xoff = half_width - pix_xtile
-        tile_yoff = half_height - piy_ytile
+        # worry about map < view
 
+        # update the key tile info
+        self.key_tile_left = keytile_x
+        self.key_tile_top = keytile_y
+        self.key_tile_xoffset = keyoffset_x
+        self.key_tile_yoffset = keyoffset_y
 
-
-
-        # now calculate view offsets, top, left, bottom and right
-        half_width = self.view_width / 2
-        centre_pixels_from_map_left = int(xtile * self.tile_width)
-        self.view_offset_x = centre_pixels_from_map_left - half_width
-
-        half_height = self.view_height / 2
-        centre_pixels_from_map_top = int(ytile * self.tile_height)
-        self.view_offset_y = centre_pixels_from_map_top - half_height
-
-        # reset the key tile info
-
-
+        # redraw the display
         self.update()
 
     def GotoLevelAndPosition(self, level, geo):
@@ -3321,7 +3322,10 @@ class PySlipQt(QWidget):
         Does nothing if we can't use desired level.
         """
 
+        print(f'GotoLevelAndPosition: level={level}, geo={geo}')
+        print(f'About to call self.GotoLevel({level})')
         if self.GotoLevel(level):
+            print(f'About to call self.GotoPosition({geo})')
             self.GotoPosition(geo)
 
     def ZoomToArea(self, geo, size):

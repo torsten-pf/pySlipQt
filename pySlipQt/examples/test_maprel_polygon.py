@@ -92,17 +92,13 @@ class TestFrame(QMainWindow):
         self.poly_layer = self.pyslipqt.AddPolygonLayer(PolyMapData,
                                                         map_rel=True,
                                                         name='<poly_map_layer>')
-#                                                        size=DefaultAppSize)
         self.text_layer = self.pyslipqt.AddTextLayer(TextMapData, map_rel=True,
                                                      name='<text_map_layer>')
 
-        # set initial view position
-        self.pyslipqt.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
-                
-        # set initial view position
-        self.pyslipqt.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
-
         self.show()
+
+        # finally, set initial view position
+        self.pyslipqt.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
 
 ################################################################################
 

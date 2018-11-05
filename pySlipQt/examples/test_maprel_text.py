@@ -80,10 +80,10 @@ class TestFrame(QMainWindow):
                                                      name='<text_map_layer>',
                                                      offset_x=5, offset_y=1)
 
-        # set initial view position
-        self.pyslipqt.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
-
         self.show()
+
+        # finally, set initial view position
+        self.pyslipqt.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
 
 ################################################################################
 

@@ -17,7 +17,7 @@ import traceback
 from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget,
-                             QHBoxLayout, QVBoxLayout,
+                             QHBoxLayout, QGridLayout,
                              QPushButton)
 
 sys.path.append('..')
@@ -45,7 +45,7 @@ InitViewLevel = 3
 InitViewPosition = (0, 0)
 
 # the number of decimal places in a lon/lat display
-LonLatPrecision = 3
+LonLatPrecision = 2
 
 # a selection of cities, position from WikiPedia, etc
 # format is ((<lon>,<lat>),<name>)
@@ -63,7 +63,7 @@ Cities = [((0.0, 51.4778), 'Greenwich, United Kingdom'),
           ((103.8508548, 1.2848402), "Singapore (One Raffles Place)"),
           ((-3.2056135, 55.9552474), "Maxwell's Birthplace"),
           ((7.6059011, 50.3644454), "Deutsches Eck, Koblenz, Germany"),
-          ((98.3763357, 7.8605885), "Home"),
+          ((116.391667, 39.903333), "Beijing (北京市)"),
          ]
 
 
@@ -103,44 +103,46 @@ class AppFrame(QMainWindow):
         """Create application GUI."""
 
         # build the GUI
-        hbox = QHBoxLayout()
-#        hbox.setContentsMargins(1, 1, 1, 1)
+        grid = QGridLayout()
 
         qwidget = QWidget(self)
-        qwidget.setLayout(hbox)
+        qwidget.setLayout(grid)
         self.setCentralWidget(qwidget)
+
+        # add controls to right of spacer
+        rows = self.make_gui_controls(grid)
+#        grid.addLayout(controls)
 
         # put map view in left of horizontal box
         self.pyslipqt = pySlipQt.PySlipQt(self, start_level=InitViewLevel, tile_src=self.tile_source)
-        hbox.addWidget(self.pyslipqt)
+        grid.addWidget(self.pyslipqt, 0, 0, rows, 1)
 
-        # add controls to right of spacer
-        controls = self.make_gui_controls()
-        hbox.addLayout(controls)
-
-    def make_gui_controls(self):
+    def make_gui_controls(self, grid):
         """Build the 'controls' part of the GUI
 
+        grid  reference to the grid layout to fill
         Returns reference to containing sizer object.
         """
 
-        # all controls in vertical box
-        controls = QVBoxLayout()
+        # row to put controls into
+        row = 0
 
         # add the map level in use widget
         level_mouse = self.make_gui_level_mouse()
-        controls.addLayout(level_mouse)
+        grid.addLayout(level_mouse, row, 1)
+        row += 1
 
         # buttons for each point of interest
         self.buttons = {}
         for (num, city) in enumerate(Cities):
             (lonlat, name) = city
             btn = QPushButton(name)
-            controls.addWidget(btn)
+            grid.addWidget(btn, row, 1)
             btn.clicked.connect(self.handle_button)
             self.buttons[btn] = city
+            row += 1
 
-        return controls
+        return row
 
     def make_gui_level_mouse(self):
         """Build the control that shows the level and mouse position.
@@ -171,6 +173,7 @@ class AppFrame(QMainWindow):
         self.pyslipqt.GotoPosition(posn)
 
         if self.map_layer:
+            # if there was a previous layer, delete it
             self.pyslipqt.DeleteLayer(self.map_layer)
         map_data = [posn]
         point_colour = '#0000ff40'
@@ -191,6 +194,7 @@ class AppFrame(QMainWindow):
 #                                                        colour=poly_colour,
                                                         closed=False,
                                                         visible=True,
+                                                        width=2,
                                                         name='view_layer')
 
     def handle_position_event(self, event):

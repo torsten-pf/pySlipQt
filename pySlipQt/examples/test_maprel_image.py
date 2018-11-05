@@ -32,7 +32,7 @@ DemoHeight = 800
 DemoWidth = 1000
 
 MinTileLevel = 0
-InitViewLevel = 2
+InitViewLevel = 3
 InitViewPosition = (158.0, -20.0)
 
 arrow = 'graphics/arrow_right.png'
@@ -77,9 +77,6 @@ class TestFrame(QMainWindow):
         self.setGeometry(100, 100, DemoWidth, DemoHeight)
         self.setWindowTitle(DemoName)
 
-        # set initial view position
-        self.pyslipqt.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
-
         # add test layers
         self.poly_layer = self.pyslipqt.AddPolygonLayer(PolygonMapData)
         self.image_layer = self.pyslipqt.AddImageLayer(ImageMapData,
@@ -88,6 +85,9 @@ class TestFrame(QMainWindow):
                                                      name='<image_map_layer>')
 
         self.show()
+
+        # set initial view position
+        self.pyslipqt.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
 
 ################################################################################
 
