@@ -1831,6 +1831,7 @@ class PySlipQt(QWidget):
 
         return result
 
+# DUPLICATE?
     def sel_box_canonical(self):
         """'Canonicalize' a selection box limits.
 
@@ -2561,6 +2562,7 @@ class PySlipQt(QWidget):
 
         wx.MessageBox(msg, 'Warning', wx.OK | wx.ICON_ERROR)
 
+# DUPLICATE?
     def sel_box_canonical(self):
         """'Canonicalize' a selection box limits.
 
@@ -3251,7 +3253,6 @@ class PySlipQt(QWidget):
         """
 
         if not self.tile_src.UseLevel(level):
-            print(f'GotoLevel: returning False since self.tile_src.UseLevel({level}) failed')
             return False        # couldn't change level
 
         self.level = level
@@ -3265,7 +3266,6 @@ class PySlipQt(QWidget):
         self.resizeEvent()
 
         # raise level change event
-        print(f'GotoLevel: raising PySlipQt.EVT_PYSLIPQT_LEVEL event, level={level}')
         self.raise_event(PySlipQt.EVT_PYSLIPQT_LEVEL, level=level)
 
         return True
@@ -3278,11 +3278,8 @@ class PySlipQt(QWidget):
         Recalculates the key tile info.
         """
 
-        print(f'GotoPosition: geo={geo}')
-
         # get fractional tile coords of required centre of view
         (xtile, ytile) = self.tile_src.Geo2Tile(geo)
-        print(f'GotoPosition: xtile={xtile}, ytile={ytile}')
 
         # get view size in half widths and height
         w2 = self.view_width / 2
@@ -3291,24 +3288,28 @@ class PySlipQt(QWidget):
         # get tile coords of view left and top edges
         view_tile_x = xtile - (w2 / self.tile_width)
         view_tile_y = ytile - (h2 / self.tile_height)
-        print(f'GotoPosition: view_tile_x={view_tile_x}, view_tile_y={view_tile_y}')
 
         # calculate the key tile coords and offsets
         keytile_x = int(view_tile_x)
         keytile_y = int(view_tile_y)
-        print(f'GotoPosition: keytile_x={keytile_x}, keytile_y={keytile_y}')
 
         keyoffset_x = - int((view_tile_x - keytile_x) * self.tile_width)
         keyoffset_y = - int((view_tile_y - keytile_y) * self.tile_height)
-        print(f'GotoPosition: keyoffset_x={keyoffset_x}, keyoffset_y={keyoffset_y}')
-
-        # worry about map < view
 
         # update the key tile info
         self.key_tile_left = keytile_x
         self.key_tile_top = keytile_y
         self.key_tile_xoffset = keyoffset_x
         self.key_tile_yoffset = keyoffset_y
+
+        # centre map in view if map < view
+        if self.key_tile_left < 0 or self.key_tile_xoffset > 0:
+            self.key_tile_left = 0
+            self.key_tile_xoffset = (self.view_width - self.map_width) // 2
+
+        if self.key_tile_top < 0 or self.key_tile_yoffset > 0:
+            self.key_tile_top = 0
+            self.key_tile_yoffset = (self.view_height - self.map_height) // 2
 
         # redraw the display
         self.update()
@@ -3322,10 +3323,7 @@ class PySlipQt(QWidget):
         Does nothing if we can't use desired level.
         """
 
-        print(f'GotoLevelAndPosition: level={level}, geo={geo}')
-        print(f'About to call self.GotoLevel({level})')
         if self.GotoLevel(level):
-            print(f'About to call self.GotoPosition({geo})')
             self.GotoPosition(geo)
 
     def ZoomToArea(self, geo, size):
