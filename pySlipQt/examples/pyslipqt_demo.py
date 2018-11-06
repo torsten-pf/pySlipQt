@@ -69,10 +69,8 @@ DemoVersion = '1.0'
 DemoWidth = 800
 DemoHeight = 600
 
-# tiles info
-MinTileLevel = 0
-
 # initial view level and position
+#InitViewLevel = 3
 InitViewLevel = 0
 
 # this will eventually be selectable within the app
@@ -209,7 +207,11 @@ class PySlipQtDemo(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        # build the GUI
+        # initialize the tileset handler
+        self.tileset_manager = self.init_tiles()
+        self.tile_source = self.tileset_manager.get_tile_source(DefaultTilesetIndex)
+
+        # start the GUI
         grid = QGridLayout()
         grid.setColumnStretch(0, 1)
         grid.setContentsMargins(2, 2, 2, 2)
@@ -218,16 +220,13 @@ class PySlipQtDemo(QMainWindow):
         qwidget.setLayout(grid)
         self.setCentralWidget(qwidget)
 
-        # initialize the tileset handler
-        self.tileset_manager = self.init_tiles()
-        self.tile_source = self.tileset_manager.get_tile_source(DefaultTilesetIndex)
-
         # build the 'controls' part of GUI
         num_rows = self.make_gui_controls(grid)
 
         self.pyslipqt = pySlipQt.PySlipQt(self, tile_src=self.tile_source,
-                                          start_level=MinTileLevel)
-        grid.addWidget(self.pyslipqt, 0, 0, num_rows, 1)
+                                          start_level=InitViewLevel)
+        grid.addWidget(self.pyslipqt, 0, 0, num_rows+1, 1)
+        grid.setRowStretch(num_rows, 1)
 
         # add the menus
         self.initMenu()
@@ -238,33 +237,23 @@ class PySlipQtDemo(QMainWindow):
         # create select event dispatch directory
         self.demo_select_dispatch = {}
 
+        # selected point, if not None
+        self.point_layer = None
+
+        # variables referencing various layers
+        self.sel_text_highlight = None
+
+        # bind events to handlers
+        self.pyslipqt.events.EVT_PYSLIPQT_LEVEL.connect(self.level_change_event)
+        self.pyslipqt.events.EVT_PYSLIPQT_POSITION.connect(self.mouse_posn_event)
+        self.pyslipqt.events.EVT_PYSLIPQT_SELECT.connect(self.select_event)
+
         # set the size of the demo window, etc
         self.setGeometry(300, 300, DemoWidth, DemoHeight)
         self.setWindowTitle('%s %s' % (DemoName, DemoVersion))
         self.show()
 
-        # selected point, if not None
-        self.point_layer = None
-
-        # variables referencing various layers
-#        self.sel_text_layer = None
-        self.sel_text_highlight = None
-
-        # finally, bind events to handlers
-        self.pyslipqt.events.EVT_PYSLIPQT_LEVEL.connect(self.level_change_event)
-        self.pyslipqt.events.EVT_PYSLIPQT_POSITION.connect(self.mouse_posn_event)
-        self.pyslipqt.events.EVT_PYSLIPQT_SELECT.connect(self.select_event)
-
         # set initial view position
-        QTimer.singleShot(1, self.final_setup)
-
-    def final_setup(self):
-        """Perform final setup.
-
-        We do this in a OneShot() function for those operations that
-        must not be done while the GUI is "fluid".
-        """
-
         self.pyslipqt.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
 
     def make_gui_controls(self, grid):
@@ -1935,7 +1924,7 @@ except getopt.error:
     usage()
     sys.exit(1)
 
-debug = 10              # no logging
+debug = 10
 
 for (opt, param) in opts:
     if opt in ['-d', '--debug']:

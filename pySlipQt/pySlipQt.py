@@ -607,8 +607,7 @@ class PySlipQt(QWidget):
         for x in col_list:
             y_pix = self.key_tile_yoffset
             for y in row_list:
-                painter.drawPixmap(x_pix, y_pix,
-                                    self.tile_src.GetTile(x, y))
+                painter.drawPixmap(x_pix, y_pix, self.tile_src.GetTile(x, y))
                 y_pix += self.tile_height
             x_pix += self.tile_width
 
@@ -624,6 +623,7 @@ class PySlipQt(QWidget):
     #
     ######
 
+# UNUSED
     def normalize_key_after_drag(self, delta_x=None, delta_y=None):
         """After drag, set "key" tile correctly.
 
@@ -774,6 +774,7 @@ class PySlipQt(QWidget):
 
         return t_coord + t_offset/length
 
+# UNUSED
     def zoom_tile(self, c_tile, scale):
         """Zoom into centre tile at given scale.
 
