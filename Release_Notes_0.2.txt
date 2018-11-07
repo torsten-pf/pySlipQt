@@ -1,22 +1,3 @@
-pySlipQt
-========
-
-pySlipQt is a 'slip map' widget for PyQt5.  You can use it to embed a tiled map
-into your PyQt5 application.  The map can be overlayed with points, images, text
-and other layers.  The map tiles can come from a local source of pre-generated
-tiles or from a tile server.  The tiles may have any desired coordinate system
-as tile coordinates are translated to pySlipQt internal coordinates.
-
-pySlipQt works on Linux, Mac and Windows.  Requirements are python 3 and PyQt5.
-
-For more information visit the
-`GitHub repository <https://github.com/rzzzwilson/pySlipQt/>`_ or view the API
-documentation in
-`the wiki <https://github.com/rzzzwilson/pySlipQt/wiki/The-pySlipQt-API>`_.
-
-Release Notes
--------------
-
 Release 0.2 of pySlipQt is early-release and is therefore still ALPHA software.
 It is being released at this early stage so anyone interested in pySlipQt can
 run the "pyslipqt_demo.py" program and get comfortable with the way pySlipQt
