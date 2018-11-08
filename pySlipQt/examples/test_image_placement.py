@@ -17,16 +17,14 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget,
                              QGridLayout, QVBoxLayout, QHBoxLayout)
 
 import pySlipQt.pySlipQt as pySlipQt
+
+# set up logging
 import pySlipQt.log as log
+log = log.Log('pyslipqt.log')
 
 from display_text import DisplayText
 from layer_control import LayerControl
 from image_placement import ImagePlacementControl
-
-#from tkinter_error import tkinter_error
-
-# initialize the logging system
-log = log.Log('test_image_placement.log')
 
 ######
 # Various demo constants
@@ -40,9 +38,8 @@ DemoHeight = 800
 DemoWidth = 1000
 
 # initial values
-#InitialViewLevel = 4
-InitialViewLevel = 0
-InitialViewPosition = (145.0, -20.0)
+InitViewLevel = 4
+InitViewPosition = (145.0, -20.0)
 
 # tiles info
 TileDirectory = 'test_tiles'
@@ -113,9 +110,6 @@ class TestImagePlacement(QMainWindow):
         self.setGeometry(100, 100, DemoWidth, DemoHeight)
         self.setWindowTitle(DemoName)
 
-        # set initial view position
-#        self.map_level.set_text('%d' % InitViewLevel)
-
         # tie events from controls to handlers
         self.map_image.remove.connect(self.remove_image_map)
         self.map_image.change.connect(self.change_image_map)
@@ -126,11 +120,10 @@ class TestImagePlacement(QMainWindow):
         self.pyslipqt.events.EVT_PYSLIPQT_LEVEL.connect(self.handle_level_change)
         self.pyslipqt.events.EVT_PYSLIPQT_POSITION.connect(self.handle_position_event)
 
-        # set initial view position
-#        QTimer.singleShot(1, self.final_setup)
-        self.map_level.set_text('0')
-
         self.show()
+
+        # set initial view position
+        self.pyslipqt.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
 
     def make_gui_controls(self, grid):
         """Build the controls in the right side of the grid."""
@@ -159,17 +152,6 @@ class TestImagePlacement(QMainWindow):
 
         return grid_row
 
-    def final_setup(self):
-        """Perform final setup.
-
-        We do this in a OneShot() function for those operations that
-        must not be done while the GUI is "fluid".
-        """
-
-        pass
-#        self.pyslipqt.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
-
-
     ######
     # event handlers
     ######
@@ -179,6 +161,9 @@ class TestImagePlacement(QMainWindow):
     def change_image_map(self, image, placement, radius, colour,
                            x, y, off_x, off_y):
         """Display updated image."""
+
+        log(f'Changing image map-rel: x={x}, y={y}, placement={placement}, '
+            f'radius={radius}, colour={colour}, offset_x={off_x}, offset_y={off_y}')
 
         # remove any previous layer
         if self.image_map_layer:
@@ -198,6 +183,8 @@ class TestImagePlacement(QMainWindow):
     def remove_image_map(self):
         """Delete the image map-relative layer."""
 
+        log(f'Removing image map-rel: ')
+
         if self.image_map_layer:
             self.pyslipqt.DeleteLayer(self.image_map_layer)
         self.image_map_layer = None
@@ -207,6 +194,9 @@ class TestImagePlacement(QMainWindow):
     def change_image_view(self, image, placement, radius, colour,
                            x, y, off_x, off_y):
         """Display updated image."""
+
+        log(f'Changing image view-rel: x={x}, y={y}, placement={placement}, '
+            f'radius={radius}, colour={colour}, offset_x={off_x}, offset_y={off_y}')
 
         if self.image_view_layer:
             self.remove_image_view()
@@ -224,6 +214,8 @@ class TestImagePlacement(QMainWindow):
 
     def remove_image_view(self):
         """Delete the image view-relative layer."""
+
+        log(f'Removing image view-rel: ')
 
         if self.image_view_layer:
             self.pyslipqt.DeleteLayer(self.image_view_layer)

@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 """
 Test the OSM tiles code.
 
@@ -21,13 +18,16 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QLabel,
                              QHBoxLayout, QVBoxLayout, QGridLayout,
                              QErrorMessage)
 
-try:
-    import pySlipQt.open_street_map as tiles
-except ImportError:
-    # maybe not installed correctly, try relative import
-    sys.path.append('../tilesets')
-    import open_street_map as tiles
+# initialize the logging system
+import pySlipQt.log as log
+log = log.Log('pyslipqt.log')
 
+import pySlipQt.open_street_map as tiles
+
+
+######
+# Various demo constants
+######
 
 # where the OSM tiles are cached on disk
 TilesDir = 'test_osm_tiles'
@@ -149,6 +149,7 @@ class TestOSMTiles(unittest.TestCase):
         time.sleep(30)
 
 
+log(DemoName)
 app = QApplication(sys.argv)
 ex = AppFrame()
 sys.exit(app.exec_())

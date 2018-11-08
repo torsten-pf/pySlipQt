@@ -16,17 +16,15 @@ from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget,
                              QGridLayout, QVBoxLayout, QHBoxLayout)
 
-import pySlipQt.pySlipQt as pySlipQt
+# initialize the logging system
 import pySlipQt.log as log
+log = log.Log('pyslipqt.log')
 
+import pySlipQt.pySlipQt as pySlipQt
 from display_text import DisplayText
 from layer_control import LayerControl
 from point_placement import PointPlacementControl
 
-#from tkinter_error import tkinter_error
-
-# initialize the logging system
-log = log.Log('test_point_placement.log')
 
 ######
 # Various demo constants
@@ -40,9 +38,8 @@ DemoHeight = 800
 DemoWidth = 1000
 
 # initial values
-#InitialViewLevel = 4
-InitialViewLevel = 0
-InitialViewPosition = (145.0, -20.0)
+InitViewLevel = 4
+InitViewPosition = (145.0, -20.0)
 
 # tiles info
 TileDirectory = 'test_tiles'
@@ -113,9 +110,6 @@ class TestPointPlacement(QMainWindow):
         self.setGeometry(100, 100, DemoWidth, DemoHeight)
         self.setWindowTitle(DemoName)
 
-        # set initial view position
-#        self.map_level.set_text('%d' % InitViewLevel)
-
         # tie events from controls to handlers
         self.map_point.remove.connect(self.remove_point_map)
         self.map_point.change.connect(self.change_point_map)
@@ -126,11 +120,11 @@ class TestPointPlacement(QMainWindow):
         self.pyslipqt.events.EVT_PYSLIPQT_LEVEL.connect(self.handle_level_change)
         self.pyslipqt.events.EVT_PYSLIPQT_POSITION.connect(self.handle_position_event)
 
-        # set initial view position
-#        QTimer.singleShot(1, self.final_setup)
-        self.map_level.set_text('0')
-
         self.show()
+
+        # set initial view position
+        self.map_level.set_text('%d' % InitViewLevel)
+        self.pyslipqt.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
 
     def make_gui_controls(self, grid):
         """Build the controls in the right side of the grid."""
@@ -306,6 +300,7 @@ import pySlipQt.gmt_local as Tiles
 #    sys.exit(3)
 
 # start the app
+log(DemoName)
 app = QApplication(args)
 ex = TestPointPlacement(tile_dir)
 sys.exit(app.exec_())

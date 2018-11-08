@@ -9,15 +9,14 @@ import traceback
 
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QHBoxLayout
 
-import pySlipQt.log as log
-
-# initialize the logging system
-log = log.Log('test_maprel_polygon.log')
-
 import pySlipQt.pySlipQt as pySlipQt
 from display_text import DisplayText
 from layer_control import LayerControl
 from image_placement import ImagePlacementControl
+
+# initialize the logging system
+import pySlipQt.log as log
+log = log.Log('pyslipqt.log')
 
 
 ######
@@ -148,6 +147,7 @@ else:
     sys.exit(3)
 
 # start wxPython app
+log(DemoName)
 tile_dir = 'test_maprel_polygon.tiles'
 app = QApplication(args)
 ex = TestFrame(tile_dir)

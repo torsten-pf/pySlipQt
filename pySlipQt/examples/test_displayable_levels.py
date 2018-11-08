@@ -13,16 +13,13 @@ import traceback
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QLabel,
                              QHBoxLayout)
-try:
-    from display_text import DisplayText
-except ImportError:
-    # maybe not installed properly, try relative import
-    sys.path.append('../examples')
-    from display_text import DisplayText
+from display_text import DisplayText
 
-import pySlipQt.log as log
-log = log.Log('test_displayable_levels.log')
 import pySlipQt.pySlipQt as pySlipQt
+
+# initialize the logging system
+import pySlipQt.log as log
+log = log.Log("pyslipqt.log")
 
 
 ######
@@ -79,7 +76,8 @@ class AppFrame(QMainWindow):
         method below will trigger another exception, which we catch, etc, etc.
         """
 
-        for _ in range(10000):
+        log('Waiting a bit')
+        for _ in range(1000000):
             pass
 
         l = [InitViewLevel, InitViewLevel, InitViewLevel, InitViewLevel,
@@ -89,8 +87,10 @@ class AppFrame(QMainWindow):
              InitViewLevel, InitViewLevel, InitViewLevel, InitViewLevel,
             ]
 
+        log(f'Trying to zoom to level {event.level}, allowed level={InitViewLevel}')
         if event.level not in l:
             # undo zoom
+            log('New level NOT in allowed list, undoing zoom')
             self.pyslipqt.GotoLevel(InitViewLevel)
 
 

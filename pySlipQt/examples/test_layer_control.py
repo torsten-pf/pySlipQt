@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 """
 Test the LayerControl custom widget used by pySlipQt.
 """
@@ -7,12 +5,11 @@ Test the LayerControl custom widget used by pySlipQt.
 import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout
 
-try:
-    from layer_control import LayerControl
-except ImportError:
-    # maybe not installed properly, try relative import
-    sys.path.append('../examples')
-    from layer_control import LayerControl
+from layer_control import LayerControl
+
+# initialize the logging system
+import pySlipQt.log as log
+log = log.Log('pyslipqt.log')
 
 
 class LayerControlExample(QWidget):
@@ -38,12 +35,15 @@ class LayerControlExample(QWidget):
 
     def layer_add(self, add):
         print(f'Layer ADD={add}')
+        log(f'Layer ADD={add}')
 
     def layer_show(self, show):
         print(f'Layer SHOW={show}')
+        log(f'Layer SHOW={show}')
 
     def layer_select(self, select):
         print(f'Layer SELECT={select}')
+        log(f'Layer SELECT={select}')
 
 
 app = QApplication(sys.argv)

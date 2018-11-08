@@ -11,10 +11,9 @@ import traceback
 
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QHBoxLayout
 
-import pySlipQt.log as log
-
 # initialize the logging system
-log = log.Log('test_maprel_image.log')
+import pySlipQt.log as log
+log = log.Log('pyslipqt.log')
 
 import pySlipQt.pySlipQt as pySlipQt
 
@@ -132,8 +131,8 @@ else:
     sys.exit(3)
 
 # start the app
+log(DemoName)
 tile_dir = 'test_viewrel_text'
-
 app = QApplication(args)
 ex = TestFrame(tile_dir)
 sys.exit(app.exec_())

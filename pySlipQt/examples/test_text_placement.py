@@ -16,17 +16,14 @@ from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget,
                              QGridLayout, QVBoxLayout, QHBoxLayout)
 
-import pySlipQt.pySlipQt as pySlipQt
+# initialize the logging system
 import pySlipQt.log as log
+log = log.Log('pyslipqt.log')
 
+import pySlipQt.pySlipQt as pySlipQt
 from display_text import DisplayText
 from layer_control import LayerControl
 from text_placement import TextPlacementControl
-
-#from tkinter_error import tkinter_error
-
-# initialize the logging system
-log = log.Log('test_text_placement.log')
 
 ######
 # Various demo constants
@@ -295,6 +292,7 @@ import pySlipQt.gmt_local as Tiles
 #    sys.exit(3)
 
 # start the app
+log(DemoName)
 app = QApplication(args)
 ex = TestTextPlacement(tile_dir)
 sys.exit(app.exec_())

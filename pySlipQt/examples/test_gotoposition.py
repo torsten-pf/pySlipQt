@@ -20,14 +20,14 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget,
                              QHBoxLayout, QGridLayout,
                              QPushButton)
 
-sys.path.append('..')
-
-import pySlipQt.log as log
-log = log.Log("test_gotoposition.log")
 import pySlipQt.pySlipQt as pySlipQt
 import pySlipQt.open_street_map as tiles
 from display_text import DisplayText
 from layer_control import LayerControl
+
+# set up logging
+import pySlipQt.log as log
+log = log.Log('pyslipqt.log')
 
 
 ######
@@ -88,14 +88,14 @@ class AppFrame(QMainWindow):
         # build the GUI
         self.make_gui()
 
+        self.show()
+
         # bind events to handlers
-#        self.pyslipqt.events.EVT_PYSLIPQT_POSITION.connect(self.handle_position_event)
-#        self.pyslipqt.events.EVT_PYSLIPQT_LEVEL.connect(self.handle_level_change)
+        self.pyslipqt.events.EVT_PYSLIPQT_POSITION.connect(self.handle_position_event)
+        self.pyslipqt.events.EVT_PYSLIPQT_LEVEL.connect(self.handle_level_change)
 
         # finally, goto desired level and position
         self.pyslipqt.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
-
-        self.show()
 
 #####
 # Build the GUI
@@ -117,7 +117,7 @@ class AppFrame(QMainWindow):
 
         # put map view in left of horizontal box
         self.pyslipqt = pySlipQt.PySlipQt(self, start_level=InitViewLevel, tile_src=self.tile_source)
-        grid.addWidget(self.pyslipqt, 0, 0, rows, 1)
+        grid.addWidget(self.pyslipqt, 0, 0, rows+1, 1)
 
     def make_gui_controls(self, grid):
         """Build the 'controls' part of the GUI
@@ -129,10 +129,10 @@ class AppFrame(QMainWindow):
         # row to put controls into
         row = 0
 
-#        # add the map level in use widget
-#        level_mouse = self.make_gui_level_mouse()
-#        grid.addLayout(level_mouse, row, 1)
-#        row += 1
+        # add the map level in use widget
+        level_mouse = self.make_gui_level_mouse()
+        grid.addLayout(level_mouse, row, 1)
+        row += 1
 
         # buttons for each point of interest
         self.buttons = {}
@@ -171,6 +171,7 @@ class AppFrame(QMainWindow):
         # get the button that was pressed
         sender_btn = self.sender()
         (posn, name) = self.buttons[sender_btn]
+        log(f"Got button event, posn={posn}, name='{name}'")
 
         self.pyslipqt.GotoPosition(posn)
 

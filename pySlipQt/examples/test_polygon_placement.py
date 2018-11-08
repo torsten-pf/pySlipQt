@@ -16,10 +16,9 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget,
                              QGroupBox, QGridLayout, QHBoxLayout,
                              QSizePolicy, QColorDialog)
 
-import pySlipQt.log as log
-
 # initialize the logging system
-log = log.Log('test_maprel_polygon.log')
+import pySlipQt.log as log
+log = log.Log('pyslipqt.log')
 
 import pySlipQt.pySlipQt as pySlipQt
 from display_text import DisplayText
@@ -39,8 +38,8 @@ DemoHeight = 800
 DemoWidth = 1000
 
 # initial values
-InitialViewLevel = 4
-InitialViewPosition = (145.0, -20.0)
+InitViewLevel = 4
+InitViewPosition = (145.0, -20.0)
 
 # tiles info
 TileDirectory = 'test_polygon_placement_tiles'
@@ -371,9 +370,6 @@ class TestPolyPlacement(QMainWindow):
         self.setGeometry(100, 100, DemoWidth, DemoHeight)
         self.setWindowTitle(DemoName)
 
-        # set initial view position
-#        self.map_level.set_text('%d' % InitViewLevel)
-
         # tie events from controls to handlers
         self.map_poly.remove.connect(self.remove_poly_map)
         self.map_poly.change.connect(self.change_poly_map)
@@ -387,6 +383,10 @@ class TestPolyPlacement(QMainWindow):
         self.map_level.set_text('0')
 
         self.show()
+
+        # set initial view position
+        self.map_level.set_text('%d' % InitViewLevel)
+        self.pyslipqt.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
 
 #####
 # Build the GUI
@@ -565,8 +565,8 @@ else:
     sys.exit(3)
 
 # start the PyQt5 app
+log(DemoName)
 tile_dir = 'test_polygon_placement'
-
 app = QApplication(args)
 ex = TestPolyPlacement(tile_dir)
 sys.exit(app.exec_())

@@ -17,10 +17,9 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget,
                              QGroupBox, QGridLayout, QHBoxLayout,
                              QSizePolicy, QColorDialog)
 
-import pySlipQt.log as log
-
 # initialize the logging system
-log = log.Log('test_polyline_placement.log')
+import pySlipQt.log as log
+log = log.Log('pyslipqt.log')
 
 import pySlipQt.pySlipQt as pySlipQt
 from display_text import DisplayText
@@ -509,8 +508,8 @@ else:
     sys.exit(3)
 
 # start the PyQt5 app
+log(DemoName)
 tile_dir = 'test_polygon_placement'
-
 app = QApplication(args)
 ex = TestPolyPlacement(tile_dir)
 sys.exit(app.exec_())

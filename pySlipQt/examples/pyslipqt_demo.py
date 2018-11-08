@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 """
 pySlipQt demonstration program with user-selectable tiles.
 

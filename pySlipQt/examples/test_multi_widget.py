@@ -14,15 +14,14 @@ import traceback
 
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QHBoxLayout, QGridLayout
 
-import pySlipQt.log as log
-
-# initialize the logging system
-log = log.Log('test_maprel_image.log')
-
 import pySlipQt.pySlipQt as pySlipQt
-
 import pySlipQt.gmt_local as GMTTiles
 import pySlipQt.open_street_map as NetTiles
+
+# initialize the logging system
+import pySlipQt.log as log
+log = log.Log('pyslipqt.log')
+
 
 ######
 # Various demo constants
@@ -123,8 +122,8 @@ for (opt, param) in opts:
         sys.exit(0)
 
 # start the app
+log(DemoName)
 tile_dir = 'test_multi_widget'
-
 app = QApplication(args)
 ex = TestFrame(tile_dir)
 sys.exit(app.exec_())
