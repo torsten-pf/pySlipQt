@@ -51,9 +51,9 @@ PolyMapData = [[OpenPoly, {'width': 2}],
                                    'filled': True,
                                    'fillcolour': 'yellow'}]]
 
-TextMapData = [(135, 5, 'open', {'placement': 'ce', 'radius': 0}),
+TextMapData = [(135, 5, 'open (polygons always closed in pSlipQt)', {'placement': 'ce', 'radius': 0}),
                (170, 5, 'closed', {'placement': 'cw', 'radius': 0}),
-               (170, -10, 'open but filled (translucent)',
+               (170, -10, 'open but filled (translucent) (polygons always closed in pSlipQt)',
                    {'placement': 'cw', 'radius': 0}),
                (135, -10, 'closed & filled (solid)',
                    {'placement': 'ce', 'radius': 0}),

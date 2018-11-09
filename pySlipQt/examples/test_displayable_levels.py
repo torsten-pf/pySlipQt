@@ -60,11 +60,13 @@ class AppFrame(QMainWindow):
         self.pyslipqt = pySlipQt.PySlipQt(self, tile_src=self.tile_src, start_level=InitViewLevel)
         box.addWidget(self.pyslipqt)
 
-        # set initial view position
-        self.pyslipqt.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
+        self.show()
 
         # bind the pySlipQt widget to the "zoom undo" method
         self.pyslipqt.events.EVT_PYSLIPQT_LEVEL.connect(self.on_zoom)
+
+        # set initial view position
+        self.pyslipqt.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
 
     def on_zoom(self, event):
         """Catch and undo a zoom.
@@ -92,6 +94,8 @@ class AppFrame(QMainWindow):
             # undo zoom
             log('New level NOT in allowed list, undoing zoom')
             self.pyslipqt.GotoLevel(InitViewLevel)
+            # set initial view position
+#            self.pyslipqt.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
 
 
 # print some usage information

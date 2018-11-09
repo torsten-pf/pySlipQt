@@ -11,7 +11,7 @@ Some semantics:
 import sys
 
 from PyQt5.QtCore import Qt, QTimer, QPoint, QPointF, QObject, pyqtSignal
-from PyQt5.QtWidgets import QLabel, QSizePolicy, QWidget
+from PyQt5.QtWidgets import QLabel, QSizePolicy, QWidget, QMessageBox
 from PyQt5.QtGui import (QPainter, QColor, QPixmap, QPen, QFont, QFontMetrics,
                          QPolygon, QBrush, QCursor)
 
@@ -374,7 +374,7 @@ class PySlipQt(QWidget):
         self.pyslipqt_event_dict[etype](event)
 
     ######
-    # Overide the mouse events
+    # Overide the PyQt5 mouse/keyboard/etc events
     ######
 
     def mousePressEvent(self, event):
@@ -561,6 +561,12 @@ class PySlipQt(QWidget):
         pass
 
     def leaveEvent(self, event):
+        """The mouse is leaving the widget.
+
+        Raise a EVT_PYSLIPQT_POSITION event with positions set to None.
+        We do this so user code can clear any mouse position data/
+        """
+
         self.raise_event(PySlipQt.EVT_PYSLIPQT_POSITION, mposn=None, vposn=None)
         pass
 
@@ -747,6 +753,7 @@ class PySlipQt(QWidget):
     #
     ######
 
+# UNUSED
     def tile_frac_to_parts(self, t_frac, length):
         """Split a tile coordinate into integer and fractional parts.
 
@@ -761,6 +768,7 @@ class PySlipQt(QWidget):
 
         return (int_part, frac_part)
 
+# UNUSED
     def tile_parts_to_frac(self, t_coord, t_offset, length):
         """Convert a tile coord plus offset to a fractional tile value.
 
@@ -1106,6 +1114,7 @@ class PySlipQt(QWidget):
 
         return (xview, yview)
 
+# UNUSED
     def geo_to_view_masked(self, geo):
         """Convert a geo (lon+lat) position to view pixel coords.
 
@@ -1218,7 +1227,6 @@ class PySlipQt(QWidget):
         # get point view coords and perturb point to placement
         (xview, yview) = view
         point = self.point_placement_view(place, xview, yview, x_off, y_off)
-#                                     self.view_width, self.view_height)
         (px, py) = point
 
         # extent = (left, right, top, bottom) in view coords
@@ -1306,7 +1314,6 @@ class PySlipQt(QWidget):
         # get point view coords and perturb point to placement origin
         # we ignore offsets for the point as they apply to the extent only
         (xview, yview) = view
-#        point = self.point_placement_view(place, xview, yview, x_off, y_off)
         point = self.point_placement_view(place, xview, yview, 0, 0)
 
         # get extent view coords (ix and iy)
@@ -1316,12 +1323,11 @@ class PySlipQt(QWidget):
 
         # extent = (left, right, top, bottom) in view coords
         # this is different for images
-#        (px, py) = point
         if image:
             # perturb extent coords to edges of image
             if   place == 'cc': elx = px - w/2;        ety = py - h/2
             elif place == 'cn': elx = px - w/2;        ety = py + y_off
-            elif place == 'ne': elx = px - w - x_off;  ety = py - y_off
+            elif place == 'ne': elx = px - w - x_off;  ety = py + y_off
             elif place == 'ce': elx = px - w - x_off;  ety = py - h/2
             elif place == 'se': elx = px - w - x_off;  ety = py - h - y_off
             elif place == 'cs': elx = px - w/2;        ety = py - h - y_off
@@ -1330,12 +1336,6 @@ class PySlipQt(QWidget):
             elif place == 'nw': elx = px + x_off;      ety = py + y_off
             erx = elx + w
             eby = ety + h
-#        else:
-#            elx = ix
-#            erx = ix + w
-#            ety = iy - h
-#            eby = iy
-
         else:
             elx = ix
             erx = ix + w
@@ -1653,6 +1653,7 @@ class PySlipQt(QWidget):
         if self.zoom_level(level):
             self.pan_position(posn)
 
+# UNUSED
     def zoom_area(self, posn, size):
         """Zoom to a map level and area.
 
@@ -1743,7 +1744,7 @@ class PySlipQt(QWidget):
             self.key_tile_top = 0
             self.key_tile_yoffset = (self.view_height - self.map_height) // 2
 
-    def OnTileAvailable(self, level, x, y, img, bmp):
+    def on_tile_available(self, level, x, y, img, bmp):
         """Callback routine: tile level/x/y is available.
 
         level  the map zoom level the image is for
@@ -1777,7 +1778,9 @@ class PySlipQt(QWidget):
             # expect '#RRGGBBAA' form
             if len(colour) != 9 or colour[0] != '#':
                 # assume it's a colour *name*
-                c = QColor(colour)      # TODO catch bad colour names
+                # we should do more checking of the name here, though it looks
+                # like PyQt5 defaults to a colour if the name isn't recognized
+                c = QColor(colour) 
                 result = (c.red(), c.blue(), c.green(), c.alpha())
             else:
                 # we try for a colour like '#RRGGBBAA'
@@ -1820,7 +1823,7 @@ class PySlipQt(QWidget):
 
         return result
 
-# DUPLICATE?
+# UNUSED
     def sel_box_canonical(self):
         """'Canonicalize' a selection box limits.
 
@@ -2505,26 +2508,6 @@ class PySlipQt(QWidget):
 
         return dx**2 + dy**2
 
-    def get_i18n_kw(self, kwargs, kws, default):
-        """Get alternate international keyword value.
-
-        kwargs   dictionary to look for keyword value
-        kws      iterable of keyword spelling strings
-        default  default value if no keyword found
-
-        Returns the keyword value.
-        """
-
-        result = None
-        for kw_str in kws[:-1]:
-            result = kwargs.get(kw_str, None)
-            if result:
-                break
-        else:
-            result = kwargs.get(kws[-1], default)
-
-        return result
-
     def info(self, msg):
         """Display an information message, log and graphically."""
 
@@ -2536,7 +2519,7 @@ class PySlipQt(QWidget):
         log(log_msg)
         log(banner)
 
-        wx.MessageBox(msg, 'Warning', wx.OK | wx.ICON_INFORMATION)
+        QMessageBox.information(self, 'Information', msg)
 
     def warn(self, msg):
         """Display a warning message, log and graphically."""
@@ -2549,58 +2532,7 @@ class PySlipQt(QWidget):
         log(log_msg)
         log(banner)
 
-        wx.MessageBox(msg, 'Warning', wx.OK | wx.ICON_ERROR)
-
-# DUPLICATE?
-    def sel_box_canonical(self):
-        """'Canonicalize' a selection box limits.
-
-        Uses instance variables (all in view coordinates):
-            self.sbox_1_x    X position of box select start
-            self.sbox_1_y    Y position of box select start
-            self.sbox_w      width of selection box (start to finish)
-            self.sbox_h      height of selection box (start to finish)
-
-        Four ways to draw the selection box (starting in each of the four
-        corners), so four cases.
-
-        The sign of the width/height values are decided with respect to the
-        origin at view top-left corner.  That is, a negative width means
-        the box was started at the right and swept to the left.  A negative
-        height means the selection started low and swept high in the view.
-
-        Returns a tuple (llx, llr, urx, ury) where llx is lower left X, ury is
-        upper right corner Y, etc.  All returned values in view coordinates.
-        """
-
-        if self.sbox_h >= 0:
-            if self.sbox_w >= 0:
-                # 2
-                ll_corner_vx = self.sbox_1_x
-                ll_corner_vy = self.sbox_1_y + self.sbox_h
-                tr_corner_vx = self.sbox_1_x + self.sbox_w
-                tr_corner_vy = self.sbox_1_y
-            else:
-                # 1
-                ll_corner_vx = self.sbox_1_x + self.sbox_w
-                ll_corner_vy = self.sbox_1_y + self.sbox_h
-                tr_corner_vx = self.sbox_1_x
-                tr_corner_vy = self.sbox_1_y
-        else:
-            if self.sbox_w >= 0:
-                # 3
-                ll_corner_vx = self.sbox_1_x
-                ll_corner_vy = self.sbox_1_y
-                tr_corner_vx = self.sbox_1_x + self.sbox_w
-                tr_corner_vy = self.sbox_1_y + self.sbox_h
-            else:
-                # 4
-                ll_corner_vx = self.sbox_1_x + self.sbox_w
-                ll_corner_vy = self.sbox_1_y
-                tr_corner_vx = self.sbox_1_x
-                tr_corner_vy = self.sbox_1_y + self.sbox_h
-
-        return (ll_corner_vx, ll_corner_vy, tr_corner_vx, tr_corner_vy)
+        QMessageBox.warning(self, 'Information', msg)
 
 ################################################################################
 # Below are the "external" API methods.
@@ -2732,8 +2664,6 @@ class PySlipQt(QWidget):
         where the image is displayed relative to the hotspot.
         """
 
-        log(f'AddImageLayer: data={data}, map_rel={map_rel}')
-
         # merge global and layer defaults
         if map_rel:
             default_placement = kwargs.get('placement', self.DefaultImagePlacement)
@@ -2801,8 +2731,6 @@ class PySlipQt(QWidget):
 
             draw_data.append((float(lon), float(lat), pmap, w, h, placement,
                               offset_x, offset_y, radius, colour, udata))
-
-        log(f'AddImageLayer: draw_data={draw_data}, map_rel={map_rel}')
 
         return self.add_layer(self.draw_image_layer, draw_data, map_rel,
                              visible=visible, show_levels=show_levels,
@@ -3212,31 +3140,6 @@ class PySlipQt(QWidget):
     # Zoom and pan
     ######
 
-#    def GotoLevel(self, level):
-#        """Use a new tile level.
-#
-#        level  the new tile level to use.
-#
-#        Returns True if all went well.
-#        """
-#
-#        if not self.tile_src.UseLevel(level):
-#            return False        # couldn't change level
-#
-#        self.level = level
-#        self.map_width = self.tile_src.num_tiles_x * self.tile_width
-#        self.map_height = self.tile_src.num_tiles_y * self.tile_height
-#        (self.map_llon, self.map_rlon,
-#             self.map_blat, self.map_tlat) = self.tile_src.extent
-#
-#        # to set some state variables
-#        self.resizeEvent()
-#
-#        # raise level change event
-#        self.raise_event(PySlipQt.EVT_PYSLIPQT_LEVEL, level=level)
-#
-#        return True
-
     def GotoLevel(self, level):
         """Use a new tile level.
 
@@ -3396,7 +3299,7 @@ class PySlipQt(QWidget):
         self.tiles_min_level = min(tile_src.levels)
 
         # set callback from Tile source object when tile(s) available
-        self.tile_src.setCallback(self.OnTileAvailable)
+        self.tile_src.setCallback(self.on_tile_available)
 
         # set the new zoom level to the old
         if not tile_src.UseLevel(self.level):
