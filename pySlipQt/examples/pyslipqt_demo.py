@@ -432,11 +432,6 @@ class PySlipQtDemo(QMainWindow):
             tile_name = tileset.TilesetName
             new_tile_obj = tileset.Tiles()
 
-            # haven't seen this tileset before, import and instantiate
-#            module_obj = importlib.import_module(module_name)
-#            tile_name = module_obj.TilesetName
-#            new_tile_obj = module_obj.Tiles()
-
             # update the self.id2tiledata element
             self.id2tiledata[menu_id] = (name, module_name, action, new_tile_obj)
 
@@ -1547,6 +1542,12 @@ class PySlipQtDemo(QMainWindow):
 
         if event.mposn:
             (lon, lat) = event.mposn
+            # we clamp the lon/lat to zero here since we don't want small
+            # negative values displaying as "-0.00"
+            if abs(lon) < 0.01:
+                lon = 0.0
+            if abs(lat) < 0.01:
+                lat = 0.0
             self.mouse_position.set_text(f'{lon:.2f}/{lat:.2f}')
         else:
             self.mouse_position.set_text('')

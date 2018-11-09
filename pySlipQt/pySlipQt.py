@@ -17,11 +17,10 @@ from PyQt5.QtGui import (QPainter, QColor, QPixmap, QPen, QFont, QFontMetrics,
 
 # if we don't have log.py, don't crash
 try:
-    import log
+    import pySlipQt.log as log
     log = log.Log('pyslipqt.log')
 except AttributeError:
     # means log already set up
-    print(f'log already defined, log={type(log)}')
     pass
 except ImportError as e:
     # if we don't have log.py, don't crash
@@ -1494,7 +1493,6 @@ class PySlipQt(QWidget):
         w2 = w / 2
         h2 = h / 2
 
-# TODO: these two bits of code are the same
         if image:
             if   place == 'cc': x += -w2;            y += -h2
             elif place == 'nw': x += x_off;          y += y_off
@@ -1506,25 +1504,15 @@ class PySlipQt(QWidget):
             elif place == 'sw': x += x_off;          y += -y_off - h
             elif place == 'cw': x += x_off;          y += -h2
         else:
-            if   place == 'cc': x += - w2;           y += h2
+            if   place == 'cc': x += -w2;            y += h2
             elif place == 'nw': x += x_off;          y += y_off + h
             elif place == 'cn': x += -w2;            y += y_off + h
             elif place == 'ne': x += -x_off - w;     y += y_off + h
             elif place == 'ce': x += -x_off - w;     y += h2
             elif place == 'se': x += -x_off - w;     y += -y_off
-            elif place == 'cs': x += - w2;           y += -y_off
+            elif place == 'cs': x += -w2;            y += -y_off
             elif place == 'sw': x += x_off;          y += -y_off
-            elif place == 'cw': x += x_off;          y += + h2
-
-#            if   place == 'cc': x += - w2;           y += -h2
-#            elif place == 'nw': x += x_off;          y += y_off
-#            elif place == 'cn': x += x_off - w2;     y += y_off
-#            elif place == 'ne': x += x_off - w;      y += y_off
-#            elif place == 'ce': x += x_off - w;      y += y_off - h2
-#            elif place == 'se': x += x_off - w;      y += y_off - h
-#            elif place == 'cs': x += x_off - w2;     y += y_off - h
-#            elif place == 'sw': x += x_off;          y += y_off - h
-#            elif place == 'cw': x += x_off;          y += y_off - h2
+            elif place == 'cw': x += x_off;          y += h2
 
         return (x, y)
 
