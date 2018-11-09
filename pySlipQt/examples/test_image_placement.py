@@ -162,9 +162,6 @@ class TestImagePlacement(QMainWindow):
                            x, y, off_x, off_y):
         """Display updated image."""
 
-        log(f'Changing image map-rel: x={x}, y={y}, placement={placement}, '
-            f'radius={radius}, colour={colour}, offset_x={off_x}, offset_y={off_y}')
-
         # remove any previous layer
         if self.image_map_layer:
             self.remove_image_map()
@@ -183,8 +180,6 @@ class TestImagePlacement(QMainWindow):
     def remove_image_map(self):
         """Delete the image map-relative layer."""
 
-        log(f'Removing image map-rel: ')
-
         if self.image_map_layer:
             self.pyslipqt.DeleteLayer(self.image_map_layer)
         self.image_map_layer = None
@@ -194,9 +189,6 @@ class TestImagePlacement(QMainWindow):
     def change_image_view(self, image, placement, radius, colour,
                            x, y, off_x, off_y):
         """Display updated image."""
-
-        log(f'Changing image view-rel: x={x}, y={y}, placement={placement}, '
-            f'radius={radius}, colour={colour}, offset_x={off_x}, offset_y={off_y}')
 
         if self.image_view_layer:
             self.remove_image_view()
@@ -214,8 +206,6 @@ class TestImagePlacement(QMainWindow):
 
     def remove_image_view(self):
         """Delete the image view-relative layer."""
-
-        log(f'Removing image view-rel: ')
 
         if self.image_view_layer:
             self.pyslipqt.DeleteLayer(self.image_view_layer)

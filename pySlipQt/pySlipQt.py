@@ -2732,6 +2732,8 @@ class PySlipQt(QWidget):
         where the image is displayed relative to the hotspot.
         """
 
+        log(f'AddImageLayer: data={data}, map_rel={map_rel}')
+
         # merge global and layer defaults
         if map_rel:
             default_placement = kwargs.get('placement', self.DefaultImagePlacement)
@@ -2799,6 +2801,8 @@ class PySlipQt(QWidget):
 
             draw_data.append((float(lon), float(lat), pmap, w, h, placement,
                               offset_x, offset_y, radius, colour, udata))
+
+        log(f'AddImageLayer: draw_data={draw_data}, map_rel={map_rel}')
 
         return self.add_layer(self.draw_image_layer, draw_data, map_rel,
                              visible=visible, show_levels=show_levels,
