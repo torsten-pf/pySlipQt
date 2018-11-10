@@ -82,7 +82,7 @@ class ImagePlacementControl(QWidget):
         self.filename.setToolTip('Click here to change the image file')
 
         self.placement = QComboBox()
-        for p in ['nw', 'cn', 'ne', 'ce', 'se', 'cs', 'sw', 'cw', 'cc']:
+        for p in ['none', 'nw', 'cn', 'ne', 'ce', 'se', 'cs', 'sw', 'cw', 'cc']:
             self.placement.addItem(p)
 
         self.point_radius = QComboBox()

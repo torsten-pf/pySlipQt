@@ -120,7 +120,8 @@ class PySlipQt(QWidget):
 
     # list of valid placement values
     valid_placements = ['cc', 'nw', 'cn', 'ne', 'ce',
-                        'se', 'cs', 'sw', 'cw', None, False, '']
+                        'se', 'cs', 'sw', 'cw']
+#                        'se', 'cs', 'sw', 'cw', None, False, '']
 
     # default point attributes - map relative
     DefaultPointPlacement = 'cc'
@@ -188,7 +189,7 @@ class PySlipQt(QWidget):
     DefaultPolygonData = None
 
     # default polygon attributes - view relative
-    DefaultPolygonViewPlacement = 'nw'
+    DefaultPolygonViewPlacement = 'cc'
     DefaultPolygonViewWidth = 1
     DefaultPolygonViewColour = 'red'
     DefaultPolygonViewClose = False
@@ -1442,9 +1443,15 @@ class PySlipQt(QWidget):
         """
 
         # adjust the X, Y coordinates relative to the origin
-        # in map-rel mode we just add the offsets to the point position
-        x += x_off
-        y += y_off
+        if   place == 'cc': pass 
+        elif place == 'nw': x += x_off;   y += y_off
+        elif place == 'cn':               y += y_off
+        elif place == 'ne': x += -x_off;  y += y_off
+        elif place == 'ce': x += -x_off
+        elif place == 'se': x += -x_off;  y += -y_off
+        elif place == 'cs':               y += -y_off
+        elif place == 'sw': x += x_off;   y += -y_off
+        elif place == 'cw': x += x_off; 
 
         return (x, y)
 
@@ -2615,6 +2622,8 @@ class PySlipQt(QWidget):
             udata = attributes.get('data', default_data)
 
             # check values that can be wrong
+            if not placement:
+                placement = default_placement
             placement = placement.lower()
             if placement not in self.valid_placements:
                 msg = ("Point placement value is invalid, got '%s'"
@@ -2720,6 +2729,8 @@ class PySlipQt(QWidget):
                 w = w_cache = size.width()
 
             # check values that can be wrong
+            if not placement:
+                placement = default_placement
             placement = placement.lower()
             if placement not in self.valid_placements:
                 msg = ("Image placement value is invalid, got '%s'"
@@ -2810,6 +2821,8 @@ class PySlipQt(QWidget):
             udata = attributes.get('data', default_data)
 
             # check values that can be wrong
+            if not placement:
+                placement = default_placement
             placement = placement.lower()
             if placement not in self.valid_placements:
                 msg = ("Text placement value is invalid, got '%s'"
@@ -2930,6 +2943,8 @@ class PySlipQt(QWidget):
                 p.append(p[0])
 
             # check values that can be wrong
+            if not placement:
+                placement = default_placement
             placement = placement.lower()
             if placement not in self.valid_placements:
                 msg = ("Polygon placement value is invalid, got '%s'"
@@ -3022,6 +3037,8 @@ class PySlipQt(QWidget):
             udata = attributes.get('data', default_data)
 
             # check values that can be wrong
+            if not placement:
+                placement = default_placement
             placement = placement.lower()
             if placement not in self.valid_placements:
                 msg = ("Polyline placement value is invalid, got '%s'"

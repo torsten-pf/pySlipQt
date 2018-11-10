@@ -107,7 +107,6 @@ class TextPlacementControl(QWidget):
         self.placement = QComboBox()
         for p in ['none', 'nw', 'cn', 'ne', 'ce', 'se', 'cs', 'sw', 'cw', 'cc']:
             self.placement.addItem(p)
-        self.placement.setCurrentIndex(9)
         self.placement.setFixedWidth(TextPlacementControl.ComboboxWidth)
         self.placement.setToolTip('Click here to change the placement')
 
@@ -256,6 +255,8 @@ class TextPlacementControl(QWidget):
         text = self.text.text()
         textcolour = self.text_colour.palette().color(1)
         placement = str(self.placement.currentText())
+        if placement == 'none':
+            placement = None
         radius = int(self.point_radius.currentText())
         colour = self.point_colour.palette().color(1)
         x_posn = int(self.x_posn.currentText())

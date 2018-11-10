@@ -22,8 +22,6 @@ log = log.Log('pyslipqt.log')
 
 import pySlipQt.pySlipQt as pySlipQt
 from display_text import DisplayText
-from layer_control import LayerControl
-from image_placement import ImagePlacementControl
 
 
 ######
@@ -195,12 +193,12 @@ class LayerControl(QWidget):
         self.line_width.setFixedWidth(LayerControl.ComboboxWidth)
 
         self.line_colour = QPushButton('')
-        self.line_colour.setFixedWidth(ImagePlacementControl.ButtonWidth)
+        self.line_colour.setFixedWidth(LayerControl.ButtonWidth)
         self.line_colour.setToolTip('Click here to change the point colour')
         self.line_colour.setStyleSheet(LayerControl.ButtonStyle)
 
         self.fill_colour = QPushButton('')
-        self.fill_colour.setFixedWidth(ImagePlacementControl.ButtonWidth)
+        self.fill_colour.setFixedWidth(LayerControl.ButtonWidth)
         self.fill_colour.setToolTip('Click here to change the fill colour')
         self.fill_colour.setStyleSheet(LayerControl.ButtonStyle)
 
@@ -256,10 +254,6 @@ class LayerControl(QWidget):
         box_layout.addWidget(self.fill_colour, row, 3)
 
         row += 1
-        label = QLabel('closed: ')
-        label.setAlignment(Qt.AlignRight)
-        box_layout.addWidget(label, row, 0)
-        box_layout.addWidget(self.cb_closed, row, 1)
         label = QLabel('filled: ')
         label.setAlignment(Qt.AlignRight)
         box_layout.addWidget(label, row, 2)
