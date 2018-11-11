@@ -245,6 +245,7 @@ class PySlipQtDemo(QMainWindow):
         self.pyslipqt.events.EVT_PYSLIPQT_LEVEL.connect(self.level_change_event)
         self.pyslipqt.events.EVT_PYSLIPQT_POSITION.connect(self.mouse_posn_event)
         self.pyslipqt.events.EVT_PYSLIPQT_SELECT.connect(self.select_event)
+        self.pyslipqt.events.EVT_PYSLIPQT_BOXSELECT.connect(self.select_event)
 
         # set the size of the demo window, etc
         self.setGeometry(300, 300, DemoWidth, DemoHeight)
@@ -424,11 +425,8 @@ class PySlipQtDemo(QMainWindow):
                                % str(self.id2tiledata))
 
         if new_tile_obj is None:
-            log("change_tileset: __import__('pySlipQt', globals(), locals(), ['%s'])" % module_name)
             obj = __import__('pySlipQt', globals(), locals(), [module_name])
-            log('dir(obj)=%s' % dir(obj))
             tileset = getattr(obj, module_name)
-            log('dir(tileset)=%s' % dir(tileset))
             tile_name = tileset.TilesetName
             new_tile_obj = tileset.Tiles()
 
@@ -507,15 +505,17 @@ class PySlipQtDemo(QMainWindow):
     def pointSelect(self, event):
         """Handle map-relative point select exception from pySlipQt.
 
-        event.type       the type of point selection: single or box
+        event.type       the layer type the select occurred on
         event.layer_id   ID of the layer the select occurred on
-        event.selection  [list of] tuple (xgeo,ygeo) of selected point
+        event.mposn      mouse click in view coordinates
+        event.vposn      ???
+        event.selection  list of tuples (x,y,kwargs) of selected point(s)
                          (if None then no point(s) selected)
-        event.data       userdata object of the selected point
+        event.relsel     relative selection (unused?)
 
         The selection could be a single or box select.
 
-        The point select is designed to be select point(s) for on, then select
+        The select is designed to be select point(s) for on, then select
         point(s) again for off.  Clicking away from the already selected point
         doesn't remove previously selected point(s) if nothing is selected.  We
         do this to show the selection/deselection of point(s) is up to the user,
@@ -524,6 +524,8 @@ class PySlipQtDemo(QMainWindow):
         This code also shows how to combine handling of EventSelect and
         EventBoxSelect events.
         """
+
+        self.dump_event(f'pointSelect: event: ----------------------', event)
 
         if event.selection == self.sel_point:
             # same point(s) selected again, turn point(s) off
@@ -983,18 +985,11 @@ class PySlipQtDemo(QMainWindow):
 
         selection = event.selection
 
-#        if self.text_layer:
-#            # turn previously highlighted point(s) off
-#            self.pyslipqt.DeleteLayer(self.text_layer)
-#            self.sel_text_layer = None
-
         if self.sel_text_layer:
             self.pyslipqt.DeleteLayer(self.sel_text_layer)
             self.sel_text_layer = None
 
         if selection:
-#            self.sel_text_layer = selection
-
             # get selected points into form for display layer
             points = []
             for (x, y, d) in selection:
@@ -1567,6 +1562,8 @@ class PySlipQtDemo(QMainWindow):
         'event' through to the handler.
         """
 
+        self.dump_event('select_event: event:', event)
+
         self.demo_select_dispatch.get(event.layer_id, self.null_handler)(event)
 
     ######
@@ -1578,16 +1575,16 @@ class PySlipQtDemo(QMainWindow):
 
         self.pyslipqt.warn('Sorry, %s is not implemented at the moment.' % msg)
 
-    def dump_event(self, event):
+    def dump_event(self, msg, event):
         """Dump an event to the log.
 
         Print attributes and values for non_dunder attributes.
         """
 
-        log('dump_event: event:')
+        log(f'dump_event: {msg}')
         for attr in dir(event):
             if not attr.startswith('__'):
-                log('            event.%s=%s' % (attr, getattr(event, attr)))
+                log('    event.%s=%s' % (attr, getattr(event, attr)))
 
     ######
     # Finish initialization of data, etc
@@ -1763,10 +1760,14 @@ class PySlipQtDemo(QMainWindow):
                          'placement': 'cn', 'offset_y': 1})]
 
         PolylineData = [(((150.0,10.0),(160.0,20.0),(170.0,10.0),(165.0,0.0),(155.0,0.0)),
-                          {'width': 3, 'colour': 'blue'})]
+                          {'width': 3, 'colour': 'blue'}),
+                        (((185.0,10.0),(185.0,20.0),(180.0,10.0),(175.0,0.0),(185.0,0.0)),
+                          {'width': 3, 'colour': 'red'})]
 
         PolylineViewData = [(((50,100),(100,50),(150,100),(100,150)),
-                            {'width': 3, 'colour': '#00ffffff', 'placement': 'cn'})]
+                            {'width': 3, 'colour': '#00ffffff', 'placement': 'cn'}),
+                            (((100,250),(50,300),(100,350),(150,300)),
+                            {'width': 3, 'colour': '#0000ffff', 'placement': 'cn'})]
 
         # define layer ID variables & sub-checkbox state variables
         self.point_layer = None

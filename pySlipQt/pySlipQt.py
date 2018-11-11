@@ -269,11 +269,11 @@ class PySlipQt(QWidget):
         self.tiles_min_level = min(tile_src.levels) # minimum level in tile source
 
         # box select state
-        self.is_box_select = False  # True if in box select mode
+#        self.is_box_select = False  # True if in box select mode
         self.sbox_w = None          # width/height of box select rectangle
         self.sbox_h = None
         self.sbox_1_x = None        # view coords of start corner of select box
-        self.sbox_1_y = None
+        self.sbox_1_y = None        # if selecting, self.sbox_1_x != NOne
 
         # define position and tile coords of the "key" tile
         self.key_tile_left = 0      # tile coordinates of key tile
@@ -390,7 +390,8 @@ class PySlipQt(QWidget):
         """
 
         event = PySlipQt.PySlipQtEvent(etype, **kwargs)
-#        self.dump_event(event)
+        log(f'raise_event: event:')
+        self.dump_event(event)
         self.pyslipqt_event_dict[etype](event)
 
     ######
@@ -412,12 +413,13 @@ class PySlipQt(QWidget):
         elif b == Qt.LeftButton:
             self.left_mbutton_down = True
             if self.shift_down:
-                self.is_box_select = True
+#                self.is_box_select = True
                 (self.sbox_w, self.sbox_h) = (0, 0)
                 (self.sbox_1_x, self.sbox_1_y) = (click_x, click_y)
                 log(f'mousePressEvent: self.sbox_1_x={self.sbox_1_x}, self.sbox_1_y={self.sbox_1_y}')
             else:
-                self.is_box_select = False
+#                self.is_box_select = False
+#                self.sbox_1_x = self.sbox_1_y = None
 
                 # possible start of drag
                 (self.start_drag_x, self.start_drag_y) = (click_x, click_y)
@@ -429,13 +431,19 @@ class PySlipQt(QWidget):
             log('mousePressEvent: unknown button')
 
     def mouseReleaseEvent(self, event):
-        """Mouse button was released."""
+        """Mouse button was released.
+
+        event.x & event.y  view coords when released
+
+        Could be end of a drag or point or box selection.  If it's the end of
+        a drag we don't do a lot.  If a selection we process that.
+        """
 
         x = event.x()
         y = event.y()
         clickpt_v = (x, y)
 
-        # cursor back to normal
+        # cursor back to normal in case it was a box select
         self.setCursor(self.default_cursor)
 
         # we need a repaint to remove any selection box, but NOT YET!
@@ -455,36 +463,82 @@ class PySlipQt(QWidget):
 #            # we need a repaint to remove any selection box, but NOT YET!
 #            delayed_paint = self.sbox_1_x       # True if box select active
 
-            # possible point selection, get click point in view & global coords
-            clickpt_g = self.view_to_geo(clickpt_v)
-#            if clickpt_g is None:
-#                return          # we clicked off the map
+            if self.sbox_1_x:
+                log(f'mouseReleaseEvent: Doing box select, x={x}, y={y}')
 
-            # check each layer for a point select handler
-            # we work on a copy as user click-handler code could change order
-            for lid in self.layer_z_order[:]:
-                l = self.layer_mapping[lid]
-                # if layer visible and selectable
-                if l.selectable and l.visible:
-                    result = self.layerPSelHandler[l.type](l, clickpt_v, clickpt_g)
-                    if result:
-                        (sel, relsel) = result
+                # we are doing a box select,
+                # get canonical selection box in view coordinates
+                (ll_vx, ll_vy, tr_vx, tr_vy) = self.sel_box_canonical()
+                log(f'After sel_box_canonical(), ll_vx={ll_vx}, ll_vy={ll_vy}, tr_vx={tr_vx}, tr_vy={tr_vy}')
 
-                        # raise the EVT_PYSLIPQT_SELECT event
-                        self.raise_event(PySlipQt.EVT_PYSLIPQT_SELECT,
-                                         mposn=clickpt_g, vposn=clickpt_v,
-                                         layer_id=lid, selection=sel, relsel=relsel)
-                    else:
-                        # raise an empty EVT_PYSLIPQT_SELECT event
-                        self.raise_event(PySlipQt.EVT_PYSLIPQT_SELECT,
-                                         mposn=clickpt_g, vposn=clickpt_v,
-                                         layer_id=lid, selection=None, relsel=None)
+                # get lower-left and top-right view tuples
+                ll_v = (ll_vx, ll_vy)
+                tr_v = (tr_vx, tr_vy)
+                log(f'view tuples, ll_v={ll_v}, tr_v={tr_v}')
+
+                # convert view to geo coords
+                ll_g = self.view_to_geo(ll_v)
+                tr_g = self.view_to_geo(tr_v)
+                log(f'geo tuples, ll_g={ll_g}, tr_g={tr_g}')
+
+                # check each layer for a box select event, work on copy of
+                #'.layer_z_order' as user response could change layer order
+                for lid in self.layer_z_order[:]:
+                    l = self.layer_mapping[lid]
+                    # if layer visible and selectable
+                    if l.selectable and l.visible:
+                        if l.map_rel:
+                            # map-relative, get all points selected (if any)
+                            result = self.layerBSelHandler[l.type](l, ll_g, tr_g)
+                        else:
+                            # view-relative
+                            result = self.layerBSelHandler[l.type](l, ll_v, tr_v)
+                        log(f'result={result}')
+                        if result:
+                            (sel, data, relsel) = result
+                            self.raise_event(PySlipQt.EVT_PYSLIPQT_BOXSELECT,
+                                             mposn=None, vposn=None, layer_id=lid,
+                                             selection=sel, relsel=relsel)
+                        else:
+                            # raise an empty EVT_PYSLIPQT_BOXSELECT event
+                            self.raise_event(PySlipQt.EVT_PYSLIPQT_BOXSELECT,
+                                             mposn=None, vposn=None,
+                                             layer_id=lid, selection=None, relsel=None)
+
+                        # user code possibly updated screen, must repaint
+                        delayed_paint = True
+                self.sbox_1_x = self.sbox_1_y = None
+            else:
+                # possible point selection, get click point in view & global coords
+                clickpt_g = self.view_to_geo(clickpt_v)
+#                if clickpt_g is None:
+#                    return          # we clicked off the map
+
+                # check each layer for a point select handler
+                # we work on a copy as user click-handler code could change order
+                for lid in self.layer_z_order[:]:
+                    l = self.layer_mapping[lid]
+                    # if layer visible and selectable
+                    if l.selectable and l.visible:
+                        result = self.layerPSelHandler[l.type](l, clickpt_v, clickpt_g)
+                        if result:
+                            (sel, relsel) = result
+
+                            # raise the EVT_PYSLIPQT_SELECT event
+                            self.raise_event(PySlipQt.EVT_PYSLIPQT_SELECT,
+                                             mposn=clickpt_g, vposn=clickpt_v,
+                                             layer_id=lid, selection=sel, relsel=relsel)
+                        else:
+                            # raise an empty EVT_PYSLIPQT_SELECT event
+                            self.raise_event(PySlipQt.EVT_PYSLIPQT_SELECT,
+                                             mposn=clickpt_g, vposn=clickpt_v,
+                                             layer_id=lid, selection=None, relsel=None)
 
             # turn off drag
             (self.start_drag_x, self.start_drag_y) = (None, None)
 
             # turn off box selection mechanism
-            self.is_box_select = False
+#            self.is_box_select = False
             self.sbox_1_x = self.sbox_1_y = None
 
             # force PAINT event if required
@@ -517,18 +571,20 @@ class PySlipQt(QWidget):
         If left mouse down, either drag the map or start a box selection.
         """
 
-        log(f'mouseMoveEvent: .start_drag_x={self.start_drag_x}, .is_box_select={self.is_box_select}')
-
         x = event.x()
         y = event.y()
         mouse_view = (x, y)
 
         if self.left_mbutton_down:
             if self.shift_down:
-                # we are doing a box select
-                # set select box point 2 at mouse position
+                # we are starting a box select
+                if self.sbox_1_x == -1:
+                    # mouse down before SHIFT down, fill in box start point
+                    self.sbox_1_x = x
+                    self.sbox_1_y = y
+
+                # set select box start point at mouse position
                 (self.sbox_w, self.sbox_h) = (x - self.sbox_1_x, y - self.sbox_1_y)
-                log(f'mouseMoveEvent: self.sbox_w={self.sbox_w}, self.sbox_h={self.sbox_h}')
             elif self.start_drag_x:       # if we are already dragging
                 # we don't move much - less than a tile width/height
                 # drag the key tile in the X direction
@@ -571,6 +627,9 @@ class PySlipQt(QWidget):
             self.shift_down = True
             self.default_cursor = self.box_select_cursor
             self.setCursor(self.default_cursor)
+            if self.left_mbutton_down:
+                # start of a box select
+                self.sbox_1_x = -1      # special value, means fill X,Y on mouse down
         event.accept()
 
     def keyReleaseEvent(self, event):
@@ -1997,9 +2056,10 @@ class PySlipQt(QWidget):
         ll     lower-left corner point of selection box (geo or view)
         ur     upper-right corner point of selection box (geo or view)
 
-        Return a tuple (selection, data) where 'selection' is a list of
-        selected point positions (xgeo,ygeo) and 'data' is a list of userdata
-        objects associated withe selected points.
+        Return a tuple (selection, data, relsel) where 'selection' is a list of
+        selected point positions (xgeo,ygeo), 'data' is a list of userdata
+        objects associated with the selected points and 'relsel' is always None
+        as this is meaningless for box selects.
 
         If nothing is selected return None.
         """
@@ -2115,11 +2175,11 @@ class PySlipQt(QWidget):
                 (li, ri, ti, bi) = e    # image extents (view coords)
                 if (vboxlx <= li and ri <= vboxrx
                         and vboxty <= ti and bi <= vboxby):
-                    selection.append((x, y, bmp, {'placement': place,
-                                                  'radius': radius,
-                                                  'colour': colour,
-                                                  'offset_x': x_off,
-                                                  'offset_y': y_off}))
+                    selection.append((x, y, {'placement': place,
+                                             'radius': radius,
+                                             'colour': colour,
+                                             'offset_x': x_off,
+                                             'offset_y': y_off}))
                     data.append(udata)
 
         if not selection:
@@ -2190,8 +2250,9 @@ class PySlipQt(QWidget):
         the layer.map_rel value.
 
         Returns (selection, data, None) where 'selection' is a list of text
-        positions (geo or view, depending on layer.map_rel) and 'data' is a list
-        of userdata objects associated with the selected text objects.
+        positions (geo or view, depending on layer.map_rel) plus attributes
+        and 'data' is a list of userdata objects associated with the selected
+        text objects.
 
         Returns None if no selection.
 
@@ -2217,14 +2278,14 @@ class PySlipQt(QWidget):
             if vp:
                 (px, py) = vp
                 if lx <= px <= rx and ty <= py <= by:
-                    sel = (x, y, text, {'placement': place,
-                                        'radius': radius,
-                                        'colour': colour,
-                                        'textcolour': tcolour,
-                                        'fontname': fname,
-                                        'fontsize': fsize,
-                                        'offset_x': x_off,
-                                        'offset_y': y_off})
+                    sel = (x, y, {'placement': place,
+                                  'radius': radius,
+                                  'colour': colour,
+                                  'textcolour': tcolour,
+                                  'fontname': fname,
+                                  'fontsize': fsize,
+                                  'offset_x': x_off,
+                                  'offset_y': y_off})
                     selection.append(sel)
                     data.append(udata)
 
@@ -2328,7 +2389,7 @@ class PySlipQt(QWidget):
             pip = self.point_near_polyline_geo
             point = map_pt
 
-        # check polyons in layer, choose first where view_pt is close enough
+        # check polylines in layer, choose first where view_pt is close enough
         for (polyline, place, width, colour, x_off, y_off, udata) in layer.data:
             seg = pip(point, polyline, place, x_off, y_off, delta=delta)
             if seg:
@@ -2349,8 +2410,8 @@ class PySlipQt(QWidget):
         p2     top-right corner point of selection box (geo or view)
 
         Return a tuple (selection, data, None) where 'selection' is a list of
-        iterables of vertex positions and 'data' is a list of data objects
-        associated with each polyline selected.
+        iterables of vertex positions plus attributes and 'data' is a list of
+        data objects associated with each polyline selected.
         """
 
         selection = []
@@ -2378,7 +2439,7 @@ class PySlipQt(QWidget):
 
         if not selection:
             return None
-        return (selection, None)
+        return (selection, None, None)
 
 ######
 # Polygon/polyline utility routines
