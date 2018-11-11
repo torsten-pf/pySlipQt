@@ -1,7 +1,7 @@
-build_install: clean
+install: clean
 	clear; python setup.py build; python setup.py install
 
-build_release: clean
+release: clean
 	clear; python setup.py sdist bdist_wheel
 	twine upload dist/*
 

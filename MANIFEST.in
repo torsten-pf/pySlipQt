@@ -3,5 +3,5 @@ include README.rst
 include setup.cfg
 include LICENSE
 include Makefile
-include Release_Notes_0.1.txt
+include Release_Notes_0.4.txt
 include setup.py
