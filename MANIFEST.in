@@ -5,3 +5,4 @@ include LICENSE
 include Makefile
 include Release_Notes_0.1.txt
 include setup.py
+HISTORY.rst
