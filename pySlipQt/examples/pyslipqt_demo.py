@@ -525,7 +525,7 @@ class PySlipQtDemo(QMainWindow):
         EventBoxSelect events.
         """
 
-        self.dump_event(f'pointSelect: event: ----------------------', event)
+        self.dump_event('pointSelect:', event)
 
         if event.selection == self.sel_point:
             # same point(s) selected again, turn point(s) off
@@ -1543,7 +1543,7 @@ class PySlipQtDemo(QMainWindow):
                 lon = 0.0
             if abs(lat) < 0.01:
                 lat = 0.0
-            self.mouse_position.set_text(f'{lon:.2f}/{lat:.2f}')
+            self.mouse_position.set_text('%.2f/%.2f' % (lon, lat))
         else:
             self.mouse_position.set_text('')
 
@@ -1581,7 +1581,7 @@ class PySlipQtDemo(QMainWindow):
         Print attributes and values for non_dunder attributes.
         """
 
-        log(f'dump_event: {msg}')
+        log('dump_event: %s' % msg)
         for attr in dir(event):
             if not attr.startswith('__'):
                 log('    event.%s=%s' % (attr, getattr(event, attr)))
@@ -1876,7 +1876,6 @@ class PySlipQtDemo(QMainWindow):
 
         info_dialog = QErrorMessage(self)
         info_dialog.showMessage(msg)
-
 
     def warn(self, msg):
         """Display a warning message, log and graphically."""

@@ -371,16 +371,16 @@ class PySlipQt(QWidget):
             for (attr, value) in kwargs.items():
                 setattr(self, attr, value)
 
-    def dump_event(self, event):
+    def dump_event(self, msg, event):
         """Dump an event to the log.
 
         Print attributes and values for non_dunder attributes.
         """
 
-        log('dump_event: event %s:' % PySlipQt.event_name[event.type])
+        log('dump_event: %s:' % msg)
         for attr in dir(event):
             if not attr.startswith('__'):
-                log('            event.%s=%s' % (attr, str(getattr(event, attr))))
+                log('    event.%s=%s' % (attr, str(getattr(event, attr))))
 
     def raise_event(self, etype, **kwargs):
         """Raise event with attributes in 'kwargs'.
@@ -390,8 +390,7 @@ class PySlipQt(QWidget):
         """
 
         event = PySlipQt.PySlipQtEvent(etype, **kwargs)
-        log(f'raise_event: event:')
-        self.dump_event(event)
+#        self.dump_event('raise_event', event)
         self.pyslipqt_event_dict[etype](event)
 
     ######
@@ -413,14 +412,9 @@ class PySlipQt(QWidget):
         elif b == Qt.LeftButton:
             self.left_mbutton_down = True
             if self.shift_down:
-#                self.is_box_select = True
                 (self.sbox_w, self.sbox_h) = (0, 0)
                 (self.sbox_1_x, self.sbox_1_y) = (click_x, click_y)
-                log(f'mousePressEvent: self.sbox_1_x={self.sbox_1_x}, self.sbox_1_y={self.sbox_1_y}')
             else:
-#                self.is_box_select = False
-#                self.sbox_1_x = self.sbox_1_y = None
-
                 # possible start of drag
                 (self.start_drag_x, self.start_drag_y) = (click_x, click_y)
         elif b == Qt.MidButton:
@@ -464,22 +458,17 @@ class PySlipQt(QWidget):
 #            delayed_paint = self.sbox_1_x       # True if box select active
 
             if self.sbox_1_x:
-                log(f'mouseReleaseEvent: Doing box select, x={x}, y={y}')
-
                 # we are doing a box select,
                 # get canonical selection box in view coordinates
                 (ll_vx, ll_vy, tr_vx, tr_vy) = self.sel_box_canonical()
-                log(f'After sel_box_canonical(), ll_vx={ll_vx}, ll_vy={ll_vy}, tr_vx={tr_vx}, tr_vy={tr_vy}')
 
                 # get lower-left and top-right view tuples
                 ll_v = (ll_vx, ll_vy)
                 tr_v = (tr_vx, tr_vy)
-                log(f'view tuples, ll_v={ll_v}, tr_v={tr_v}')
 
                 # convert view to geo coords
                 ll_g = self.view_to_geo(ll_v)
                 tr_g = self.view_to_geo(tr_v)
-                log(f'geo tuples, ll_g={ll_g}, tr_g={tr_g}')
 
                 # check each layer for a box select event, work on copy of
                 #'.layer_z_order' as user response could change layer order
@@ -493,7 +482,6 @@ class PySlipQt(QWidget):
                         else:
                             # view-relative
                             result = self.layerBSelHandler[l.type](l, ll_v, tr_v)
-                        log(f'result={result}')
                         if result:
                             (sel, data, relsel) = result
                             self.raise_event(PySlipQt.EVT_PYSLIPQT_BOXSELECT,
@@ -2256,7 +2244,7 @@ class PySlipQt(QWidget):
 
         Returns None if no selection.
 
-        ONLY SELECTS ON POINT, NOT EXTENT.
+        Selects on text extent and point.
         """
 
         selection = []
