@@ -21,7 +21,7 @@ Release 0.4 of pySlipQt is early-release and is considered BETA software.
 It is being released so anyone interested in pySlipQt can run the
 "pyslipqt_demo.py" program and get comfortable with the way pySlipQt
 works.  Note that testing has only been under macOS and no testing has been
-done on either of Linux or Windows, though the aim is to make ptySlipQt
+done on either of Linux or Windows, though the aim is to make pySlipQt
 cross-platform.
 
 This release has these warnings:
