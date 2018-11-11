@@ -5,7 +5,7 @@ def readme():
         return f.read()
 
 setup(name='pySlipQt',
-      version='0.4.2',
+      version='0.4.3',
       description='A slipmap widget for PyQt5',
       long_description=readme(),
       url='http://github.com/rzzzwilson/pySlipQt',
@@ -20,7 +20,7 @@ setup(name='pySlipQt',
                    'Operating System :: OS Independent',
                    'Programming Language :: Python :: 3 :: Only'],
       keywords='python pyqt5 slipmap map',
-      data_files=[('', ['HISTORY.rst']),
+      data_files=[
                   ('pySlipQt/examples', [
                                          'pySlipQt/examples/README.rst',
                                          'pySlipQt/examples/display_text.py',
@@ -75,6 +75,6 @@ setup(name='pySlipQt',
                                          'pySlipQt/examples/graphics/shipwreck.png',
                                         ]),
                  ],
-      download_url='https://github.com/rzzzwilson/pySlipQt/releases/tag/0.4.2',
+      download_url='https://github.com/rzzzwilson/pySlipQt/releases/tag/0.4.3',
       include_package_data=True,
       zip_safe=False)
