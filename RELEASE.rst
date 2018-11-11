@@ -17,9 +17,9 @@ documentation in
 Release Notes
 -------------
 
-Release 0.2 of pySlipQt is early-release and is therefore still ALPHA software.
-It is being released at this early stage so anyone interested in pySlipQt can
-run the "pyslipqt_demo.py" program and get comfortable with the way pySlipQt
+Release 0.4 of pySlipQt is early-release and is considered BETA software.
+It is being released so anyone interested in pySlipQt can run the
+"pyslipqt_demo.py" program and get comfortable with the way pySlipQt
 works.  Note that testing has only been under macOS and no testing has been
 done on either of Linux or Windows, though the aim is to make ptySlipQt
 cross-platform.
@@ -29,8 +29,7 @@ This release has these warnings:
 1. Some testing has been done, but not comprehensive testing, so please report
    any errors to me at rzzzwilson@gmail.com and attach the "pyslipqt.log" file.
 
-2. "Box selection" (a multi-selection made by dragging a select box) doesn't
-   work at the moment, but it will!
+2. "Box selection" now works.
 
 3. Wrap-around of tiles doesn't work yet, but I *hope* to have it working even
    though it will come with some limitations.
