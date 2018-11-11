@@ -43,7 +43,7 @@ if platform.python_version_tuple()[0] != '3':
     sys.exit(1)
 
 # version number of the widget
-__version__ = '0.2'
+__version__ = '0.3'
 
 
 ######
@@ -99,29 +99,26 @@ class PySlipQt(QWidget):
         EVT_PYSLIPQT_LEVEL = pyqtSignal(object)
         EVT_PYSLIPQT_POSITION = pyqtSignal(object)
         EVT_PYSLIPQT_SELECT = pyqtSignal(object)
-#        EVT_PYSLIPQT_BOXSELECT = pyqtSignal(object)
+        EVT_PYSLIPQT_BOXSELECT = pyqtSignal(object)
         EVT_PYSLIPQT_POLYSELECT = pyqtSignal(object)
-#        EVT_PYSLIPQT_POLYBOXSELECT = pyqtSignal(object)
+        EVT_PYSLIPQT_POLYBOXSELECT = pyqtSignal(object)
 
     # event numbers
-#    (EVT_PYSLIPQT_LEVEL, EVT_PYSLIPQT_POSITION,
-#     EVT_PYSLIPQT_SELECT, EVT_PYSLIPQT_BOXSELECT,
-#     EVT_PYSLIPQT_POLYSELECT, EVT_PYSLIPQT_POLYBOXSELECT) = range(6)
     (EVT_PYSLIPQT_LEVEL, EVT_PYSLIPQT_POSITION,
-     EVT_PYSLIPQT_SELECT, EVT_PYSLIPQT_POLYSELECT) = range(4)
+     EVT_PYSLIPQT_SELECT, EVT_PYSLIPQT_BOXSELECT,
+     EVT_PYSLIPQT_POLYSELECT, EVT_PYSLIPQT_POLYBOXSELECT) = range(6)
 
     event_name = {EVT_PYSLIPQT_LEVEL: 'EVT_PYSLIPQT_LEVEL',
                   EVT_PYSLIPQT_POSITION: 'EVT_PYSLIPQT_POSITION',
                   EVT_PYSLIPQT_SELECT: 'EVT_PYSLIPQT_SELECT',
-#                  EVT_PYSLIPQT_BOXSELECT: 'EVT_PYSLIPQT_BOXSELECT',
+                  EVT_PYSLIPQT_BOXSELECT: 'EVT_PYSLIPQT_BOXSELECT',
                   EVT_PYSLIPQT_POLYSELECT: 'EVT_PYSLIPQT_POLYSELECT',
-#                  EVT_PYSLIPQT_POLYBOXSELECT: 'EVT_PYSLIPQT_POLYBOXSELECT',
+                  EVT_PYSLIPQT_POLYBOXSELECT: 'EVT_PYSLIPQT_POLYBOXSELECT',
                  }
 
     # list of valid placement values
     valid_placements = ['cc', 'nw', 'cn', 'ne', 'ce',
                         'se', 'cs', 'sw', 'cw']
-#                        'se', 'cs', 'sw', 'cw', None, False, '']
 
     # default point attributes - map relative
     DefaultPointPlacement = 'cc'
@@ -224,6 +221,11 @@ class PySlipQt(QWidget):
     WaitCursor = Qt.WaitCursor
     DragCursor = Qt.OpenHandCursor
 
+    # box select constants
+    BoxSelectPenColor = QColor(255, 0, 0, 128)
+    BoxSelectPenStyle = Qt.DashLine
+    BoxSelectPenWidth = 2
+
     def __init__(self, parent, tile_src, start_level, **kwargs):
         """Initialize the pySlipQt widget.
 
@@ -266,6 +268,13 @@ class PySlipQt(QWidget):
         self.tiles_max_level = max(tile_src.levels) # maximum level in tile source
         self.tiles_min_level = min(tile_src.levels) # minimum level in tile source
 
+        # box select state
+        self.is_box_select = False  # True if in box select mode
+        self.sbox_w = None          # width/height of box select rectangle
+        self.sbox_h = None
+        self.sbox_1_x = None        # view coords of start corner of select box
+        self.sbox_1_y = None
+
         # define position and tile coords of the "key" tile
         self.key_tile_left = 0      # tile coordinates of key tile
         self.key_tile_top = 0
@@ -302,12 +311,12 @@ class PySlipQt(QWidget):
                                  self.TypePolygon: self.sel_polygon_in_layer,
                                  self.TypePolyline: self.sel_polyline_in_layer}
 
-#        # for box select
-#        self.layerBSelHandler = {self.TypePoint: self.sel_box_points_in_layer,
-#                                 self.TypeImage: self.sel_box_images_in_layer,
-#                                 self.TypeText: self.sel_box_texts_in_layer,
-#                                 self.TypePolygon: self.sel_box_polygons_in_layer,
-#                                 self.TypePolyline: self.sel_box_polylines_in_layer}
+        # for box select
+        self.layerBSelHandler = {self.TypePoint: self.sel_box_points_in_layer,
+                                 self.TypeImage: self.sel_box_images_in_layer,
+                                 self.TypeText: self.sel_box_texts_in_layer,
+                                 self.TypePolygon: self.sel_box_polygons_in_layer,
+                                 self.TypePolyline: self.sel_box_polylines_in_layer}
 
         # create the events raised by PySlipQt
         self.events = PySlipQt.Events()
@@ -317,19 +326,18 @@ class PySlipQt(QWidget):
            PySlipQt.EVT_PYSLIPQT_LEVEL:         self.events.EVT_PYSLIPQT_LEVEL.emit,
            PySlipQt.EVT_PYSLIPQT_POSITION:      self.events.EVT_PYSLIPQT_POSITION.emit,
            PySlipQt.EVT_PYSLIPQT_SELECT:        self.events.EVT_PYSLIPQT_SELECT.emit,
-#           PySlipQt.EVT_PYSLIPQT_BOXSELECT:     self.events.EVT_PYSLIPQT_BOXSELECT.emit,
+           PySlipQt.EVT_PYSLIPQT_BOXSELECT:     self.events.EVT_PYSLIPQT_BOXSELECT.emit,
            PySlipQt.EVT_PYSLIPQT_POLYSELECT:    self.events.EVT_PYSLIPQT_POLYSELECT.emit,
-#           PySlipQt.EVT_PYSLIPQT_POLYBOXSELECT: self.events.EVT_PYSLIPQT_POLYBOXSELECT.emit,
+           PySlipQt.EVT_PYSLIPQT_POLYBOXSELECT: self.events.EVT_PYSLIPQT_POLYBOXSELECT.emit,
           }
 
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.setMinimumSize(self.tile_width, self.tile_height)
 
-#        tile_src.setCallback(self.update)
-        tile_src.setCallback(self.fudge)
+        tile_src.setCallback(self.on_tile_available)
 
         self.setMouseTracking(True)
-#        self.setEnabled(True)       # to receive key events?
+        self.setEnabled(True)       # to receive key events?
 
         self.default_cursor = self.standard_cursor
         self.setCursor(self.standard_cursor)
@@ -337,7 +345,18 @@ class PySlipQt(QWidget):
         # do a "resize" after this function
         QTimer.singleShot(10, self.resizeEvent)
 
-    def fudge(self, level, x, y, image, error):
+    def on_tile_available(self, level, x, y, image, error):
+        """Called when a new 'net tile is available.
+
+        level  the level the tile is for
+        x, y   tile coordinates of the tile
+        image  the tile image data
+        error  True if there was an error
+
+        We have enough information to redraw a specific tile,
+        but we just redraw the widget.
+        """
+
         self.update()
 
     ######
@@ -379,11 +398,29 @@ class PySlipQt(QWidget):
     ######
 
     def mousePressEvent(self, event):
+        """Mouse button pressed."""
+
+        click_x = event.x()
+        click_y = event.y()
+
+        # assume we aren't dragging
+        self.start_drag_x = self.start_drag_y = None
+
         b = event.button()
         if b == Qt.NoButton:
             pass
         elif b == Qt.LeftButton:
             self.left_mbutton_down = True
+            if self.shift_down:
+                self.is_box_select = True
+                (self.sbox_w, self.sbox_h) = (0, 0)
+                (self.sbox_1_x, self.sbox_1_y) = (click_x, click_y)
+                log(f'mousePressEvent: self.sbox_1_x={self.sbox_1_x}, self.sbox_1_y={self.sbox_1_y}')
+            else:
+                self.is_box_select = False
+
+                # possible start of drag
+                (self.start_drag_x, self.start_drag_y) = (click_x, click_y)
         elif b == Qt.MidButton:
             self.mid_mbutton_down = True
         elif b == Qt.RightButton:
@@ -397,17 +434,17 @@ class PySlipQt(QWidget):
         x = event.x()
         y = event.y()
         clickpt_v = (x, y)
-        log('mouseReleaseEvent: entered, clickpt_v=%s' % str(clickpt_v))
 
         # cursor back to normal
         self.setCursor(self.default_cursor)
+
+        # we need a repaint to remove any selection box, but NOT YET!
+        delayed_paint = self.sbox_1_x       # True if box select active
 
         b = event.button()
         if b == Qt.NoButton:
             pass
         elif b == Qt.LeftButton:
-            log('mouseReleaseEvent: left button released at clickpt_v=%s' % str(clickpt_v))
-
             self.left_mbutton_down = False
             self.start_drag_x = self.start_drag_y = None    # end drag, if any
 
@@ -419,28 +456,19 @@ class PySlipQt(QWidget):
 #            delayed_paint = self.sbox_1_x       # True if box select active
 
             # possible point selection, get click point in view & global coords
-            log('mouseReleaseEvent: clickpt_v=%s' % str(clickpt_v))
             clickpt_g = self.view_to_geo(clickpt_v)
-            log('mouseReleaseEvent: clickpt_g=%s' % str(clickpt_g))
 #            if clickpt_g is None:
-#                log('mouseReleaseEvent: clicked off-map, returning')
 #                return          # we clicked off the map
 
             # check each layer for a point select handler
             # we work on a copy as user click-handler code could change order
-            log('mouseReleaseEvent: checking layers')
             for lid in self.layer_z_order[:]:
-                log('mouseReleaseEvent: checking layer %d' % lid)
                 l = self.layer_mapping[lid]
                 # if layer visible and selectable
                 if l.selectable and l.visible:
-                    log('mouseReleaseEvent: layer is selectable and visible')
                     result = self.layerPSelHandler[l.type](l, clickpt_v, clickpt_g)
-                    log('mouseReleaseEvent: result=%s returned from handler' % str(result))
                     if result:
                         (sel, relsel) = result
-                        log('mouseReleaseEvent: raising SELECT event, clickpt_g=%s, clickpt_v=%s, lid=%s, sel=%s, relsel=%s'
-                                % (str(clickpt_g), str(clickpt_v), lid, str(sel), str(relsel)))
 
                         # raise the EVT_PYSLIPQT_SELECT event
                         self.raise_event(PySlipQt.EVT_PYSLIPQT_SELECT,
@@ -452,9 +480,16 @@ class PySlipQt(QWidget):
                                          mposn=clickpt_g, vposn=clickpt_v,
                                          layer_id=lid, selection=None, relsel=None)
 
-#                    # user code possibly updated screen
-#                    delayed_paint = True
-            log('mouseReleaseEvent: end of layer selection code')
+            # turn off drag
+            (self.start_drag_x, self.start_drag_y) = (None, None)
+
+            # turn off box selection mechanism
+            self.is_box_select = False
+            self.sbox_1_x = self.sbox_1_y = None
+
+            # force PAINT event if required
+            if delayed_paint:
+                self.update()
 
         elif b == Qt.MidButton:
             self.mid_mbutton_down = False
@@ -477,14 +512,24 @@ class PySlipQt(QWidget):
             log('mouseDoubleClickEvent: unknown button')
 
     def mouseMoveEvent(self, event):
-        """Handle a mouse move event."""
+        """Handle a mouse move event.
+       
+        If left mouse down, either drag the map or start a box selection.
+        """
+
+        log(f'mouseMoveEvent: .start_drag_x={self.start_drag_x}, .is_box_select={self.is_box_select}')
 
         x = event.x()
         y = event.y()
         mouse_view = (x, y)
 
         if self.left_mbutton_down:
-            if self.start_drag_x:       # if we are already dragging
+            if self.shift_down:
+                # we are doing a box select
+                # set select box point 2 at mouse position
+                (self.sbox_w, self.sbox_h) = (x - self.sbox_1_x, y - self.sbox_1_y)
+                log(f'mouseMoveEvent: self.sbox_w={self.sbox_w}, self.sbox_h={self.sbox_h}')
+            elif self.start_drag_x:       # if we are already dragging
                 # we don't move much - less than a tile width/height
                 # drag the key tile in the X direction
                 delta_x = self.start_drag_x - x
@@ -506,11 +551,14 @@ class PySlipQt(QWidget):
                     self.key_tile_yoffset -= self.tile_height
                     self.key_tile_top -= 1
 
+                # set key tile stuff so update() shows drag
                 self.rectify_key_tile()
-                self.update()                                   # force a repaint
 
-            self.start_drag_x = x
-            self.start_drag_y = y
+                # get ready for more drag
+                self.start_drag_x = x
+                self.start_drag_y = y
+
+            self.update()                                   # force a repaint
 
         # emit the event for mouse position
         self.raise_event(PySlipQt.EVT_PYSLIPQT_POSITION,
@@ -519,7 +567,6 @@ class PySlipQt(QWidget):
     def keyPressEvent(self, event):
         """Capture a key press."""
 
-        log('keyPressEvent:  key pressed=%08x' % event.key())
         if event.key() == Qt.Key_Shift:
             self.shift_down = True
             self.default_cursor = self.box_select_cursor
@@ -529,7 +576,6 @@ class PySlipQt(QWidget):
     def keyReleaseEvent(self, event):
         """Capture a key release."""
 
-        log('keyPressEvent: key released=%08x' % event.key())
         key = event.key()
         if event.key() == Qt.Key_Shift:
             self.shift_down = False
@@ -622,6 +668,15 @@ class PySlipQt(QWidget):
             l = self.layer_mapping[id]
             if l.visible and self.level in l.show_levels:
                 l.painter(painter, l.data, map_rel=l.map_rel)
+
+        # draw selection rectangle, if any
+        if self.sbox_1_x:
+            # draw the select box, transparent fill
+            painter.setBrush(QBrush(QColor(0, 0, 0, 0)))
+            pen = QPen(PySlipQt.BoxSelectPenColor, PySlipQt.BoxSelectPenWidth,
+                       PySlipQt.BoxSelectPenStyle)
+            painter.setPen(pen)
+            painter.drawRect(self.sbox_1_x, self.sbox_1_y, self.sbox_w, self.sbox_h) 
 
         painter.end()
 
