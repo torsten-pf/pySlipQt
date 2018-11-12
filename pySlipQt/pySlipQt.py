@@ -269,7 +269,6 @@ class PySlipQt(QWidget):
         self.tiles_min_level = min(tile_src.levels) # minimum level in tile source
 
         # box select state
-#        self.is_box_select = False  # True if in box select mode
         self.sbox_w = None          # width/height of box select rectangle
         self.sbox_h = None
         self.sbox_1_x = None        # view coords of start corner of select box
@@ -414,9 +413,6 @@ class PySlipQt(QWidget):
             if self.shift_down:
                 (self.sbox_w, self.sbox_h) = (0, 0)
                 (self.sbox_1_x, self.sbox_1_y) = (click_x, click_y)
-            else:
-                # possible start of drag
-                (self.start_drag_x, self.start_drag_y) = (click_x, click_y)
         elif b == Qt.MidButton:
             self.mid_mbutton_down = True
         elif b == Qt.RightButton:
@@ -448,8 +444,7 @@ class PySlipQt(QWidget):
             pass
         elif b == Qt.LeftButton:
             self.left_mbutton_down = False
-            self.start_drag_x = self.start_drag_y = None    # end drag, if any
-
+# legacy code from pySlip, leave just in case we need it
 #            # if required, ignore this event
 #            if self.ignore_next_up:
 #                self.ignore_next_up = False
@@ -471,7 +466,7 @@ class PySlipQt(QWidget):
                 tr_g = self.view_to_geo(tr_v)
 
                 # check each layer for a box select event, work on copy of
-                #'.layer_z_order' as user response could change layer order
+                # '.layer_z_order' as user response could change layer order
                 for lid in self.layer_z_order[:]:
                     l = self.layer_mapping[lid]
                     # if layer visible and selectable
@@ -497,36 +492,42 @@ class PySlipQt(QWidget):
                         delayed_paint = True
                 self.sbox_1_x = self.sbox_1_y = None
             else:
-                # possible point selection, get click point in view & global coords
-                clickpt_g = self.view_to_geo(clickpt_v)
-#                if clickpt_g is None:
-#                    return          # we clicked off the map
+                if self.start_drag_x is None:
+                    # not dragging, possible point selection
+                    # get click point in view & global coords
+                    clickpt_g = self.view_to_geo(clickpt_v)
+#                    if clickpt_g is None:
+#                        return          # we clicked off the map
+    
+                    # check each layer for a point select handler, we work on a
+                    # copy as user click-handler code could change order
+                    for lid in self.layer_z_order[:]:
+                        l = self.layer_mapping[lid]
+                        # if layer visible and selectable
+                        if l.selectable and l.visible:
+                            result = self.layerPSelHandler[l.type](l, clickpt_v,
+                                                                   clickpt_g)
+                            if result:
+                                (sel, relsel) = result
+    
+                                # raise the EVT_PYSLIPQT_SELECT event
+                                self.raise_event(PySlipQt.EVT_PYSLIPQT_SELECT,
+                                                 mposn=clickpt_g,
+                                                 vposn=clickpt_v,
+                                                 layer_id=lid,
+                                                 selection=sel, relsel=relsel)
+                            else:
+                                # raise an empty EVT_PYSLIPQT_SELECT event
+                                self.raise_event(PySlipQt.EVT_PYSLIPQT_SELECT,
+                                                 mposn=clickpt_g,
+                                                 vposn=clickpt_v,
+                                                 layer_id=lid,
+                                                 selection=None, relsel=None)
 
-                # check each layer for a point select handler
-                # we work on a copy as user click-handler code could change order
-                for lid in self.layer_z_order[:]:
-                    l = self.layer_mapping[lid]
-                    # if layer visible and selectable
-                    if l.selectable and l.visible:
-                        result = self.layerPSelHandler[l.type](l, clickpt_v, clickpt_g)
-                        if result:
-                            (sel, relsel) = result
-
-                            # raise the EVT_PYSLIPQT_SELECT event
-                            self.raise_event(PySlipQt.EVT_PYSLIPQT_SELECT,
-                                             mposn=clickpt_g, vposn=clickpt_v,
-                                             layer_id=lid, selection=sel, relsel=relsel)
-                        else:
-                            # raise an empty EVT_PYSLIPQT_SELECT event
-                            self.raise_event(PySlipQt.EVT_PYSLIPQT_SELECT,
-                                             mposn=clickpt_g, vposn=clickpt_v,
-                                             layer_id=lid, selection=None, relsel=None)
-
-            # turn off drag
-            (self.start_drag_x, self.start_drag_y) = (None, None)
+            # turn off dragging, if we were
+            self.start_drag_x = self.start_drag_y = None
 
             # turn off box selection mechanism
-#            self.is_box_select = False
             self.sbox_1_x = self.sbox_1_y = None
 
             # force PAINT event if required
@@ -573,7 +574,12 @@ class PySlipQt(QWidget):
 
                 # set select box start point at mouse position
                 (self.sbox_w, self.sbox_h) = (x - self.sbox_1_x, y - self.sbox_1_y)
-            elif self.start_drag_x:       # if we are already dragging
+            else:
+                # we are dragging
+                if self.start_drag_x == None:
+                    # start of drag, set drag state
+                    (self.start_drag_x, self.start_drag_y = (x, y)
+
                 # we don't move much - less than a tile width/height
                 # drag the key tile in the X direction
                 delta_x = self.start_drag_x - x
@@ -599,8 +605,7 @@ class PySlipQt(QWidget):
                 self.rectify_key_tile()
 
                 # get ready for more drag
-                self.start_drag_x = x
-                self.start_drag_y = y
+                (self.start_drag_x, self.start_drag_y) = (x, y)
 
             self.update()                                   # force a repaint
 
@@ -652,26 +657,22 @@ class PySlipQt(QWidget):
 
     def enterEvent(self, event):
         self.setFocus()
-        pass
 
     def leaveEvent(self, event):
         """The mouse is leaving the widget.
 
         Raise a EVT_PYSLIPQT_POSITION event with positions set to None.
-        We do this so user code can clear any mouse position data/
+        We do this so user code can clear any mouse position data, for example.
         """
 
         self.raise_event(PySlipQt.EVT_PYSLIPQT_POSITION, mposn=None, vposn=None)
-        pass
 
     def paintEvent(self, event):
         """Draw the base map and then the layers on top."""
 
-        ######
         # The "key" tile position is maintained by other code, we just
         # assume it's set.  Figure out how to draw tiles, set up 'row_list' and
         # 'col_list' which are list of tile coords to draw (row and colums).
-        ######
 
         col_list = []
         x_coord = self.key_tile_left
@@ -693,10 +694,7 @@ class PySlipQt(QWidget):
             y_coord = (y_coord + 1) % self.num_tiles_y
             y_pix_start += self.tile_height
 
-        ######
         # Ready to update the view
-        ######
-
         # prepare the canvas
         painter = QPainter()
         painter.begin(self)
@@ -723,7 +721,8 @@ class PySlipQt(QWidget):
             pen = QPen(PySlipQt.BoxSelectPenColor, PySlipQt.BoxSelectPenWidth,
                        PySlipQt.BoxSelectPenStyle)
             painter.setPen(pen)
-            painter.drawRect(self.sbox_1_x, self.sbox_1_y, self.sbox_w, self.sbox_h) 
+            painter.drawRect(self.sbox_1_x, self.sbox_1_y,
+                             self.sbox_w, self.sbox_h) 
 
         painter.end()
 
@@ -984,16 +983,16 @@ class PySlipQt(QWidget):
 
         return id
 
-    def SetLayerSelectable(self, id, selectable=False):
+    def SetLayerSelectable(self, lid, selectable=False):
         """Update the .selectable attribute for a layer.
 
-        id          ID of the layer we are going to update
+        lid         ID of the layer we are going to update
         selectable  new .selectable attribute value (True or False)
         """
 
         # just in case id is None
-        if id:
-            layer = self.layer_mapping[id]
+        if lid:
+            layer = self.layer_mapping[lid]
             layer.selectable = selectable
 
     ######
@@ -1762,20 +1761,6 @@ class PySlipQt(QWidget):
         if self.zoom_level(level):
             self.pan_position(posn)
 
-# UNUSED
-    def zoom_area(self, posn, size):
-        """Zoom to a map level and area.
-
-        posn  a tuple (xgeo, ygeo) of the centre of the area to show
-        size  a tuple (width, height) of area in geo coordinate units
-
-        Zooms to a map level and pans to a position such that the specified area
-        is completely within the view. Provides a simple way to ensure an
-        extended feature is wholly within the centre of the view.
-        """
-
-        pass
-
     def get_i18n_kw(self, kwargs, kws, default):
         """Get alternate international keyword value.
 
@@ -1864,7 +1849,7 @@ class PySlipQt(QWidget):
         We don't use any of the above - just redraw the entire canvas.
         This is because the new tile is already in the in-memory cache.
 
-        On a slow display we could just redraw just the new tile.
+        On a slow display we could redraw just the new tile.
         """
 
         self.update()
@@ -1932,7 +1917,6 @@ class PySlipQt(QWidget):
 
         return result
 
-# UNUSED
     def sel_box_canonical(self):
         """'Canonicalize' a selection box limits.
 
@@ -2199,7 +2183,6 @@ class PySlipQt(QWidget):
             pex = self.pex_point
             clickpt = geo_point
         (xclick, yclick) = clickpt
-
         (view_x, view_y) = view_point
 
         # select text in map/view layer
@@ -3347,7 +3330,7 @@ class PySlipQt(QWidget):
         """Set view to level and position to view an area.
 
         geo   a tuple (xgeo,ygeo) to centre view on
-        size  a tuple (width,height) of area in degrees
+        size  a tuple (width,height) of area in geo coordinates
 
         Centre an area and zoom to view such that the area will fill
         approximately 50% of width or height, whichever is greater.
@@ -3355,7 +3338,7 @@ class PySlipQt(QWidget):
         Use the ppd_x and ppd_y values in the level 'tiles' file.
         """
 
-        # unpack area width/height (degrees)
+        # unpack area width/height (geo coords)
         (awidth, aheight) = size
 
         # step through levels (smallest first) and check view size (degrees)
@@ -3380,7 +3363,7 @@ class PySlipQt(QWidget):
 
         tile_src  the new tileset object to use
 
-        Returns the old tileset object, None if none.
+        Returns the previous tileset object, None if none.
 
         Refreshes the display and tries to maintain the same position
         and zoom level.  May change the zoom level if the current level doesn't
