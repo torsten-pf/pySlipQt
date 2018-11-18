@@ -280,6 +280,10 @@ class PySlipQt(QWidget):
         self.key_tile_xoffset = 0   # view coordinates of key tile wrt view
         self.key_tile_yoffset = 0
 
+        # we keep track of the cursor coordinates if cursor on map
+        self.mouse_x = None
+        self.mouse_y = None
+
         # state variables holding mouse buttons state
         self.left_mbutton_down = False
         self.mid_mbutton_down = False
@@ -558,11 +562,19 @@ class PySlipQt(QWidget):
         """Handle a mouse move event.
        
         If left mouse down, either drag the map or start a box selection.
+        If we are off the map, ensure self.mouse_x, etc, are None.
         """
 
         x = event.x()
         y = event.y()
         mouse_view = (x, y)
+        mouse_geo = self.view_to_geo(mouse_view)
+
+        # update remembered mouse position in case of zoom
+        self.mouse_x = self.mouse_y = None
+        if mouse_geo:
+            self.mouse_x = x
+            self.mouse_y = y
 
         if self.left_mbutton_down:
             if self.shift_down:
@@ -578,7 +590,7 @@ class PySlipQt(QWidget):
                 # we are dragging
                 if self.start_drag_x == None:
                     # start of drag, set drag state
-                    (self.start_drag_x, self.start_drag_y = (x, y)
+                    (self.start_drag_x, self.start_drag_y) = (x, y)
 
                 # we don't move much - less than a tile width/height
                 # drag the key tile in the X direction
@@ -611,7 +623,7 @@ class PySlipQt(QWidget):
 
         # emit the event for mouse position
         self.raise_event(PySlipQt.EVT_PYSLIPQT_POSITION,
-                         mposn=self.view_to_geo(mouse_view), vposn=mouse_view)
+                         mposn=mouse_geo, vposn=mouse_view)
 
     def keyPressEvent(self, event):
         """Capture a key press."""
@@ -643,7 +655,15 @@ class PySlipQt(QWidget):
         else:
             new_level = self.level - 1
 
-        self.zoom_level(new_level)
+        log(f'wheelEvent: new_level={new_level}')
+
+        view = None
+        if self.mouse_x:
+            view = (self.mouse_x, self.mouse_y)
+
+        log(f'calling .zoom_level({new_level}, view={view})')
+
+        self.zoom_level(new_level, view=view)
 
     def resizeEvent(self, event=None):
         """Widget resized, recompute some state."""
@@ -664,6 +684,9 @@ class PySlipQt(QWidget):
         Raise a EVT_PYSLIPQT_POSITION event with positions set to None.
         We do this so user code can clear any mouse position data, for example.
         """
+
+        self.mouse_x = None
+        self.mouse_y = None
 
         self.raise_event(PySlipQt.EVT_PYSLIPQT_POSITION, mposn=None, vposn=None)
 
@@ -1624,22 +1647,28 @@ class PySlipQt(QWidget):
 
         return (x, y)
 
-    def zoom_level(self, level):
-
+    def zoom_level(self, level, view=None):
         """Zoom to a map level.
 
         level  map level to zoom to
+        view   view coords of cursor
+               (if not given, ssume view centre)
 
         Change the map zoom level to that given. Returns True if the zoom
         succeeded, else False. If False is returned the method call has no effect.
-        Same operation as .GotoLevel() except we try to maintain the centre of
-        the view.
+        Same operation as .GotoLevel() except we try to maintain the geo position
+        under the cursor.
         """
 
-        # get geo coords of view centre point
-        x = self.view_width / 2
-        y = self.view_height / 2
-        geo = self.view_to_geo((x, y))
+        log(f'zoom_level: level={level}, view={view}')
+
+        # if not given cursor coords, assume view centre
+        if view is None:
+            view = (self.view_width // 2, self.view_height // 2)
+        (view_x, view_y) = view
+
+        # get geo coords of view point
+        geo = self.view_to_geo(view)
 
         # get tile source to use the new level
         result = self.tile_src.UseLevel(level)
@@ -1656,7 +1685,7 @@ class PySlipQt(QWidget):
                  self.map_blat, self.map_tlat) = self.tile_src.extent
 
             # finally, pan to original map centre (updates widget)
-            self.pan_position(geo)
+            self.pan_position(geo, view=view)
 
             # to set some state variables
             self.resizeEvent()
@@ -1666,23 +1695,34 @@ class PySlipQt(QWidget):
 
         return result
 
-    def pan_position(self, geo):
-        """Pan to the given geo position in the current map zoom level.
+    def pan_position(self, geo, view=None):
+        """Pan the given geo position in the current map zoom level.
 
-        geo  a tuple (xgeo, ygeo)
+        geo   a tuple (xgeo, ygeo)
+        view  a tuple of view coordinates (view_x, view_y)
+              (if not given, assume view centre)
 
-        We just adjust the key tile to place the required geo pisition in the
-        middle of the view.  If that is not possible, just centre in either
+        We just adjust the key tile to place the required geo position at the
+        given view coordinates.  If that is not possible, just centre in either
         the X or Y directions, or both.
         """
+
+        log(f'pan_position: geo={geo}, view={view}')
+
+        # if not given a "view", assume the view centre coordinates
+        if view is None:
+            view = (self.view_width // 2, self.view_height // 2)
+        (view_x, view_y) = view
+
+        log(f'view_x={view_x}, view_y={view_y}')
 
         # convert the geo posn to a tile position
         (tile_x, tile_y) = self.tile_src.Geo2Tile(geo)
 
         # determine what the new key tile should be
         # figure out number of tiles from centre point to edges
-        tx = (self.view_width / 2) / self.tile_width
-        ty = (self.view_height / 2) / self.tile_height
+        tx = view_x / self.tile_width
+        ty = view_y / self.tile_height
 
         # calculate tile coordinates of the top-left corner of the view
         key_tx = tile_x - tx
