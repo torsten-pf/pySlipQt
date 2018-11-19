@@ -1,5 +1,6 @@
 include MANIFEST.in
 include README.rst
+include RELEASE.rst
 include setup.cfg
 include LICENSE
 include Makefile
