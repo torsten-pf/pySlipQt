@@ -17,14 +17,14 @@ documentation in
 Release Notes
 -------------
 
-Release 0.4 of pySlipQt is early-release and is considered BETA software.
+Release 0.5 of pySlipQt is early-release and is considered BETA software.
 It is being released so anyone interested in pySlipQt can run the
 "pyslipqt_demo.py" program and get comfortable with the way pySlipQt
 works.  Note that testing has only been under macOS and no testing has been
 done on either of Linux or Windows, though the aim is to make pySlipQt
 cross-platform.
 
-This release has these warnings:
+This release has these notes:
 
 1. Some testing has been done, but not comprehensive testing, so please report
    any errors to me at rzzzwilson@gmail.com and attach the "pyslipqt.log" file.
@@ -41,6 +41,8 @@ This release has these warnings:
 
 5. All the "examples/test_*.py" programs have been converted to python3
    and PyQt5, but there may still be problems.
+
+6. Some bugs found and removed.
 
 The GMT example tileset is included in the "examples" subdirectory.  The
 gmt_local_tiles.py tileset code assumes that the zip file has been unzipped in
