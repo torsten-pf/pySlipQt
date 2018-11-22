@@ -2,7 +2,7 @@
 A base Tiles object for pySlipQt local tiles.
 
 All tile sources should inherit from this base class.
-For example, see gmt_local_tiles.py and osm_tiles.py.
+For example, see gmt_local.py and osm_tiles.py.
 """
 
 import os
