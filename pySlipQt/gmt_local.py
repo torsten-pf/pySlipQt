@@ -61,7 +61,7 @@ MaxLRU = 10000
 TileInfoFilename = "tile.info"
 
 # path to the tiles directory
-TilesDir = os.path.abspath(os.path.expanduser('~/gmt_local_tiles'))
+TilesDir = os.path.abspath(os.path.expanduser('~/gmt_local'))
 
 ################################################################################
 # Class for GMT local tiles.   Builds on tiles.BaseTiles.
