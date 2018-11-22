@@ -45,10 +45,10 @@ This release has these notes:
 6. Some bugs found and removed.
 
 The GMT example tileset is included in the "examples" subdirectory.  The
-gmt_local_tiles.py tileset code assumes that the zip file has been unzipped in
+gmt_local.py tileset code assumes that the zip file has been unzipped in
 the user's home directory (ie, ~/gmt_local_tiles).  If you put the tiles in any
-other place, please make the appropriate changes in gmt_local_tiles.py or make
-your own version of gmt_local_tiles.py.
+other place, please make the appropriate changes in gmt_local.py or make
+your own version of gmt_local.py.
 
 See the API documentation for the details on how to use pySlipQt.  The
 demonstration program "examples/pyslipqt_demo.py" does require that the pySlipQt
