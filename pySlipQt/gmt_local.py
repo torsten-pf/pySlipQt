@@ -11,7 +11,6 @@ import pySlipQt.tiles as tiles
 
 # if we don't have log.py, don't crash
 try:
-#    from . import log
     import log
     log = log.Log('pyslipqt.log')
 except AttributeError:
@@ -99,6 +98,7 @@ class Tiles(tiles.BaseTiles):
 
         # get tile information into instance
         self.level = min(TileLevels)
+        print('self.level=%s' % str(self.level))
         (self.num_tiles_x, self.num_tiles_y,
                         self.ppd_x, self.ppd_y) = self.GetInfo(self.level)
 
@@ -112,8 +112,11 @@ class Tiles(tiles.BaseTiles):
         doesn't exist.
         """
 
+        print(f'GetInfo: level=%s' % str(level))
+
         # is required level available?
         if level not in self.levels:
+            print('"level" not in self.levels (%s)!?' % str(self.levels))
             return None
 
         # see if we can open the tile info file.
@@ -122,6 +125,7 @@ class Tiles(tiles.BaseTiles):
             with open(info_file, 'rb') as fd:
                 info = pickle.load(fd)
         except IOError:
+            print('Error opening/loading file: %s' % info_file)
             info = None
 
         return info
