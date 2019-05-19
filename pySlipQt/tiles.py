@@ -154,8 +154,9 @@ class BaseTiles(object):
                 msg = ("%s doesn't appear to be a tile cache directory"
                        % tiles_dir)
                 raise Exception(msg) from None
-            log.critical("The tiles directory %s doesn't exist, creating it."
-                         % tiles_dir)
+            msg = "The tiles directory %s doesn't exist, creating it." % tiles_dir
+            log.critical(msg)
+            print(msg)
             os.makedirs(tiles_dir)
 
 # possible recursion here?
