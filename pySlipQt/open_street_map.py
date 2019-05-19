@@ -87,12 +87,12 @@ class Tiles(tiles.Tiles):
         and provide the Geo2Tile() and Tile2Geo() methods.
         """
 
-        super(Tiles, self).__init__(TileLevels,
-                                    Tiles.TileWidth, Tiles.TileHeight,
-                                    tiles_dir=tiles_dir,
-                                    servers=TileServers, url_path=TileURLPath,
-                                    max_server_requests=MaxServerRequests,
-                                    max_lru=MaxLRU, http_proxy=http_proxy)
+        super().__init__(TileLevels,
+                         Tiles.TileWidth, Tiles.TileHeight,
+                         tiles_dir=tiles_dir,
+                         servers=TileServers, url_path=TileURLPath,
+                         max_server_requests=MaxServerRequests,
+                         max_lru=MaxLRU, http_proxy=http_proxy)
 # TODO: implement map wrap-around
 #        self.wrap_x = True
 #        self.wrap_y = False

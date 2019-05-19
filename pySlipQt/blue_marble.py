@@ -77,12 +77,12 @@ class Tiles(tiles.Tiles):
         and provide the Geo2Tile() and Tile2Geo() methods.
         """
 
-        super(Tiles, self).__init__(levels=TileLevels,
-                                    tile_width=TileWidth, tile_height=TileHeight,
-                                    tiles_dir=tiles_dir, max_lru=MaxLRU,
-                                    servers=TileServers, url_path=TileURLPath,
-                                    max_server_requests=MaxServerRequests,
-                                    http_proxy=http_proxy)
+        super().__init__(levels=TileLevels,
+                         tile_width=TileWidth, tile_height=TileHeight,
+                         tiles_dir=tiles_dir, max_lru=MaxLRU,
+                         servers=TileServers, url_path=TileURLPath,
+                         max_server_requests=MaxServerRequests,
+                         http_proxy=http_proxy)
 
     def Geo2Tile(self, geo):
         """Convert geo to tile fractional coordinates for level in use.

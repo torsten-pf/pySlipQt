@@ -83,12 +83,12 @@ class Tiles(tiles.Tiles):
 #                                    max_server_requests=MaxServerRequests,
 #                                    max_lru=MaxLRU, tiles_dir=tiles_dir,
 #                                    http_proxy=http_proxy)
-        super(Tiles, self).__init__(levels=TileLevels,
-                                    tile_width=TileWidth, tile_height=TileHeight,
-                                    tiles_dir=tiles_dir, max_lru=MaxLRU,
-                                    servers=TileServers, url_path=TileURLPath,
-                                    max_server_requests=MaxServerRequests,
-                                    http_proxy=http_proxy)
+        super().__init__(levels=TileLevels,
+                         tile_width=TileWidth, tile_height=TileHeight,
+                         tiles_dir=tiles_dir, max_lru=MaxLRU,
+                         servers=TileServers, url_path=TileURLPath,
+                         max_server_requests=MaxServerRequests,
+                         http_proxy=http_proxy)
 
 
     def Geo2Tile(self, geo):

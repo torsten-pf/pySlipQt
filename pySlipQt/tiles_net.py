@@ -165,8 +165,7 @@ class Tiles(tiles.BaseTiles):
                 os.makedirs(level_dir)
 
         # perform the base class initialization
-        super(Tiles, self).__init__(levels, tile_width, tile_height,
-                                    tiles_dir, max_lru)
+        super().__init__(levels, tile_width, tile_height, tiles_dir, max_lru)
 
         # save params not saved in super()
         self.servers = servers

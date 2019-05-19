@@ -80,9 +80,9 @@ class Tiles(tiles.BaseTiles):
         and provide the Geo2Tile() and Tile2Geo() methods.
         """
 
-        super(Tiles, self).__init__(TileLevels,
-                                    Tiles.TileWidth, Tiles.TileHeight,
-                                    tiles_dir=tiles_dir, max_lru=MaxLRU)
+        super().__init__(TileLevels,
+                         Tiles.TileWidth, Tiles.TileHeight,
+                         tiles_dir=tiles_dir, max_lru=MaxLRU)
 
 # TODO: implement map wrap-around
 #        # we *can* wrap tiles in X direction, but not Y

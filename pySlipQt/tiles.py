@@ -148,16 +148,18 @@ class BaseTiles(object):
         # tiles extent for tile data (left, right, top, bottom)
         self.extent = (-180.0, 180.0, -85.0511, 85.0511)
 
-        # prepare tile cache if not already there
+        # check tile cache - we expect there to already be a directory
         if not os.path.isdir(tiles_dir):
             if os.path.isfile(tiles_dir):
                 msg = ("%s doesn't appear to be a tile cache directory"
                        % tiles_dir)
                 raise Exception(msg) from None
-            msg = "The tiles directory %s doesn't exist, creating it." % tiles_dir
-            log.critical(msg)
-            print(msg)
-            os.makedirs(tiles_dir)
+
+            msg = "The tiles directory %s doesn't exist." % tiles_dir
+            raise Exception(msg) from None
+#            log.critical(msg)
+#            print(msg)
+#            os.makedirs(tiles_dir)
 
 # possible recursion here?
 #        self.UseLevel(min(self.levels))
