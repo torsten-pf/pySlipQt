@@ -49,9 +49,6 @@ class DisplayText(QWidget):
                     'border-radius: 3px;'
                   '}'
                  )
-#    GroupStyle = 'QGroupBox { background-color: rgb(230, 230, 230); border-radius: 3px; }'
-
-#    LabelStyle = 'QLabel { background-color : #f0f0f0; border: 1px solid gray; border-radius: 3px; }'
     GroupStyle = (#'QGroupBox { background-color: rgb(230, 230, 230); };'
                   'QGroupBox::title { subcontrol-origin: margin; '
 #                                 '    background-color: rgb(215, 215, 215); '
