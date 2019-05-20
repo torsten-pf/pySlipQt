@@ -235,11 +235,11 @@ class Tiles(tiles.BaseTiles):
             log(''.join(traceback.format_exc()))
 
             if http_proxy:
-                proxy = urllib2.ProxyHandler({'http': http_proxy})
-                opener = urllib2.build_opener(proxy)
-                urllib2.install_opener(opener)
+                proxy = request.ProxyHandler({'http': http_proxy})
+                opener = request.build_opener(proxy)
+                request.install_opener(opener)
                 try:
-                    urllib2.urlopen(test_url)
+                    request.urlopen(test_url)
                 except:
                     msg = ("Using HTTP proxy %s, "
                            "but still can't get through a firewall!")
