@@ -21,11 +21,9 @@ where <options> is zero or more of:
 import os
 import sys
 import copy
-import importlib
 import getopt
 import traceback
 from functools import partial
-from tkinter_error import tkinter_error
 
 try:
     from PyQt5.QtCore import QTimer
@@ -35,23 +33,21 @@ try:
 except ImportError:
     msg = '*'*60 + '\nSorry, you must install PyQt5\n' + '*'*60
     print(msg)
-    tkinter_error(msg)
     sys.exit(1)
 
 try:
     import pySlipQt.pySlipQt as pySlipQt
     import pySlipQt.log as log
+    import pySlipQt.gmt_local as tiles
 except ImportError:
     msg = '*'*60 + '\nSorry, you must install pySlipQt\n' + '*'*60
     print(msg)
-    tkinter_error(msg)
     sys.exit(1)
 
 # initialize the logging system
 log = log.Log("pyslipqt.log")
 
-import pySlipQt.gmt_local as tiles
-
+# get the bits of the demo program we need
 from display_text import DisplayText
 from layer_control import LayerControl
 
@@ -62,7 +58,7 @@ from layer_control import LayerControl
 
 # demo name/version
 DemoName = 'pySlipQt %s - Demonstration' % pySlipQt.__version__
-DemoVersion = '1.0'
+DemoVersion = '1.1'
 
 DemoWidth = 800
 DemoHeight = 600
@@ -73,8 +69,8 @@ InitViewLevel = 0
 
 # this will eventually be selectable within the app
 # a selection of cities, position from WikiPedia, etc
-#InitViewPosition = (0.0, 51.48)             # Greenwich, England
 InitViewPosition = (0.0, 0.0)                #"Null" Island
+#InitViewPosition = (0.0, 51.48)             # Greenwich, England
 #InitViewPosition = (5.33, 60.389444)        # Bergen, Norway
 #InitViewPosition = (153.033333, -27.466667) # Brisbane, Australia
 #InitViewPosition = (98.3786761, 7.8627326)  # Phuket (ภูเก็ต), Thailand
@@ -903,7 +899,7 @@ class PySlipQtDemo(QMainWindow):
             # add polygon outline around image
             p_dict = {'placement': img_placement, 'width': 3, 'colour': 'green', 'closed': True}
             poly_place_coords = {'ne': '(((-CR_Width,0),(0,0),(0,CR_Height),(-CR_Width,CR_Height)),p_dict)',
-                                'ce': '(((-CR_Width,-CR_Height/2.0),(0,-CR_Height/2.0),(0,CR_Height/2.0),(-CR_Width,CR_Height/2.0)),p_dict)',
+                                 'ce': '(((-CR_Width,-CR_Height/2.0),(0,-CR_Height/2.0),(0,CR_Height/2.0),(-CR_Width,CR_Height/2.0)),p_dict)',
                                  'se': '(((-CR_Width,-CR_Height),(0,-CR_Height),(0,0),(-CR_Width,0)),p_dict)',
                                  'cs': '(((-CR_Width/2.0,-CR_Height),(CR_Width/2.0,-CR_Height),(CR_Width/2.0,0),(-CR_Width/2.0,0)),p_dict)',
                                  'sw': '(((0,-CR_Height),(CR_Width,-CR_Height),(CR_Width,0),(0,0)),p_dict)',
@@ -1611,7 +1607,6 @@ class PySlipQtDemo(QMainWindow):
         PointDataColour = '#ff000080'	# semi-transparent
 
         # create PointViewData - a point-rendition of 'PYSLIP'
-# TODO: add the suffix 'Qt'
         PointViewData = [(-66,-14),(-66,-13),(-66,-12),(-66,-11),(-66,-10),
                          (-66,-9),(-66,-8),(-66,-7),(-66,-6),(-66,-5),(-66,-4),
                          (-66,-3),(-65,-7),(-64,-7),(-63,-7),(-62,-7),(-61,-8),
@@ -1908,7 +1903,6 @@ def excepthook(type, value, tback):
     msg += '=' * 80 + '\n'
     log(msg)
     print(msg)
-#        tkinter_error(msg)     # doesn't work while PyQt5 is running
     sys.exit(1)
 
 # plug our handler into the python system
