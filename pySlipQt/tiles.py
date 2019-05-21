@@ -44,7 +44,9 @@ class Cache(pycacheback.pyCacheBack):
         self._tiles_dir  path to the on-disk cache directory
     """
 
-    TilePath = '{Z}/{X}/{Y}.png'
+    PicExtension = 'png'
+    TilePath = '{Z}/{X}/{Y}.%s' % PicExtension
+
 
     def tile_date(self, key):
         """Return the creation date of a tile given its key."""
@@ -83,11 +85,11 @@ class Cache(pycacheback.pyCacheBack):
     def _put_to_back(self, key, image):
         """Put a image into on-disk cache.
 
-        image   the wx.Image to save
         key     a tuple: (level, x, y)
                 where level  level for image
                       x      integer tile coordinate
                       y      integer tile coordinate
+        image   the wx.Image to save
         """
 
         (level, x, y) = key
@@ -100,7 +102,7 @@ class Cache(pycacheback.pyCacheBack):
             # we assume it's a "directory exists' error, which we ignore
             pass
 
-        image.save(tile_path, 'png')
+        image.save(tile_path, Cache.PicExtension)
 
 ###############################################################################
 # Base class for a tile source - handles access to a source of tiles.
