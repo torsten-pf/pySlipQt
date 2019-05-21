@@ -64,8 +64,7 @@ DemoWidth = 800
 DemoHeight = 600
 
 # initial view level and position
-#InitViewLevel = 3
-InitViewLevel = 0
+InitViewLevel = 3
 
 # this will eventually be selectable within the app
 # a selection of cities, position from WikiPedia, etc
@@ -93,9 +92,6 @@ MRPolylineShowLevels = [3, 4]
 
 # the number of decimal places in a lon/lat display
 LonLatPrecision = 3
-
-# startup size of the application
-DefaultAppSize = (1100, 770)
 
 # default deltas for various layer types
 DefaultPointMapDelta = 40
@@ -134,7 +130,9 @@ LogSym2Num = {'CRITICAL': 50,
               'DEBUG': 10,
               'NOTSET': 0}
 
-# associate the display name and module filename for each tileset used
+# list of modules containing tile sources
+# list of (<long_name>, <module_name>)
+# the <long_name>s go into the Tileselect menu
 Tilesets = [
             ('BlueMarble tiles', 'blue_marble'),
             ('GMT tiles', 'gmt_local'),
@@ -148,6 +146,7 @@ Tilesets = [
 
 # index into Tilesets above to set default tileset
 DefaultTilesetIndex = 1
+
 
 ###############################################################################
 # A small class to manage tileset sources.
