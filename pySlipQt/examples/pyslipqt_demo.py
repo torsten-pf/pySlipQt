@@ -406,6 +406,9 @@ class PySlipQtDemo(QMainWindow):
         menu_id  the index in self.id2tiledata of the required tileset
         """
 
+        log('change_tileset: menu_id=%s' % str(menu_id))
+        log('id2tiledata[]=%s' % str(self.id2tiledata))
+
         # ensure only one tileset is checked in the menu, the required one
         for (key, tiledata) in self.id2tiledata.items():
             (name, module_name, action, tile_obj) = tiledata
@@ -419,15 +422,25 @@ class PySlipQtDemo(QMainWindow):
             raise RuntimeError('self.id2tiledata is badly formed:\n%s'
                                % str(self.id2tiledata))
 
+        log('name=%s, module_name=%s, new_tile_obj=%s'
+                % (str(name), str(module_name), str(new_tile_obj)))
+
         if new_tile_obj is None:
+            # haven't seen this tileset before, import and instantiate
+            log("importing '%s' from pySlipQt" % str(module_name))
             obj = __import__('pySlipQt', globals(), locals(), [module_name])
+            log('imported module=%s' % str(obj))
+            log('imported module=%s' % str(dir(obj)))
             tileset = getattr(obj, module_name)
+            log('tileset=%s' % str(tileset))
             tile_name = tileset.TilesetName
+            log('tile_name=%s' % str(tile_name))
             new_tile_obj = tileset.Tiles()
 
             # update the self.id2tiledata element
             self.id2tiledata[menu_id] = (name, module_name, action, new_tile_obj)
 
+        log('Before .ChangeTileset, new_tile_obj=%s' % str(new_tile_obj))
         self.pyslipqt.ChangeTileset(new_tile_obj)
 
     def onClose(self):
