@@ -393,7 +393,6 @@ class PySlipQt(QWidget):
         """
 
         event = PySlipQt.PySlipQtEvent(etype, **kwargs)
-#        self.dump_event('raise_event', event)
         self.pyslipqt_event_dict[etype](event)
 
     ######
@@ -3410,8 +3409,11 @@ class PySlipQt(QWidget):
         exist in the new tileset.
         """
 
+        log('ChangeTileset: tile_src=%s' % str(tile_src))
+
         # get level and geo position of view centre
         (level, geo) = self.get_level_and_position()
+        log('level=%s, geo=%s' % (str(level), str(geo)))
 
         # remember old tileset
         old_tileset = self.tile_src
