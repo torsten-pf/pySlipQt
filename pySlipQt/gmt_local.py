@@ -1,32 +1,17 @@
 """
 A tile source that serves pre-generated GMT tiles from the local filesystem.
-
-Uses pyCacheBack to provide in-memory and on-disk caching.
 """
 
 import os
 import pickle
 import pySlipQt.tiles as tiles
+import pyslip.log as log
 
-
-# if we don't have log.py, don't crash
 try:
-    import log
     log = log.Log('pyslipqt.log')
 except AttributeError:
     # means log already set up
     pass
-except ImportError as e:
-    # if we don't have log.py, don't crash
-    # fake all log(), log.debug(), ... calls
-    def logit(*args, **kwargs):
-        pass
-    log = logit
-    log.debug = logit
-    log.info = logit
-    log.warn = logit
-    log.error = logit
-    log.critical = logit
 
 
 ###############################################################################
@@ -67,7 +52,7 @@ TilesDir = os.path.abspath(os.path.expanduser('~/gmt_local_tiles'))
 ################################################################################
 
 class Tiles(tiles.BaseTiles):
-    """An object to source GMT tiles for pySlipQt."""
+    """An object to source GMT tiles for the widget."""
 
     # size of these tiles
     TileWidth = 256

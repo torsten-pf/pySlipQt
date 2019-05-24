@@ -1,32 +1,9 @@
 """
 A tile source that serves OpenStreetMap tiles from server(s).
-
-Uses pyCacheBack to provide in-memory and on-disk caching.
 """
 
 import math
-
-import pySlipQt.tiles_net as tiles
-
-
-# if we don't have log.py, don't crash
-try:
-    from pySlipQt import log
-    log = log.Log('pyslip.log')
-except AttributeError:
-    # means log already set up
-    pass
-except ImportError as e:
-    # if we don't have log.py, don't crash
-    # fake all log(), log.debug(), ... calls
-    def logit(*args, **kwargs):
-        pass
-    log = logit
-    log.debug = logit
-    log.info = logit
-    log.warn = logit
-    log.error = logit
-    log.critical = logit
+import pySlipQt.tiles_net as tiles_net
 
 
 ###############################################################################
@@ -70,10 +47,10 @@ TilesDir = 'open_street_map_tiles'
 
 
 ################################################################################
-# Class for these tiles.   Builds on tiles.BaseTiles.
+# Class for these tiles.   Builds on tiles_net.Tiles.
 ################################################################################
 
-class Tiles(tiles.Tiles):
+class Tiles(tiles_net.Tiles):
     """An object to source server tiles for pySlipQt."""
 
     # size of tiles
@@ -100,7 +77,7 @@ class Tiles(tiles.Tiles):
         # get tile information into instance
         self.level = min(TileLevels)
         (self.num_tiles_x, self.num_tiles_y,
-         self.ppd_x, self.ppd_y) = self.GetInfo(self.level)
+                         self.ppd_x, self.ppd_y) = self.GetInfo(self.level)
 
     def Geo2Tile(self, geo):
         """Convert geo to tile fractional coordinates for level in use.

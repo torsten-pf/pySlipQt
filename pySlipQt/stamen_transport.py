@@ -3,33 +3,11 @@ A tile source that serves Stamen Transport tiles from the internet.
 
 Map tiles by Stamen Design, under CC BY 3.0. Data by OpenStreetMap, under CC BY SA.
 (See README.rst)
-
-Uses pyCacheBack to provide in-memory and on-disk caching.
 """
 
 import math
+import pySlipQt.tiles_net as tiles_net
 
-import pySlipQt.tiles_net as tiles
-
-
-# if we don't have log.py, don't crash
-try:
-    from pySlipQt import log
-    log = log.Log('pyslip.log')
-except AttributeError:
-    # means log already set up
-    pass
-except ImportError as e:
-    # if we don't have log.py, don't crash
-    # fake all log(), log.debug(), ... calls
-    def logit(*args, **kwargs):
-        pass
-    log = logit
-    log.debug = logit
-    log.info = logit
-    log.warn = logit
-    log.error = logit
-    log.critical = logit
 
 ###############################################################################
 # Change values below here to configure an internet tile source.
@@ -69,10 +47,10 @@ TileHeight = 256
 TilesDir = 'stamen_transport_tiles'
 
 ################################################################################
-# Class for these tiles.   Builds on tiles.BaseTiles.
+# Class for these tiles.   Builds on tiles_net.Tiles.
 ################################################################################
 
-class Tiles(tiles.Tiles):
+class Tiles(tiles_net.Tiles):
     """An object to source internet tiles for pySlip."""
 
     def __init__(self, tiles_dir=TilesDir ,http_proxy=None):
