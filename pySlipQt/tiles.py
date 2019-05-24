@@ -10,27 +10,19 @@ import os
 import math
 from PyQt5.QtGui import QPixmap
 import pySlipQt.pycacheback as pycacheback
+import pySlipQt.log as log
 
-
-# if we don't have log.py, don't crash
 try:
-#    from . import log
-    import log
     log = log.Log('pyslipqt.log')
 except AttributeError:
-    # means log already set up
+    # already have a log file, ignore
     pass
-except ImportError as e:
-    # if we don't have log.py, don't crash
-    # fake all log(), log.debug(), ... calls
-    def logit(*args, **kwargs):
-        pass
-    log = logit
-    log.debug = logit
-    log.info = logit
-    log.warn = logit
-    log.error = logit
-    log.critical = logit
+
+
+# set how old disk-cache tiles can be before we re-request them from the internet
+# this is the number of days old a tile is before we re-request
+# if 'None', never re-request tiles after first satisfied request
+RefreshTilesAfterDays = 60
 
 
 ################################################################################
