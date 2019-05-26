@@ -11,7 +11,6 @@ import sys
 import getopt
 import traceback
 
-from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget,
                              QGridLayout, QVBoxLayout, QHBoxLayout)
@@ -102,7 +101,6 @@ class TestTextPlacement(QMainWindow):
         self.pyslipqt.events.EVT_PYSLIPQT_POSITION.connect(self.handle_position_event)
 
         # set initial view position
-#        QTimer.singleShot(1, self.final_setup)
         self.map_level.set_text('0')
 
         self.show()

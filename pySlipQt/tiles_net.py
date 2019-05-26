@@ -13,7 +13,7 @@ import urllib
 from urllib import request
 import queue
 from PyQt5.QtGui import QPixmap
-from PyQt5.QtCore import QThread, QTimer
+from PyQt5.QtCore import QThread
 import pySlipQt.tiles as tiles
 import pySlipQt.sys_tile_data as std
 
