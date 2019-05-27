@@ -6,6 +6,8 @@ The code here is generated from the:
     pending_tile.png
 files in the pyslipqt/examples/graphics directory using:
     /usr/local/bin/img2py <file>
+
+The captured output is cleaned up and saved in this file as data.
 """
 
 import base64

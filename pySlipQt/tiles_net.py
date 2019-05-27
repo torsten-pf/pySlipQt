@@ -16,27 +16,13 @@ from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import QThread
 import pySlipQt.tiles as tiles
 import pySlipQt.sys_tile_data as std
+import pySlipQt.log as log
 
-
-# if we don't have log.py, don't crash
 try:
-#    from . import log
-    import log
     log = log.Log('pyslipqt.log')
 except AttributeError:
     # means log already set up
     pass
-except ImportError as e:
-    # if we don't have log.py, don't crash
-    # fake all log(), log.debug(), ... calls
-    def logit(*args, **kwargs):
-        pass
-    log = logit
-    log.debug = logit
-    log.info = logit
-    log.warn = logit
-    log.error = logit
-    log.critical = logit
 
 # set how old disk-cache tiles can be before we re-request them from the
 # server.  this is the number of days old a tile is before we re-request.
@@ -86,17 +72,14 @@ class TileWorker(QThread):
         while True:
             # get zoom level and tile coordinates to retrieve
             (level, x, y) = self.requests.get()
-            log('run: getting tile (%d,%d,%d)' % (level, x, y))
 
             # try to retrieve the image
             error = False
             pixmap = self.error_image
             try:
                 tile_url = self.server + self.tilepath.format(Z=level, X=x, Y=y)
-                log('tile_url=%s' % tile_url)
                 response = request.urlopen(tile_url)
-                headers = response.info()
-                content_type = headers.get_content_type()
+                content_type = response.info().get_content_type()
                 if content_type == self.content_type:
                     data = response.read()
                     pixmap = QPixmap()
@@ -104,7 +87,6 @@ class TileWorker(QThread):
                 else:
                     # show error, don't cache returned error tile
                     error = True
-                    pixmap = self.error_image
             except Exception as e:
                 error = True
                 log('%s exception getting tile (%d,%d,%d)'
@@ -122,7 +104,7 @@ class TileWorker(QThread):
 ###############################################################################
 
 class Tiles(tiles.BaseTiles):
-    """A tile object to source server tiles for pySlipQt."""
+    """A tile object to source server tiles for the widget."""
 
     # maximum number of outstanding requests per server
     MaxServerRequests = 2
@@ -222,6 +204,14 @@ class Tiles(tiles.BaseTiles):
             status_code = e.code
             log('Error: test_url=%s, status_code=%s'
                     % (test_url, str(status_code)))
+            if status_code == 401:
+                msg = ['',
+                       'You got a 401 error from: %s' % test_url,
+                       'Looks like you need to be authorised for this server.'
+                      ]
+                msg = '\n'.join(msg)
+                log(msg)
+                raise RuntimeError(msg) from None
             if status_code == 404:
                 msg = ['',
                        'You got a 404 error from: %s' % test_url,
