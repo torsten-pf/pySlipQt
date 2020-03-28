@@ -17,17 +17,19 @@ documentation in
 Release Notes
 -------------
 
-Release 0.1 of pySlipQt is early-release and is therefore ALPHA software.  It
-is being released at this early stage so anyone interested in pySlipQt can run
-the "pyslipqt_demo.py" program and get comfortable with the way pySlipQt works.
+Release 0.5 of pySlipQt is early-release and is considered BETA software.
+It is being released so anyone interested in pySlipQt can run the
+"pyslipqt_demo.py" program and get comfortable with the way pySlipQt
+works.  Note that testing has only been under macOS and no testing has been
+done on either of Linux or Windows, though the aim is to make pySlipQt
+cross-platform.
 
-This release has these warnings:
+This release has these notes:
 
-1. Little testing has been done, so please report any errors to me at 
-   rzzzwilson@gmail.com and attach the "pyslipqt.log" file.
+1. Some testing has been done, but not comprehensive testing, so please report
+   any errors to me at rzzzwilson@gmail.com and attach the "pyslipqt.log" file.
 
-2. "Box selection" (a multi-selection made by dragging a select box) doesn't
-   work at the moment, but it will!
+2. "Box selection" now works.
 
 3. Wrap-around of tiles doesn't work yet, but I *hope* to have it working even
    though it will come with some limitations.
@@ -37,23 +39,19 @@ This release has these warnings:
    later.  The GMT tiles can still be used an example of how to use locally
    generated tiles.
 
-5. Many of the "examples/test_*.py" programs have not been converted to python3
-   and PyQt5.  The programs that *do* work are:
-       test_assumptions.py
-       test_gmt_local_tiles.py
-       test_osm_tiles.py
-       test_display_text.py
-       test_layer_control.py
-       
+5. All the "examples/test_*.py" programs have been converted to python3
+   and PyQt5, but there may still be problems.
+
+6. Some bugs found and removed.
 
 The GMT example tileset is included in the "examples" subdirectory.  The
-gmt_local_tiles.py tileset code assumes that the zip file has been unzipped in
+gmt_local.py tileset code assumes that the zip file has been unzipped in
 the user's home directory (ie, ~/gmt_local_tiles).  If you put the tiles in any
-other place, please make the appropriate changes in gmt_local_tiles.py or make
-your own version of gmt_local_tiles.py.
+other place, please make the appropriate changes in gmt_local.py or make
+your own version of gmt_local.py.
 
 See the API documentation for the details on how to use pySlipQt.  The
 demonstration program "examples/pyslipqt_demo.py" does require that the pySlipQt
 package has been installed, though you make run pyslipqt_demo.py from any place
-as long as it is moved along with its required files from the "examples"
+as long as it is moved along with its required files from the "pySlipQt/examples"
 directory.

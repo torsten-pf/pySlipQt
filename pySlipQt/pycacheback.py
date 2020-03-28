@@ -19,28 +19,28 @@ class pyCacheBack(dict):
         self._lru_list = []
         self._max_lru = kwargs.pop('max_lru', self.DefaultMaxLRU)
         self._tiles_dir = kwargs.pop('tiles_dir', self.DefaultTilesDir)
-        super(pyCacheBack, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def __getitem__(self, key):
         if key in self:
-            value = super(pyCacheBack, self).__getitem__(key)
+            value = super().__getitem__(key)
         else:
             value = self._get_from_back(key)
         self._reorder_lru(key)
         return value
 
     def __setitem__(self, key, value):
-        super(pyCacheBack, self).__setitem__(key, value)
+        super().__setitem__(key, value)
         self._put_to_back(key, value)
         self._reorder_lru(key)
         self._enforce_lru_size()
 
     def __delitem__(self, key):
-        super(pyCacheBack, self).__delitem__(key)
+        super().__delitem__(key)
         self._reorder_lru(key, remove=True)
 
     def clear(self):
-        super(pyCacheBack, self).clear()
+        super().clear()
         self._lru_list = []
 
     def pop(self, *args):
@@ -49,10 +49,10 @@ class pyCacheBack(dict):
             self._lru_list.remove(k)
         except ValueError:
             pass
-        return super(pyCacheBack, self).pop(*args)
+        return super().pop(*args)
 
     def popitem(self):
-        kv_return = super(pyCacheBack, self).popitem()
+        kv_return = super().popitem()
         try:
             self._lru_list.remove(kv_return[0])
         except ValueError:
@@ -80,7 +80,7 @@ class pyCacheBack(dict):
         if self._max_lru and len(self) > self._max_lru:
             # make sure in-memory dictionary doesn't get bigger
             for key in self._lru_list[self._max_lru:]:
-                super(pyCacheBack, self).__delitem__(key)
+                super().__delitem__(key)
             # also truncate the LRU list
             self._lru_list = self._lru_list[:self._max_lru]
 

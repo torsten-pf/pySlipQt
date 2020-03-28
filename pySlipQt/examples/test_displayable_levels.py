@@ -13,16 +13,13 @@ import traceback
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QLabel,
                              QHBoxLayout)
-try:
-    from display_text import DisplayText
-except ImportError:
-    # maybe not installed properly, try relative import
-    sys.path.append('../examples')
-    from display_text import DisplayText
+from display_text import DisplayText
 
-import pySlipQt.log as log
-log = log.Log('test_displayable_levels.log')
 import pySlipQt.pySlipQt as pySlipQt
+
+# initialize the logging system
+import pySlipQt.log as log
+log = log.Log("pyslipqt.log")
 
 
 ######
@@ -63,11 +60,13 @@ class AppFrame(QMainWindow):
         self.pyslipqt = pySlipQt.PySlipQt(self, tile_src=self.tile_src, start_level=InitViewLevel)
         box.addWidget(self.pyslipqt)
 
-        # set initial view position
-        self.pyslipqt.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
+        self.show()
 
         # bind the pySlipQt widget to the "zoom undo" method
         self.pyslipqt.events.EVT_PYSLIPQT_LEVEL.connect(self.on_zoom)
+
+        # set initial view position
+        self.pyslipqt.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
 
     def on_zoom(self, event):
         """Catch and undo a zoom.
@@ -79,9 +78,8 @@ class AppFrame(QMainWindow):
         method below will trigger another exception, which we catch, etc, etc.
         """
 
-        print(f'on_zoom: entered')
-
-        for _ in range(1000):
+        log('Waiting a bit')
+        for _ in range(1000000):
             pass
 
         l = [InitViewLevel, InitViewLevel, InitViewLevel, InitViewLevel,
@@ -91,9 +89,13 @@ class AppFrame(QMainWindow):
              InitViewLevel, InitViewLevel, InitViewLevel, InitViewLevel,
             ]
 
+        log(f'Trying to zoom to level {event.level}, allowed level={InitViewLevel}')
         if event.level not in l:
-            print(f'on_zoom: undoing zoom')
+            # undo zoom
+            log('New level NOT in allowed list, undoing zoom')
             self.pyslipqt.GotoLevel(InitViewLevel)
+            # set initial view position
+#            self.pyslipqt.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
 
 
 # print some usage information

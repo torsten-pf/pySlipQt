@@ -2,34 +2,27 @@
 A base Tiles object for pySlipQt local tiles.
 
 All tile sources should inherit from this base class.
-For example, see gmt_local_tiles.py and osm_tiles.py.
+For example, see gmt_local.py (local tiles) and osm_tiles.py
+(internet tiles).
 """
 
 import os
 import math
 from PyQt5.QtGui import QPixmap
 import pySlipQt.pycacheback as pycacheback
+import pySlipQt.log as log
 
-
-# if we don't have log.py, don't crash
 try:
-#    from . import log
-    import log
     log = log.Log('pyslipqt.log')
 except AttributeError:
-    # means log already set up
+    # already have a log file, ignore
     pass
-except ImportError as e:
-    # if we don't have log.py, don't crash
-    # fake all log(), log.debug(), ... calls
-    def logit(*args, **kwargs):
-        pass
-    log = logit
-    log.debug = logit
-    log.info = logit
-    log.warn = logit
-    log.error = logit
-    log.critical = logit
+
+
+# set how old disk-cache tiles can be before we re-request them from the internet
+# this is the number of days old a tile is before we re-request
+# if 'None', never re-request tiles after first satisfied request
+RefreshTilesAfterDays = 60
 
 
 ################################################################################
@@ -43,7 +36,9 @@ class Cache(pycacheback.pyCacheBack):
         self._tiles_dir  path to the on-disk cache directory
     """
 
-    TilePath = '{Z}/{X}/{Y}.png'
+    PicExtension = 'png'
+    TilePath = '{Z}/{X}/{Y}.%s' % PicExtension
+
 
     def tile_date(self, key):
         """Return the creation date of a tile given its key."""
@@ -82,11 +77,11 @@ class Cache(pycacheback.pyCacheBack):
     def _put_to_back(self, key, image):
         """Put a image into on-disk cache.
 
-        image   the wx.Image to save
         key     a tuple: (level, x, y)
                 where level  level for image
                       x      integer tile coordinate
                       y      integer tile coordinate
+        image   the wx.Image to save
         """
 
         (level, x, y) = key
@@ -99,7 +94,7 @@ class Cache(pycacheback.pyCacheBack):
             # we assume it's a "directory exists' error, which we ignore
             pass
 
-        image.save(tile_path, 'png')
+        image.save(tile_path, Cache.PicExtension)
 
 ###############################################################################
 # Base class for a tile source - handles access to a source of tiles.
@@ -148,13 +143,17 @@ class BaseTiles(object):
         # tiles extent for tile data (left, right, top, bottom)
         self.extent = (-180.0, 180.0, -85.0511, 85.0511)
 
-        # prepare tile cache if not already there
+        # check tile cache - we expect there to already be a directory
         if not os.path.isdir(tiles_dir):
             if os.path.isfile(tiles_dir):
                 msg = ("%s doesn't appear to be a tile cache directory"
                        % tiles_dir)
+                log.critical(msg)
                 raise Exception(msg) from None
-            os.makedirs(tiles_dir)
+
+            msg = "The tiles directory %s doesn't exist." % tiles_dir
+            log.critical(msg)
+            raise Exception(msg) from None
 
 # possible recursion here?
 #        self.UseLevel(min(self.levels))

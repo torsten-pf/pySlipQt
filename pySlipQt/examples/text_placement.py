@@ -66,6 +66,15 @@ class TextPlacementControl(QWidget):
                                  '    border-radius: 3px; '
                                  '    padding: 2 2px; '
                                  '    color: black; }')
+    ButtonColourStyle = ('QPushButton {'
+                                       'margin: 1px;'
+                                       'border-color: #0c457e;'
+                                       'border-style: outset;'
+                                       'border-radius: 3px;'
+                                       'border-width: 1px;'
+                                       'color: black;'
+                                       'background-color: %s;'
+                                     '}')
 
     def __init__(self, title):
         """Initialise a TextPlacementControl instance.
@@ -98,7 +107,6 @@ class TextPlacementControl(QWidget):
         self.placement = QComboBox()
         for p in ['none', 'nw', 'cn', 'ne', 'ce', 'se', 'cs', 'sw', 'cw', 'cc']:
             self.placement.addItem(p)
-        self.placement.setCurrentIndex(9)
         self.placement.setFixedWidth(TextPlacementControl.ComboboxWidth)
         self.placement.setToolTip('Click here to change the placement')
 
@@ -218,22 +226,26 @@ class TextPlacementControl(QWidget):
         btn_update.clicked.connect(self.updateData)
 
         # finally, put default colours into the colour selector buttons
-        self.text_colour.setStyleSheet(f"background-color:{TextPlacementControl.DefaultTextColour};");
-        self.point_colour.setStyleSheet(f"background-color:{TextPlacementControl.DefaultPointColour};");
+        self.text_colour.setStyleSheet(TextPlacementControl.ButtonColourStyle
+                                       % TextPlacementControl.DefaultTextColour)
+        self.point_colour.setStyleSheet(TextPlacementControl.ButtonColourStyle
+                                        % TextPlacementControl.DefaultPointColour)
 
     def changePointColour(self, event):
         color = QColorDialog.getColor()
         if color.isValid():
             colour = color.name()
             # set colour button background
-            self.point_colour.setStyleSheet(f'background-color:{colour};');
+            self.point_colour.setStyleSheet(TextPlacementControl.ButtonColourStyle
+                                            % colour)
  
     def changeTextColour(self, event):
         color = QColorDialog.getColor()
         if color.isValid():
             colour = color.name()
             # set colour button background
-            self.text_colour.setStyleSheet(f'background-color:{colour};');
+            self.text_colour.setStyleSheet(TextPlacementControl.ButtonColourStyle
+                                           % colour)
  
     def removeLayer(self, event):
         self.remove.emit()
@@ -243,6 +255,8 @@ class TextPlacementControl(QWidget):
         text = self.text.text()
         textcolour = self.text_colour.palette().color(1)
         placement = str(self.placement.currentText())
+        if placement == 'none':
+            placement = None
         radius = int(self.point_radius.currentText())
         colour = self.point_colour.palette().color(1)
         x_posn = int(self.x_posn.currentText())

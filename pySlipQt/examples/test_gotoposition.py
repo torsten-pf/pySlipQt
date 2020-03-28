@@ -5,7 +5,8 @@ The idea is to have a set of buttons selecting various geo positions on the OSM
 tile map.  When selected, the view would be moved with GotoPosition() and a
 map-relative marker would be drawn at that position.  At the same time, a
 view-relative marker would be drawn at the centre of the view.  The difference
-between the two markers shows errors in the Geo2Tile() & Tile2GEO() functions.
+between the two markers shows errors in the Geo2Tile() & Tile2Geo() functions.
+
 """
 
 
@@ -13,31 +14,19 @@ import os
 import sys
 import traceback
 
-from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QPixmap
-from PyQt5.QtWidgets import (QApplication, QMainWindow, QHBoxLayout)
+from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget,
+                             QHBoxLayout, QGridLayout,
+                             QPushButton)
 
-sys.path.append('..')
+import pySlipQt.pySlipQt as pySlipQt
+import pySlipQt.open_street_map as tiles
+from display_text import DisplayText
+from layer_control import LayerControl
 
-import pyslipqt
-import osm_tiles as tiles
-
-# If we have log.py, well and good.  Otherwise ...
-try:
-#    import pyslipqt.log as log
-    import log
-except ImportError:
-    def logit(*args, **kwargs):
-        pass
-    log = logit
-    log.debug = logit
-    log.info = logit
-    log.warn = logit
-    log.error = logit
-    log.critical = logit
-
-#import pyslipqt.tkinter_error as tkinter_error
-import tkinter_error
+# set up logging
+import pySlipQt.log as log
+log = log.Log('pyslipqt.log')
 
 
 ######
@@ -46,15 +35,16 @@ import tkinter_error
 
 # demo name/version
 DemoVersion = '1.0'
-DemoName = "pySlip %s - GotoPosition() test %s" % (pyslipqt.__version__, DemoVersion)
+DemoName = "pySlip %s - GotoPosition() test %s" % (pySlipQt.__version__, DemoVersion)
 DemoWidth = 800
 DemoHeight = 665
 
 # initial level and position
 InitViewLevel = 3
+InitViewPosition = (0, 0)
 
 # the number of decimal places in a lon/lat display
-LonLatPrecision = 3
+LonLatPrecision = 2
 
 # a selection of cities, position from WikiPedia, etc
 # format is ((<lon>,<lat>),<name>)
@@ -72,7 +62,7 @@ Cities = [((0.0, 51.4778), 'Greenwich, United Kingdom'),
           ((103.8508548, 1.2848402), "Singapore (One Raffles Place)"),
           ((-3.2056135, 55.9552474), "Maxwell's Birthplace"),
           ((7.6059011, 50.3644454), "Deutsches Eck, Koblenz, Germany"),
-          ((98.3763357, 7.8605885), "Home"),
+          ((116.391667, 39.903333), "Beijing (北京市)"),
          ]
 
 
@@ -97,6 +87,8 @@ class AppFrame(QMainWindow):
         # build the GUI
         self.make_gui()
 
+        self.show()
+
         # bind events to handlers
         self.pyslipqt.events.EVT_PYSLIPQT_POSITION.connect(self.handle_position_event)
         self.pyslipqt.events.EVT_PYSLIPQT_LEVEL.connect(self.handle_level_change)
@@ -111,112 +103,62 @@ class AppFrame(QMainWindow):
     def make_gui(self):
         """Create application GUI."""
 
-        hbox = QHBoxLayout()
-        self.setLayout(hbox)
+        # build the GUI
+        grid = QGridLayout()
 
-        # put map view in left of horizontal box
-        sl_box = self.make_gui_view()
-        all_display.Add(sl_box, proportion=1, border=1, flag=wx.EXPAND)
-
-        # small spacer here - separate view and controls
-        all_display.AddSpacer(HSpacerSize)
+        qwidget = QWidget(self)
+        qwidget.setLayout(grid)
+        self.setCentralWidget(qwidget)
 
         # add controls to right of spacer
-        controls = self.make_gui_controls(self)
-        all_display.Add(controls, proportion=0, border=1)
+        rows = self.make_gui_controls(grid)
+#        grid.addLayout(controls)
 
-        self.SetSizerAndFit(all_display)
+        # put map view in left of horizontal box
+        self.pyslipqt = pySlipQt.PySlipQt(self, start_level=InitViewLevel, tile_src=self.tile_source)
+        grid.addWidget(self.pyslipqt, 0, 0, rows+1, 1)
 
-    def make_gui_view(self):
-        """Build the map view widget
-
-        Returns the static box sizer.
-        """
-
-        # create gui objects
-        sb = AppStaticBox(self, '')
-#        tile_object = tiles.Tiles(self.tile_directory)
-        self.pyslipqt = pyslipqt.PySlipQt(self, tile_src=self.tile_source)
-
-        # lay out objects
-        box = wx.StaticBoxSizer(sb, orient=wx.HORIZONTAL)
-        box.Add(self.pyslipqt, proportion=1, border=1, flag=wx.EXPAND)
-
-        return box
-
-    def make_gui_controls(self):
+    def make_gui_controls(self, grid):
         """Build the 'controls' part of the GUI
 
+        grid  reference to the grid layout to fill
         Returns reference to containing sizer object.
         """
 
-        # all controls in vertical box sizer
-        controls = wx.BoxSizer(wx.VERTICAL)
+        # row to put controls into
+        row = 0
 
         # add the map level in use widget
-        level = self.make_gui_level(self)
-        controls.Add(level, proportion=0, flag=wx.EXPAND|wx.ALL)
-
-        # vertical spacer
-        controls.AddSpacer(VSpacerSize)
-
-        # add the mouse position feedback stuff
-        mouse = self.make_gui_mouse(self)
-        controls.Add(mouse, proportion=0, flag=wx.EXPAND|wx.ALL)
+        level_mouse = self.make_gui_level_mouse()
+        grid.addLayout(level_mouse, row, 1)
+        row += 1
 
         # buttons for each point of interest
         self.buttons = {}
         for (num, city) in enumerate(Cities):
-            controls.AddSpacer(VSpacerSize)
             (lonlat, name) = city
-            btn = wx.Button(self, num, name)
-            controls.Add(btn, proportion=0, flag=wx.EXPAND|wx.ALL)
-            btn.Bind(wx.EVT_BUTTON, self.handle_button)
-            self.buttons[num] = city
-        return controls
+            btn = QPushButton(name)
+            grid.addWidget(btn, row, 1)
+            btn.clicked.connect(self.handle_button)
+            self.buttons[btn] = city
+            row += 1
 
-    def make_gui_level(self):
-        """Build the control that shows the level.
+        return row
 
-        Returns reference to containing sizer object.
+    def make_gui_level_mouse(self):
+        """Build the control that shows the level and mouse position.
+
+        Returns reference to containing layout.
         """
 
-        # create objects
-        txt = wx.StaticText(self, wx.ID_ANY, 'Level: ')
-        self.map_level = wx.StaticText(self, wx.ID_ANY, ' ')
+        hbox = QHBoxLayout()
+        self.map_level = DisplayText(title='', label='Level:', tooltip=None)
+        self.mouse_position = DisplayText(title='', label='Lon/Lat:',
+                                          text_width=100, tooltip=None)
+        hbox.addWidget(self.map_level)
+        hbox.addWidget(self.mouse_position)
 
-        # lay out the controls
-        sb = AppStaticBox(self, 'Map level')
-        box = wx.StaticBoxSizer(sb, orient=wx.HORIZONTAL)
-        box.Add(txt, border=PackBorder, flag=(wx.ALIGN_CENTER_VERTICAL
-                                     |wx.ALIGN_RIGHT|wx.LEFT))
-        box.Add(self.map_level, proportion=0, border=PackBorder,
-                flag=wx.RIGHT|wx.TOP)
-
-        return box
-
-    def make_gui_mouse(self):
-        """Build the mouse part of the controls part of GUI.
-
-        Returns reference to containing sizer object.
-        """
-
-        # create objects
-        txt = wx.StaticText(self, wx.ID_ANY, 'Lon/Lat: ')
-        self.mouse_position = ROTextCtrl(self, '', size=(150,-1),
-                                         tooltip=('Shows the mouse '
-                                                  'longitude and latitude '
-                                                  'on the map'))
-
-        # lay out the controls
-        sb = AppStaticBox(self, 'Mouse position')
-        box = wx.StaticBoxSizer(sb, orient=wx.HORIZONTAL)
-        box.Add(txt, border=PackBorder, flag=(wx.ALIGN_CENTER_VERTICAL
-                                     |wx.ALIGN_RIGHT|wx.LEFT))
-        box.Add(self.mouse_position, proportion=1, border=PackBorder,
-                    flag=wx.RIGHT|wx.TOP|wx.BOTTOM)
-
-        return box
+        return hbox
 
     ######
     # Exception handlers
@@ -225,10 +167,15 @@ class AppFrame(QMainWindow):
     def handle_button(self, event):
         """Handle button event."""
 
-        (posn, name) = self.buttons[event.Id]
+        # get the button that was pressed
+        sender_btn = self.sender()
+        (posn, name) = self.buttons[sender_btn]
+        log(f"Got button event, posn={posn}, name='{name}'")
+
         self.pyslipqt.GotoPosition(posn)
 
         if self.map_layer:
+            # if there was a previous layer, delete it
             self.pyslipqt.DeleteLayer(self.map_layer)
         map_data = [posn]
         point_colour = '#0000ff40'
@@ -249,6 +196,7 @@ class AppFrame(QMainWindow):
 #                                                        colour=poly_colour,
                                                         closed=False,
                                                         visible=True,
+                                                        width=2,
                                                         name='view_layer')
 
     def handle_position_event(self, event):
@@ -260,12 +208,12 @@ class AppFrame(QMainWindow):
             posn_str = ('%.*f / %.*f'
                         % (LonLatPrecision, lon, LonLatPrecision, lat))
 
-        self.mouse_position.SetValue(posn_str)
+        self.mouse_position.set_text(posn_str)
 
     def handle_level_change(self, event):
         """Handle a pySlip LEVEL event."""
 
-        self.map_level.SetLabel('%d' % event.level)
+        self.map_level.set_text('%d' % event.level)
 
 
 ################################################################################
@@ -276,17 +224,16 @@ def excepthook(type, value, tb):
     msg += '\nUncaught exception:\n'
     msg += ''.join(traceback.format_exception(type, value, tb))
     msg += '=' * 80 + '\n'
-    log(msg)
-    tkinter_error.tkinter_error(msg)
+    print(msg)
     sys.exit(1)
+
+# plug our handler into the python system
+sys.excepthook = excepthook
 
 # use user tile directory, if supplied
 tile_dir = None
 if len(sys.argv) > 1:
     tile_dir = sys.argv[1]
-
-# plug our handler into the python system
-sys.excepthook = excepthook
 
 app = QApplication(sys.argv)
 ex = AppFrame()

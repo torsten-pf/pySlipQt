@@ -2,7 +2,7 @@
 Custom LayerControl widget.
 
 This is used to control each type of layer, whether map- or view-relative.
-The grid is:
+The layout is:
 
     + Title text ------------------------------+
     |  +--+                                    |
@@ -17,7 +17,7 @@ The grid is:
 
 Constructor:
 
-    lc = LayerControl(parent, title, selectable=False, editable=False)
+    lc = LayerControl(parent, title, selectable=False, tooltip=None):
 
 Methods:
 
@@ -64,9 +64,9 @@ class LayerControl(QWidget):
 #    GroupStyle = 'QGroupBox { background-color: rgb(230, 230, 230); }'
 
 #    LabelStyle = 'QLabel { background-color : #f0f0f0; border: 1px solid gray; border-radius: 3px; }'
-    GroupStyle = ('QGroupBox { background-color: rgb(230, 230, 230); }'
+    GroupStyle = (#'QGroupBox { background-color: rgb(230, 230, 230); };'
                   'QGroupBox::title { subcontrol-origin: margin; '
-                                 '    background-color: rgb(215, 215, 215); '
+#                                 '    background-color: rgb(215, 215, 215); '
                                  '    border-radius: 3px; '
                                  '    padding: 2 2px; '
                                  '    color: black; }')

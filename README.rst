@@ -17,20 +17,17 @@ It's a poor thing, but solves my problem.  I'm placing it here in the hope that
 someone else may find it useful.  If you find it useful, or make improvements
 to it, drop me a line.
 
-pySlipQt works on Linux, Mac and Windows.  Requirements are python 3 and PyQt5.
+pySlipQt works on Linux, Mac and Windows.  It only works with PyQt5 and
+Python 3.6+.
 
 The widget API is documented in
 `the wiki <https://github.com/rzzzwilson/pySlipQt/wiki/The-pySlipQt-API>`_.
 
-pySlipQt is a rewrite of
-`pySlip <https://github.com/rzzzwilson/pySlip>`_ which was written for python 2
-and wxPython.  If you find references to pySlip below and in other documents
-they are just oversights and will disappear at some stage.
-
 Screenshots
 ===========
 
-A few screenshots of pyslipqt_demo.py, the first showing OpenStreetMap tiles:
+A few screenshots of the demonstration program *pyslipqt_demo.py*, the first
+showing OpenStreetMap tiles:
 
 .. image:: pySlipQt/examples/graphics/pyslip_demo_osm.png
 
@@ -41,14 +38,12 @@ Next, the pre-generated GMT tiles:
 Getting pySlipQt
 ================
 
-You can clone this repository, of course, and then do:
+You can clone this repository, of course, and then do this in the top directory
+containing the *setup.py* program:
 
 ::
 
     python setup.py install
-
-Then you can run *pyslipqt_demo.py* in the *examples* subdirectory of the
-cloned source tree.  It might be safer to load the latest tagged source tree.
 
 Or you could install through PyPI:
 
@@ -56,11 +51,8 @@ Or you could install through PyPI:
 
     pip install pySlipQt
 
-You could then find the *pySlipQt/examples* subdirectory and copy it to a
-place of your choosing.
-
 Using pip is the recommended way to install pySlipQt as the cheese shop code
-is guaranteed to work.  The code in the GitHub repository is, unfortunately,
+is guaranteed to work.  The code in the GitHib repository is, unfortunately,
 a moving target.
 
 Map Tiles Licensing

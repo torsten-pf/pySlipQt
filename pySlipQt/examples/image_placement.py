@@ -46,6 +46,24 @@ class ImagePlacementControl(QWidget):
                                  '    border-radius: 3px; '
                                  '    padding: 2 2px; '
                                  '    color: black; }')
+    ButtonStyle = ('QPushButton {'
+                                 'margin: 1px;'
+                                 'border-color: #0c457e;'
+                                 'border-style: outset;'
+                                 'border-radius: 3px;'
+                                 'border-width: 1px;'
+                                 'color: black;'
+                                 'background-color: white;'
+                               '}')
+    ButtonColourStyle = ('QPushButton {'
+                                       'margin: 1px;'
+                                       'border-color: #0c457e;'
+                                       'border-style: outset;'
+                                       'border-radius: 3px;'
+                                       'border-width: 1px;'
+                                       'color: black;'
+                                       'background-color: %s;'
+                                     '}')
 
     def __init__(self, title):
         """Initialise a ImagePlacementControl instance.
@@ -64,7 +82,7 @@ class ImagePlacementControl(QWidget):
         self.filename.setToolTip('Click here to change the image file')
 
         self.placement = QComboBox()
-        for p in ['nw', 'cn', 'ne', 'ce', 'se', 'cs', 'sw', 'cw', 'cc']:
+        for p in ['none', 'nw', 'cn', 'ne', 'ce', 'se', 'cs', 'sw', 'cw', 'cc']:
             self.placement.addItem(p)
 
         self.point_radius = QComboBox()
@@ -76,6 +94,7 @@ class ImagePlacementControl(QWidget):
         self.point_colour = QPushButton('')
         self.point_colour.setFixedWidth(ImagePlacementControl.ButtonWidth)
         self.point_colour.setToolTip('Click here to change the point colour')
+        self.point_colour.setStyleSheet(ImagePlacementControl.ButtonStyle)
 
         self.posn_x = QComboBox()
         for p in range(0, 121, 10):
@@ -199,7 +218,7 @@ class ImagePlacementControl(QWidget):
         if color.isValid():
             colour = color.name()
             # set colour button background
-            self.point_colour.setStyleSheet(f'background-color:{colour};');
+            self.point_colour.setStyleSheet(ImagePlacementControl.ButtonColourStyle % colour)
  
     def removeImage(self, event):
         self.remove.emit()

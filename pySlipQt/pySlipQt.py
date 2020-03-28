@@ -1,6 +1,24 @@
 """
 A "slip map" widget for PyQt5.
 
+So why is this widget called 'pySlip'?
+
+Well, in the OpenStreetMap world[1], a 'slippy map' is a browser map view
+served by a tile server that can be panned and zoomed in the same way as
+popularised by Google maps.  Such a map feels 'slippery', I guess.
+
+Rather than 'slippy' I went for the slightly more formal 'pySlip' since the
+thing is written in Python and therefore must have the obligatory 'py' prefix.
+
+Even though this was originally written for a geographical application, the
+*underlying* system only assumes a cartesian 2D coordinate system.  The tile
+source must translate between the underlying coordinates and whatever coordinate
+system the tiles use.  So pySlip could be used to present a game map, 2D CAD
+view, etc, as well as Mercator tiles provided either locally from the filesystem
+or from the internet (OpenStreetMap, for example).
+
+[1] http://wiki.openstreetmap.org/index.php/Slippy_Map
+
 Some semantics:
     map   the whole map
     view  is the view of the map through the widget
@@ -9,20 +27,16 @@ Some semantics:
 
 
 import sys
-
 from PyQt5.QtCore import Qt, QTimer, QPoint, QPointF, QObject, pyqtSignal
-from PyQt5.QtWidgets import QLabel, QSizePolicy, QWidget
+from PyQt5.QtWidgets import QLabel, QSizePolicy, QWidget, QMessageBox
 from PyQt5.QtGui import (QPainter, QColor, QPixmap, QPen, QFont, QFontMetrics,
                          QPolygon, QBrush, QCursor)
 
-# if we don't have log.py, don't crash
 try:
-    import log
-    log = log.log.Log('pyslipqt.log')
-    print('log setup -> pyslipqt.log')
+    import pySlipQt.log as log
+    log = log.Log('pyslipqt.log')
 except AttributeError:
     # means log already set up
-    print('log already defined')
     pass
 except ImportError as e:
     # if we don't have log.py, don't crash
@@ -45,7 +59,7 @@ if platform.python_version_tuple()[0] != '3':
     sys.exit(1)
 
 # version number of the widget
-__version__ = '0.1.0'
+__version__ = '0.4'
 
 
 ######
@@ -85,7 +99,7 @@ class _Layer(object):
         self.id = id                    # ID of this layer
 
     def __str__(self):
-        return ('<pyslip Layer: id=%d, name=%s, map_rel=%s, visible=%s>'
+        return ('<pySlipQt Layer: id=%d, name=%s, map_rel=%s, visible=%s>'
                 % (self.id, self.name, str(self.map_rel), str(self.visible)))
 
 
@@ -101,28 +115,26 @@ class PySlipQt(QWidget):
         EVT_PYSLIPQT_LEVEL = pyqtSignal(object)
         EVT_PYSLIPQT_POSITION = pyqtSignal(object)
         EVT_PYSLIPQT_SELECT = pyqtSignal(object)
-#        EVT_PYSLIPQT_BOXSELECT = pyqtSignal(object)
+        EVT_PYSLIPQT_BOXSELECT = pyqtSignal(object)
         EVT_PYSLIPQT_POLYSELECT = pyqtSignal(object)
-#        EVT_PYSLIPQT_POLYBOXSELECT = pyqtSignal(object)
+        EVT_PYSLIPQT_POLYBOXSELECT = pyqtSignal(object)
 
     # event numbers
-#    (EVT_PYSLIPQT_LEVEL, EVT_PYSLIPQT_POSITION,
-#     EVT_PYSLIPQT_SELECT, EVT_PYSLIPQT_BOXSELECT,
-#     EVT_PYSLIPQT_POLYSELECT, EVT_PYSLIPQT_POLYBOXSELECT) = range(6)
     (EVT_PYSLIPQT_LEVEL, EVT_PYSLIPQT_POSITION,
-     EVT_PYSLIPQT_SELECT, EVT_PYSLIPQT_POLYSELECT) = range(4)
+     EVT_PYSLIPQT_SELECT, EVT_PYSLIPQT_BOXSELECT,
+     EVT_PYSLIPQT_POLYSELECT, EVT_PYSLIPQT_POLYBOXSELECT) = range(6)
 
     event_name = {EVT_PYSLIPQT_LEVEL: 'EVT_PYSLIPQT_LEVEL',
                   EVT_PYSLIPQT_POSITION: 'EVT_PYSLIPQT_POSITION',
                   EVT_PYSLIPQT_SELECT: 'EVT_PYSLIPQT_SELECT',
-#                  EVT_PYSLIPQT_BOXSELECT: 'EVT_PYSLIPQT_BOXSELECT',
+                  EVT_PYSLIPQT_BOXSELECT: 'EVT_PYSLIPQT_BOXSELECT',
                   EVT_PYSLIPQT_POLYSELECT: 'EVT_PYSLIPQT_POLYSELECT',
-#                  EVT_PYSLIPQT_POLYBOXSELECT: 'EVT_PYSLIPQT_POLYBOXSELECT',
+                  EVT_PYSLIPQT_POLYBOXSELECT: 'EVT_PYSLIPQT_POLYBOXSELECT',
                  }
 
     # list of valid placement values
     valid_placements = ['cc', 'nw', 'cn', 'ne', 'ce',
-                        'se', 'cs', 'sw', 'cw', None, False, '']
+                        'se', 'cs', 'sw', 'cw']
 
     # default point attributes - map relative
     DefaultPointPlacement = 'cc'
@@ -190,7 +202,7 @@ class PySlipQt(QWidget):
     DefaultPolygonData = None
 
     # default polygon attributes - view relative
-    DefaultPolygonViewPlacement = 'nw'
+    DefaultPolygonViewPlacement = 'cc'
     DefaultPolygonViewWidth = 1
     DefaultPolygonViewColour = 'red'
     DefaultPolygonViewClose = False
@@ -224,6 +236,11 @@ class PySlipQt(QWidget):
     BoxSelectCursor = Qt.CrossCursor
     WaitCursor = Qt.WaitCursor
     DragCursor = Qt.OpenHandCursor
+
+    # box select constants
+    BoxSelectPenColor = QColor(255, 0, 0, 128)
+    BoxSelectPenStyle = Qt.DashLine
+    BoxSelectPenWidth = 2
 
     def __init__(self, parent, tile_src, start_level, **kwargs):
         """Initialize the pySlipQt widget.
@@ -267,11 +284,21 @@ class PySlipQt(QWidget):
         self.tiles_max_level = max(tile_src.levels) # maximum level in tile source
         self.tiles_min_level = min(tile_src.levels) # minimum level in tile source
 
+        # box select state
+        self.sbox_w = None          # width/height of box select rectangle
+        self.sbox_h = None
+        self.sbox_1_x = None        # view coords of start corner of select box
+        self.sbox_1_y = None        # if selecting, self.sbox_1_x != NOne
+
         # define position and tile coords of the "key" tile
         self.key_tile_left = 0      # tile coordinates of key tile
         self.key_tile_top = 0
         self.key_tile_xoffset = 0   # view coordinates of key tile wrt view
         self.key_tile_yoffset = 0
+
+        # we keep track of the cursor coordinates if cursor on map
+        self.mouse_x = None
+        self.mouse_y = None
 
         # state variables holding mouse buttons state
         self.left_mbutton_down = False
@@ -303,39 +330,53 @@ class PySlipQt(QWidget):
                                  self.TypePolygon: self.sel_polygon_in_layer,
                                  self.TypePolyline: self.sel_polyline_in_layer}
 
-#        # for box select
-#        self.layerBSelHandler = {self.TypePoint: self.sel_box_points_in_layer,
-#                                 self.TypeImage: self.sel_box_images_in_layer,
-#                                 self.TypeText: self.sel_box_texts_in_layer,
-#                                 self.TypePolygon: self.sel_box_polygons_in_layer,
-#                                 self.TypePolyline: self.sel_box_polylines_in_layer}
+        # for box select
+        self.layerBSelHandler = {self.TypePoint: self.sel_box_points_in_layer,
+                                 self.TypeImage: self.sel_box_images_in_layer,
+                                 self.TypeText: self.sel_box_texts_in_layer,
+                                 self.TypePolygon: self.sel_box_polygons_in_layer,
+                                 self.TypePolyline: self.sel_box_polylines_in_layer}
 
         # create the events raised by PySlipQt
         self.events = PySlipQt.Events()
 
-        # a dictionary to map event number to raising function    
+        # a dictionary to map event number to raising function
         self.pyslipqt_event_dict = {
            PySlipQt.EVT_PYSLIPQT_LEVEL:         self.events.EVT_PYSLIPQT_LEVEL.emit,
            PySlipQt.EVT_PYSLIPQT_POSITION:      self.events.EVT_PYSLIPQT_POSITION.emit,
            PySlipQt.EVT_PYSLIPQT_SELECT:        self.events.EVT_PYSLIPQT_SELECT.emit,
-#           PySlipQt.EVT_PYSLIPQT_BOXSELECT:     self.events.EVT_PYSLIPQT_BOXSELECT.emit,
+           PySlipQt.EVT_PYSLIPQT_BOXSELECT:     self.events.EVT_PYSLIPQT_BOXSELECT.emit,
            PySlipQt.EVT_PYSLIPQT_POLYSELECT:    self.events.EVT_PYSLIPQT_POLYSELECT.emit,
-#           PySlipQt.EVT_PYSLIPQT_POLYBOXSELECT: self.events.EVT_PYSLIPQT_POLYBOXSELECT.emit,
+           PySlipQt.EVT_PYSLIPQT_POLYBOXSELECT: self.events.EVT_PYSLIPQT_POLYBOXSELECT.emit,
           }
-    
+
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.setMinimumSize(self.tile_width, self.tile_height)
 
-        tile_src.setCallback(self.update)
+        tile_src.setCallback(self.on_tile_available)
 
         self.setMouseTracking(True)
-#        self.setEnabled(True)       # to receive key events?
+        self.setEnabled(True)       # to receive key events?
 
         self.default_cursor = self.standard_cursor
         self.setCursor(self.standard_cursor)
 
         # do a "resize" after this function
         QTimer.singleShot(10, self.resizeEvent)
+
+    def on_tile_available(self, level, x, y, image, error):
+        """Called when a new 'net tile is available.
+
+        level  the level the tile is for
+        x, y   tile coordinates of the tile
+        image  the tile image data
+        error  True if there was an error
+
+        We have enough information to redraw a specific tile,
+        but we just redraw the widget.
+        """
+
+        self.update()
 
     ######
     # Code for events raised by this widget
@@ -349,38 +390,48 @@ class PySlipQt(QWidget):
             for (attr, value) in kwargs.items():
                 setattr(self, attr, value)
 
-    def dump_event(self, event):
+    def dump_event(self, msg, event):
         """Dump an event to the log.
 
         Print attributes and values for non_dunder attributes.
         """
 
-        log('dump_event: event %s:' % PySlipQt.event_name[event.type])
+        log('dump_event: %s:' % msg)
         for attr in dir(event):
             if not attr.startswith('__'):
-                log('            event.%s=%s' % (attr, str(getattr(event, attr))))
+                log('    event.%s=%s' % (attr, str(getattr(event, attr))))
 
     def raise_event(self, etype, **kwargs):
         """Raise event with attributes in 'kwargs'.
-        
+
         etype  type of event to raise
         kwargs  a dictionary of attributes to attach to event
         """
 
         event = PySlipQt.PySlipQtEvent(etype, **kwargs)
-#        self.dump_event(event)
         self.pyslipqt_event_dict[etype](event)
 
     ######
-    # Overide the mouse events
+    # Overide the PyQt5 mouse/keyboard/etc events
     ######
 
     def mousePressEvent(self, event):
+        """Mouse button pressed."""
+
+        click_x = event.x()
+        click_y = event.y()
+
+        # assume we aren't dragging
+        self.start_drag_x = self.start_drag_y = None
+
         b = event.button()
         if b == Qt.NoButton:
             pass
         elif b == Qt.LeftButton:
             self.left_mbutton_down = True
+            if self.shift_down:
+                (self.sbox_w, self.sbox_h) = (0, 0)
+                (self.sbox_1_x, self.sbox_1_y) = (click_x, click_y)
         elif b == Qt.MidButton:
             self.mid_mbutton_down = True
         elif b == Qt.RightButton:
@@ -389,25 +440,30 @@ class PySlipQt(QWidget):
             log('mousePressEvent: unknown button')
 
     def mouseReleaseEvent(self, event):
-        """Mouse button was released."""
+        """Mouse button was released.
+
+        event.x & event.y  view coords when released
+
+        Could be end of a drag or point or box selection.  If it's the end of
+        a drag we don't do a lot.  If a selection we process that.
+        """
 
         x = event.x()
         y = event.y()
         clickpt_v = (x, y)
-        log('mouseReleaseEvent: entered, clickpt_v=%s' % str(clickpt_v))
 
-        # cursor back to normal
+        # cursor back to normal in case it was a box select
         self.setCursor(self.default_cursor)
+
+        # we need a repaint to remove any selection box, but NOT YET!
+        delayed_paint = self.sbox_1_x       # True if box select active
 
         b = event.button()
         if b == Qt.NoButton:
             pass
         elif b == Qt.LeftButton:
-            log('mouseReleaseEvent: left button released at clickpt_v=%s' % str(clickpt_v))
-
             self.left_mbutton_down = False
-            self.start_drag_x = self.start_drag_y = None    # end drag, if any
-
+# legacy code from pySlip, leave just in case we need it
 #            # if required, ignore this event
 #            if self.ignore_next_up:
 #                self.ignore_next_up = False
@@ -415,43 +471,87 @@ class PySlipQt(QWidget):
 #            # we need a repaint to remove any selection box, but NOT YET!
 #            delayed_paint = self.sbox_1_x       # True if box select active
 
-            # possible point selection, get click point in view & global coords
-            log('mouseReleaseEvent: clickpt_v=%s' % str(clickpt_v))
-            clickpt_g = self.view_to_geo(clickpt_v)
-            log('mouseReleaseEvent: clickpt_g=%s' % str(clickpt_g))
-#            if clickpt_g is None:
-#                log('mouseReleaseEvent: clicked off-map, returning')
-#                return          # we clicked off the map
+            if self.sbox_1_x:
+                # we are doing a box select,
+                # get canonical selection box in view coordinates
+                (ll_vx, ll_vy, tr_vx, tr_vy) = self.sel_box_canonical()
 
-            # check each layer for a point select handler
-            # we work on a copy as user click-handler code could change order
-            log('mouseReleaseEvent: checking layers')
-            for lid in self.layer_z_order[:]:
-                log('mouseReleaseEvent: checking layer %d' % lid)
-                l = self.layer_mapping[lid]
-                # if layer visible and selectable
-                if l.selectable and l.visible:
-                    log('mouseReleaseEvent: layer is selectable and visible')
-                    result = self.layerPSelHandler[l.type](l, clickpt_v, clickpt_g)
-                    log('mouseReleaseEvent: result=%s returned from handler' % str(result))
-                    if result:
-                        (sel, relsel) = result
-                        log('mouseReleaseEvent: raising SELECT event, clickpt_g=%s, clickpt_v=%s, lid=%s, sel=%s, relsel=%s'
-                                % (str(clickpt_g), str(clickpt_v), lid, str(sel), str(relsel)))
+                # get lower-left and top-right view tuples
+                ll_v = (ll_vx, ll_vy)
+                tr_v = (tr_vx, tr_vy)
 
-                        # raise the EVT_PYSLIPQT_SELECT event
-                        self.raise_event(PySlipQt.EVT_PYSLIPQT_SELECT,
-                                         mposn=clickpt_g, vposn=clickpt_v,
-                                         layer_id=lid, selection=sel, relsel=relsel)
-                    else:
-                        # raise an empty EVT_PYSLIPQT_SELECT event
-                        self.raise_event(PySlipQt.EVT_PYSLIPQT_SELECT,
-                                         mposn=clickpt_g, vposn=clickpt_v,
-                                         layer_id=lid, selection=None, relsel=None)
+                # convert view to geo coords
+                ll_g = self.view_to_geo(ll_v)
+                tr_g = self.view_to_geo(tr_v)
 
-#                    # user code possibly updated screen
-#                    delayed_paint = True
-            log('mouseReleaseEvent: end of layer selection code')
+                # check each layer for a box select event, work on copy of
+                # '.layer_z_order' as user response could change layer order
+                for lid in self.layer_z_order[:]:
+                    l = self.layer_mapping[lid]
+                    # if layer visible and selectable
+                    if l.selectable and l.visible:
+                        if l.map_rel:
+                            # map-relative, get all points selected (if any)
+                            result = self.layerBSelHandler[l.type](l, ll_g, tr_g)
+                        else:
+                            # view-relative
+                            result = self.layerBSelHandler[l.type](l, ll_v, tr_v)
+                        if result:
+                            (sel, data, relsel) = result
+                            self.raise_event(PySlipQt.EVT_PYSLIPQT_BOXSELECT,
+                                             mposn=None, vposn=None, layer_id=lid,
+                                             selection=sel, relsel=relsel)
+                        else:
+                            # raise an empty EVT_PYSLIPQT_BOXSELECT event
+                            self.raise_event(PySlipQt.EVT_PYSLIPQT_BOXSELECT,
+                                             mposn=None, vposn=None,
+                                             layer_id=lid, selection=None, relsel=None)
+
+                        # user code possibly updated screen, must repaint
+                        delayed_paint = True
+                self.sbox_1_x = self.sbox_1_y = None
+            else:
+                if self.start_drag_x is None:
+                    # not dragging, possible point selection
+                    # get click point in view & global coords
+                    clickpt_g = self.view_to_geo(clickpt_v)
+#                    if clickpt_g is None:
+#                        return          # we clicked off the map
+    
+                    # check each layer for a point select handler, we work on a
+                    # copy as user click-handler code could change order
+                    for lid in self.layer_z_order[:]:
+                        l = self.layer_mapping[lid]
+                        # if layer visible and selectable
+                        if l.selectable and l.visible:
+                            result = self.layerPSelHandler[l.type](l, clickpt_v,
+                                                                   clickpt_g)
+                            if result:
+                                (sel, relsel) = result
+    
+                                # raise the EVT_PYSLIPQT_SELECT event
+                                self.raise_event(PySlipQt.EVT_PYSLIPQT_SELECT,
+                                                 mposn=clickpt_g,
+                                                 vposn=clickpt_v,
+                                                 layer_id=lid,
+                                                 selection=sel, relsel=relsel)
+                            else:
+                                # raise an empty EVT_PYSLIPQT_SELECT event
+                                self.raise_event(PySlipQt.EVT_PYSLIPQT_SELECT,
+                                                 mposn=clickpt_g,
+                                                 vposn=clickpt_v,
+                                                 layer_id=lid,
+                                                 selection=None, relsel=None)
+
+            # turn off dragging, if we were
+            self.start_drag_x = self.start_drag_y = None
+
+            # turn off box selection mechanism
+            self.sbox_1_x = self.sbox_1_y = None
+
+            # force PAINT event if required
+            if delayed_paint:
+                self.update()
 
         elif b == Qt.MidButton:
             self.mid_mbutton_down = False
@@ -459,7 +559,7 @@ class PySlipQt(QWidget):
             self.right_mbutton_down = False
         else:
             log('mouseReleaseEvent: unknown button')
- 
+
     def mouseDoubleClickEvent(self, event):
         b = event.button()
         if b == Qt.NoButton:
@@ -472,16 +572,41 @@ class PySlipQt(QWidget):
             pass
         else:
             log('mouseDoubleClickEvent: unknown button')
- 
+
     def mouseMoveEvent(self, event):
-        """Handle a mouse move event."""
+        """Handle a mouse move event.
+       
+        If left mouse down, either drag the map or start a box selection.
+        If we are off the map, ensure self.mouse_x, etc, are None.
+        """
 
         x = event.x()
         y = event.y()
         mouse_view = (x, y)
+        mouse_geo = self.view_to_geo(mouse_view)
+
+        # update remembered mouse position in case of zoom
+        self.mouse_x = self.mouse_y = None
+        if mouse_geo:
+            self.mouse_x = x
+            self.mouse_y = y
 
         if self.left_mbutton_down:
-            if self.start_drag_x:       # if we are already dragging
+            if self.shift_down:
+                # we are starting a box select
+                if self.sbox_1_x == -1:
+                    # mouse down before SHIFT down, fill in box start point
+                    self.sbox_1_x = x
+                    self.sbox_1_y = y
+
+                # set select box start point at mouse position
+                (self.sbox_w, self.sbox_h) = (x - self.sbox_1_x, y - self.sbox_1_y)
+            else:
+                # we are dragging
+                if self.start_drag_x == None:
+                    # start of drag, set drag state
+                    (self.start_drag_x, self.start_drag_y) = (x, y)
+
                 # we don't move much - less than a tile width/height
                 # drag the key tile in the X direction
                 delta_x = self.start_drag_x - x
@@ -503,30 +628,33 @@ class PySlipQt(QWidget):
                     self.key_tile_yoffset -= self.tile_height
                     self.key_tile_top -= 1
 
+                # set key tile stuff so update() shows drag
                 self.rectify_key_tile()
-                self.update()                                   # force a repaint
 
-            self.start_drag_x = x
-            self.start_drag_y = y
+                # get ready for more drag
+                (self.start_drag_x, self.start_drag_y) = (x, y)
+
+            self.update()                                   # force a repaint
 
         # emit the event for mouse position
         self.raise_event(PySlipQt.EVT_PYSLIPQT_POSITION,
-                         mposn=self.view_to_geo(mouse_view), vposn=mouse_view)
+                         mposn=mouse_geo, vposn=mouse_view)
 
     def keyPressEvent(self, event):
         """Capture a key press."""
 
-        log('keyPressEvent:  key pressed=%08x' % event.key())
         if event.key() == Qt.Key_Shift:
             self.shift_down = True
             self.default_cursor = self.box_select_cursor
             self.setCursor(self.default_cursor)
+            if self.left_mbutton_down:
+                # start of a box select
+                self.sbox_1_x = -1      # special value, means fill X,Y on mouse down
         event.accept()
 
     def keyReleaseEvent(self, event):
         """Capture a key release."""
 
-        log('keyPressEvent: key released=%08x' % event.key())
         key = event.key()
         if event.key() == Qt.Key_Shift:
             self.shift_down = False
@@ -542,7 +670,15 @@ class PySlipQt(QWidget):
         else:
             new_level = self.level - 1
 
-        self.zoom_level(new_level)
+        log(f'wheelEvent: new_level={new_level}')
+
+        view = None
+        if self.mouse_x:
+            view = (self.mouse_x, self.mouse_y)
+
+        log(f'calling .zoom_level({new_level}, view={view})')
+
+        self.zoom_level(new_level, view=view)
 
     def resizeEvent(self, event=None):
         """Widget resized, recompute some state."""
@@ -556,20 +692,25 @@ class PySlipQt(QWidget):
 
     def enterEvent(self, event):
         self.setFocus()
-        pass
 
     def leaveEvent(self, event):
+        """The mouse is leaving the widget.
+
+        Raise a EVT_PYSLIPQT_POSITION event with positions set to None.
+        We do this so user code can clear any mouse position data, for example.
+        """
+
+        self.mouse_x = None
+        self.mouse_y = None
+
         self.raise_event(PySlipQt.EVT_PYSLIPQT_POSITION, mposn=None, vposn=None)
-        pass
 
     def paintEvent(self, event):
         """Draw the base map and then the layers on top."""
 
-        ######
         # The "key" tile position is maintained by other code, we just
         # assume it's set.  Figure out how to draw tiles, set up 'row_list' and
         # 'col_list' which are list of tile coords to draw (row and colums).
-        ######
 
         col_list = []
         x_coord = self.key_tile_left
@@ -591,10 +732,7 @@ class PySlipQt(QWidget):
             y_coord = (y_coord + 1) % self.num_tiles_y
             y_pix_start += self.tile_height
 
-        ######
         # Ready to update the view
-        ######
-
         # prepare the canvas
         painter = QPainter()
         painter.begin(self)
@@ -604,8 +742,7 @@ class PySlipQt(QWidget):
         for x in col_list:
             y_pix = self.key_tile_yoffset
             for y in row_list:
-                painter.drawPixmap(x_pix, y_pix,
-                                    self.tile_src.GetTile(x, y))
+                painter.drawPixmap(x_pix, y_pix, self.tile_src.GetTile(x, y))
                 y_pix += self.tile_height
             x_pix += self.tile_width
 
@@ -615,12 +752,23 @@ class PySlipQt(QWidget):
             if l.visible and self.level in l.show_levels:
                 l.painter(painter, l.data, map_rel=l.map_rel)
 
+        # draw selection rectangle, if any
+        if self.sbox_1_x:
+            # draw the select box, transparent fill
+            painter.setBrush(QBrush(QColor(0, 0, 0, 0)))
+            pen = QPen(PySlipQt.BoxSelectPenColor, PySlipQt.BoxSelectPenWidth,
+                       PySlipQt.BoxSelectPenStyle)
+            painter.setPen(pen)
+            painter.drawRect(self.sbox_1_x, self.sbox_1_y,
+                             self.sbox_w, self.sbox_h) 
+
         painter.end()
 
     ######
     #
     ######
 
+# UNUSED
     def normalize_key_after_drag(self, delta_x=None, delta_y=None):
         """After drag, set "key" tile correctly.
 
@@ -645,7 +793,7 @@ class PySlipQt(QWidget):
                 # 'key' tile too far right, move one left
                 self.key_tile_left -= 1
                 self.key_tile_xoffset -= self.tile_width
-    
+
             while self.key_tile_xoffset <= -self.tile_width:
                 # 'key' tile too far left, move one right
                 self.key_tile_left += 1
@@ -668,7 +816,7 @@ class PySlipQt(QWidget):
                     # 'key' tile too far right
                     self.key_tile_left -= 1
                     self.key_tile_xoffset -= self.tile_width
-        
+
                 while self.key_tile_xoffset <= -self.tile_width:
                     # 'key' tile too far left
                     self.key_tile_left += 1
@@ -698,7 +846,7 @@ class PySlipQt(QWidget):
                 # 'key' tile too far right, move one left
                 self.key_tile_top -= 1
                 self.key_tile_yoffset -= self.tile_height
-    
+
             while self.key_tile_yoffset <= -self.tile_height:
                 # 'key' tile too far left, move one right
                 self.key_tile_top += 1
@@ -720,7 +868,7 @@ class PySlipQt(QWidget):
                     # 'key' tile too far right
                     self.key_tile_top -= 1
                     self.key_tile_yoffset -= self.tile_height
-        
+
                 while self.key_tile_yoffset <= -self.tile_height:
                     # 'key' tile too far left
                     self.key_tile_top += 1
@@ -745,6 +893,7 @@ class PySlipQt(QWidget):
     #
     ######
 
+# UNUSED
     def tile_frac_to_parts(self, t_frac, length):
         """Split a tile coordinate into integer and fractional parts.
 
@@ -759,6 +908,7 @@ class PySlipQt(QWidget):
 
         return (int_part, frac_part)
 
+# UNUSED
     def tile_parts_to_frac(self, t_coord, t_offset, length):
         """Convert a tile coord plus offset to a fractional tile value.
 
@@ -771,6 +921,7 @@ class PySlipQt(QWidget):
 
         return t_coord + t_offset/length
 
+# UNUSED
     def zoom_tile(self, c_tile, scale):
         """Zoom into centre tile at given scale.
 
@@ -797,7 +948,7 @@ class PySlipQt(QWidget):
             else:
                 tile_left = tile_left*2 + 1
                 tile_xoff = tile_xoff*2 - self.tile_width
-    
+
             if tile_yoff < self.tile_height // 2:
                 tile_top = tile_top * 2
                 tile_yoff = tile_yoff * 2
@@ -822,7 +973,7 @@ class PySlipQt(QWidget):
             else:
                 # point in bottom half of 2x2
                 tile_yoff = (tile_yoff + self.tile_height) // 2
-    
+
         zx_frac = self.tile_parts_to_frac(tile_left, tile_xoff, self.tile_width)
         zy_frac = self.tile_parts_to_frac(tile_top, tile_yoff, self.tile_height)
 
@@ -848,8 +999,6 @@ class PySlipQt(QWidget):
         Returns unique ID of the new layer.
         """
 
-        print(f'add_layer: painter={painter}, data={data}, map_rel={map_rel}, ltype={ltype}')
-
         # get unique layer ID
         id = self.next_layer_id
         self.next_layer_id += 1
@@ -868,23 +1017,20 @@ class PySlipQt(QWidget):
 
         # force display of new layer if it's visible
         if visible:
-            print(f'add_layer: calling update(), layer.visible={visible}')
             self.update()
-        else:
-            print(f'add_layer: not calling update(), layer.visible={visible}')
 
         return id
 
-    def SetLayerSelectable(self, id, selectable=False):
+    def SetLayerSelectable(self, lid, selectable=False):
         """Update the .selectable attribute for a layer.
 
-        id          ID of the layer we are going to update
+        lid         ID of the layer we are going to update
         selectable  new .selectable attribute value (True or False)
         """
 
         # just in case id is None
-        if id:
-            layer = self.layer_mapping[id]
+        if lid:
+            layer = self.layer_mapping[lid]
             layer.selectable = selectable
 
     ######
@@ -974,13 +1120,9 @@ class PySlipQt(QWidget):
         map_rel  points relative to map if True, else relative to view
         """
 
-        print(f'draw_text_layer: text={text}, map_rel={map_rel}')
-
         # get correct pex function for mode (map/view)
-        print(f'Assuming pex_extent_view()')
         pex = self.pex_extent_view
         if map_rel:
-            print(f'Using pex_extent_()')
             pex = self.pex_extent
 
         # set some caching to speed up mostly unchanging data
@@ -991,7 +1133,6 @@ class PySlipQt(QWidget):
         # draw text on map/view
         for (lon, lat, tdata, place, radius, colour,
                 textcolour, fontname, fontsize, x_off, y_off, data) in text:
-            print(f'loop: lon={lon}, lat={lat}, tdata={tdata}, place={place}, radius={radius}, colour={colour}, textcolour={textcolour}, x_off={x_off}, y_off={y_off}')
             # set font characteristics so we can calculate text width/height
             if cache_font != (fontname, fontsize):
                 font = QFont(fontname, fontsize)
@@ -1005,8 +1146,6 @@ class PySlipQt(QWidget):
 
             # get point + extent information (each can be None if off-view)
             (pt, ex) = pex(place, (lon, lat), x_off, y_off, w, h)
-            print(f'After pex(), pt={pt}, ex={ex}')
-
             if pt and radius:   # don't draw point if off screen or zero radius
                 (pt_x, pt_y) = pt
                 if cache_colour != colour:
@@ -1015,12 +1154,10 @@ class PySlipQt(QWidget):
                     dc.setPen(pen)
                     dc.setBrush(qcolour)
                     cache_colour = colour
-                print(f'Drawing point at ({pt_x}, {pt_y})')
                 dc.drawEllipse(QPoint(pt_x, pt_y), radius, radius)
 
             if ex:              # don't draw text if off screen
                 (lx, _, _, by) = ex
-                print(f'Drawing text at ({lx}, {by})')
                 if cache_textcolour != textcolour:
                     qcolour = QColor(*textcolour)
                     pen = QPen(qcolour, radius, Qt.SolidLine)
@@ -1117,6 +1254,7 @@ class PySlipQt(QWidget):
 
         return (xview, yview)
 
+# UNUSED
     def geo_to_view_masked(self, geo):
         """Convert a geo (lon+lat) position to view pixel coords.
 
@@ -1194,13 +1332,9 @@ class PySlipQt(QWidget):
         The 'extent' here is the extent of the point+radius.
         """
 
-        print(f'pex_point: place={place}, geo={geo}, x_off={x_off}, y_off={y_off}, radius={radius}')
-
         # get point view coords
         (xview, yview) = self.geo_to_view(geo)
-        print(f'pex_point: xview={xview}, yview={yview}')
         point = self.point_placement(place, xview, yview, x_off, y_off)
-        print(f'pex_point: after .point_placement(), point={point}')
         (px, py) = point
 
         # extent = (left, right, top, bottom) in view coords
@@ -1230,13 +1364,9 @@ class PySlipQt(QWidget):
         The 'extent' here is the extent of the point+radius.
         """
 
-        print(f'pex_point_view: place={place}, view={view}, x_off={x_off}, y_off={y_off}, radius={radius}')
-
         # get point view coords and perturb point to placement
         (xview, yview) = view
         point = self.point_placement_view(place, xview, yview, x_off, y_off)
-#                                     self.view_width, self.view_height)
-        print(f'pex_point_view: after point_placement_view(), point={point}')
         (px, py) = point
 
         # extent = (left, right, top, bottom) in view coords
@@ -1271,17 +1401,13 @@ class PySlipQt(QWidget):
         An extent object can be either an image object or a text object.
         """
 
-        print(f'pex_extent: place={place}, geo={geo}, x_off={x_off}, y_off={y_off}, w={w}, h={h}, image={image}')
-
         # get point view coords
         vpoint = self.geo_to_view(geo)
-        print(f'pex_extent: after .geo_to_view(), vpoint={vpoint}')
         (vpx, vpy) = vpoint
 
         # get extent limits
         # must take into account 'place', 'x_off' and 'y_off'
         point = self.extent_placement(place, vpx, vpy, x_off, y_off, w, h, image=image)
-        print(f'pex_extent: after extent_placement(), point={point}')
         (px, py) = point
 
         # extent = (left, right, top, bottom) in view coords
@@ -1297,8 +1423,6 @@ class PySlipQt(QWidget):
 
         extent = (elx, erx, ety, eby)
 
-        print(f'pex_extent: extent={extent} (elx, erx, ety, eby)')
-
         # decide if point is off-view
         if vpx < 0 or vpx > self.view_width or vpy < 0 or vpy > self.view_height:
             vpoint = None
@@ -1307,8 +1431,6 @@ class PySlipQt(QWidget):
         if erx < 0 or elx > self.view_width or eby < 0 or ety > self.view_height:
             # no extent if ALL of extent is off-view
             extent = None
-
-        print(f'pex_extent: returning ({vpoint}, {extent})')
 
         return (vpoint, extent)
 
@@ -1329,33 +1451,23 @@ class PySlipQt(QWidget):
         Takes size of extent object into consideration.
         """
 
-        print(f'pex_extent_view: place={place}, view={view}, x_off={x_off}, y_off={y_off}, w={w}, h={h}, image={image}')
-        print(f'pex_extent_view: self.view_width={self.view_width}, self.view_height={self.view_height}')
-
         # get point view coords and perturb point to placement origin
         # we ignore offsets for the point as they apply to the extent only
         (xview, yview) = view
-#        point = self.point_placement_view(place, xview, yview, x_off, y_off)
         point = self.point_placement_view(place, xview, yview, 0, 0)
-
-        print(f'pex_extent_view: after .point_placement_view(), point={point}')
 
         # get extent view coords (ix and iy)
         (px, py) = point
         (ix, iy) = self.extent_placement(place, px, py, x_off, y_off,
                                          w, h, image=False)
 
-        print(f'pex_extent_view: after .extent_placement(), (ix, iy)=({ix},{iy})')
-
         # extent = (left, right, top, bottom) in view coords
         # this is different for images
-#        (px, py) = point
         if image:
             # perturb extent coords to edges of image
-            print(f'pex_extent_view: perturbing an image')
             if   place == 'cc': elx = px - w/2;        ety = py - h/2
             elif place == 'cn': elx = px - w/2;        ety = py + y_off
-            elif place == 'ne': elx = px - w - x_off;  ety = py - y_off
+            elif place == 'ne': elx = px - w - x_off;  ety = py + y_off
             elif place == 'ce': elx = px - w - x_off;  ety = py - h/2
             elif place == 'se': elx = px - w - x_off;  ety = py - h - y_off
             elif place == 'cs': elx = px - w/2;        ety = py - h - y_off
@@ -1364,15 +1476,7 @@ class PySlipQt(QWidget):
             elif place == 'nw': elx = px + x_off;      ety = py + y_off
             erx = elx + w
             eby = ety + h
-#        else:
-#            print(f'pex_extent_view: NOT an image, (ix, iy)=({ix},{iy})')
-#            elx = ix
-#            erx = ix + w
-#            ety = iy - h
-#            eby = iy
-
         else:
-            print(f'pex_extent_view: NOT an image, (ix, iy)=({ix},{iy})')
             elx = ix
             erx = ix + w
             ety = iy - h
@@ -1380,17 +1484,13 @@ class PySlipQt(QWidget):
 
         extent = (elx, erx, ety, eby)
 
-        print(f'pex_extent_view: extent={extent}')
-
         # decide if point is off-view
         if px < 0 or px > self.view_width or py < 0 or py > self.view_height:
             point = None
-            
+
         # decide if extent is off-view
         if erx < 0 or elx > self.view_width or eby < 0 or ety > self.view_height:
             extent = None
-
-        print(f'pex_extent_view: returning ({point}, {extent})')
 
         return (point, extent)
 
@@ -1481,14 +1581,16 @@ class PySlipQt(QWidget):
         Returns a tuple (x, y) in view coordinates.
         """
 
-        print(f'point_placement: place={place}, x={x}, y={y}, x_off={x_off}, y_off={y_off} XYZZY`')
-
         # adjust the X, Y coordinates relative to the origin
-        # in map-rel mode we just add the offsets to the point position
-        x += x_off
-        y += y_off
-
-        print(f'point_placement: place={place}, new x={x}, new y={y}')
+        if   place == 'cc': pass 
+        elif place == 'nw': x += x_off;   y += y_off
+        elif place == 'cn':               y += y_off
+        elif place == 'ne': x += -x_off;  y += y_off
+        elif place == 'ce': x += -x_off
+        elif place == 'se': x += -x_off;  y += -y_off
+        elif place == 'cs':               y += -y_off
+        elif place == 'sw': x += x_off;   y += -y_off
+        elif place == 'cw': x += x_off; 
 
         return (x, y)
 
@@ -1501,8 +1603,6 @@ class PySlipQt(QWidget):
 
         Returns a tuple (x, y) in view coordinates.
         """
-
-        print(f'point_placement_view: place={place}, x={x}, y={y}, x_off={x_off}, y_off={y_off}')
 
         dcw = self.view_width
         dch = self.view_height
@@ -1536,14 +1636,10 @@ class PySlipQt(QWidget):
         Returns a tuple (x, y).
         """
 
-        print(f'extent_placement: place={place}, x={x}, y={y}, x_off={x_off}, y_off={y_off}, w={w}, h={h}, image={image}')
-
         w2 = w / 2
         h2 = h / 2
 
-# TODO: these two bits of code are the same        
         if image:
-            print(f'extent_placement: IS image')
             if   place == 'cc': x += -w2;            y += -h2
             elif place == 'nw': x += x_off;          y += y_off
             elif place == 'cn': x += -w2;            y += y_off
@@ -1554,45 +1650,40 @@ class PySlipQt(QWidget):
             elif place == 'sw': x += x_off;          y += -y_off - h
             elif place == 'cw': x += x_off;          y += -h2
         else:
-            print(f'extent_placement: NOT image')
-            if   place == 'cc': x += - w2;           y += h2
+            if   place == 'cc': x += -w2;            y += h2
             elif place == 'nw': x += x_off;          y += y_off + h
             elif place == 'cn': x += -w2;            y += y_off + h
             elif place == 'ne': x += -x_off - w;     y += y_off + h
             elif place == 'ce': x += -x_off - w;     y += h2
             elif place == 'se': x += -x_off - w;     y += -y_off
-            elif place == 'cs': x += - w2;           y += -y_off
+            elif place == 'cs': x += -w2;            y += -y_off
             elif place == 'sw': x += x_off;          y += -y_off
-            elif place == 'cw': x += x_off;          y += + h2
-
-#            if   place == 'cc': x += - w2;           y += -h2
-#            elif place == 'nw': x += x_off;          y += y_off
-#            elif place == 'cn': x += x_off - w2;     y += y_off
-#            elif place == 'ne': x += x_off - w;      y += y_off
-#            elif place == 'ce': x += x_off - w;      y += y_off - h2
-#            elif place == 'se': x += x_off - w;      y += y_off - h
-#            elif place == 'cs': x += x_off - w2;     y += y_off - h
-#            elif place == 'sw': x += x_off;          y += y_off - h
-#            elif place == 'cw': x += x_off;          y += y_off - h2
+            elif place == 'cw': x += x_off;          y += h2
 
         return (x, y)
 
-    def zoom_level(self, level):
-
+    def zoom_level(self, level, view=None):
         """Zoom to a map level.
 
         level  map level to zoom to
+        view   view coords of cursor
+               (if not given, ssume view centre)
 
         Change the map zoom level to that given. Returns True if the zoom
         succeeded, else False. If False is returned the method call has no effect.
-        Same operation as .GotoLevel() except we try to maintain the centre of
-        the view.
+        Same operation as .GotoLevel() except we try to maintain the geo position
+        under the cursor.
         """
 
-        # get geo coords of view centre point
-        x = self.view_width / 2
-        y = self.view_height / 2
-        geo = self.view_to_geo((x, y))
+        log(f'zoom_level: level={level}, view={view}')
+
+        # if not given cursor coords, assume view centre
+        if view is None:
+            view = (self.view_width // 2, self.view_height // 2)
+        (view_x, view_y) = view
+
+        # get geo coords of view point
+        geo = self.view_to_geo(view)
 
         # get tile source to use the new level
         result = self.tile_src.UseLevel(level)
@@ -1609,7 +1700,7 @@ class PySlipQt(QWidget):
                  self.map_blat, self.map_tlat) = self.tile_src.extent
 
             # finally, pan to original map centre (updates widget)
-            self.pan_position(geo)
+            self.pan_position(geo, view=view)
 
             # to set some state variables
             self.resizeEvent()
@@ -1619,24 +1710,35 @@ class PySlipQt(QWidget):
 
         return result
 
-    def pan_position(self, geo):
-        """Pan to the given geo position in the current map zoom level.
+    def pan_position(self, geo, view=None):
+        """Pan the given geo position in the current map zoom level.
 
-        geo  a tuple (xgeo, ygeo)
+        geo   a tuple (xgeo, ygeo)
+        view  a tuple of view coordinates (view_x, view_y)
+              (if not given, assume view centre)
 
-        We just adjust the key tile to place the required geo pisition in the
-        middle of the view.  If that is not possible, just centre in either
+        We just adjust the key tile to place the required geo position at the
+        given view coordinates.  If that is not possible, just centre in either
         the X or Y directions, or both.
         """
+
+        log(f'pan_position: geo={geo}, view={view}')
+
+        # if not given a "view", assume the view centre coordinates
+        if view is None:
+            view = (self.view_width // 2, self.view_height // 2)
+        (view_x, view_y) = view
+
+        log(f'view_x={view_x}, view_y={view_y}')
 
         # convert the geo posn to a tile position
         (tile_x, tile_y) = self.tile_src.Geo2Tile(geo)
 
         # determine what the new key tile should be
         # figure out number of tiles from centre point to edges
-        tx = (self.view_width / 2) / self.tile_width
-        ty = (self.view_height / 2) / self.tile_height
-        
+        tx = view_x / self.tile_width
+        ty = view_y / self.tile_height
+
         # calculate tile coordinates of the top-left corner of the view
         key_tx = tile_x - tx
         key_ty = tile_y - ty
@@ -1658,7 +1760,7 @@ class PySlipQt(QWidget):
     def rectify_key_tile(self):
         """Adjust state variables to ensure map centred if map is smaller than
         view.  Otherwise don't allow edges to be exposed.
-       
+
         Adjusts the "key" tile variables to ensure proper presentation.
 
         Relies on .map_width, .map_height and .key_tile_* being set.
@@ -1713,19 +1815,6 @@ class PySlipQt(QWidget):
 
         if self.zoom_level(level):
             self.pan_position(posn)
-
-    def zoom_area(self, posn, size):
-        """Zoom to a map level and area.
-
-        posn  a tuple (xgeo, ygeo) of the centre of the area to show
-        size  a tuple (width, height) of area in geo coordinate units
-
-        Zooms to a map level and pans to a position such that the specified area
-        is completely within the view. Provides a simple way to ensure an
-        extended feature is wholly within the centre of the view.
-        """
-
-        pass
 
     def get_i18n_kw(self, kwargs, kws, default):
         """Get alternate international keyword value.
@@ -1804,7 +1893,7 @@ class PySlipQt(QWidget):
             self.key_tile_top = 0
             self.key_tile_yoffset = (self.view_height - self.map_height) // 2
 
-    def OnTileAvailable(self, level, x, y, img, bmp):
+    def on_tile_available(self, level, x, y, img, bmp):
         """Callback routine: tile level/x/y is available.
 
         level  the map zoom level the image is for
@@ -1815,7 +1904,7 @@ class PySlipQt(QWidget):
         We don't use any of the above - just redraw the entire canvas.
         This is because the new tile is already in the in-memory cache.
 
-        On a slow display we could just redraw the new tile.
+        On a slow display we could redraw just the new tile.
         """
 
         self.update()
@@ -1838,7 +1927,9 @@ class PySlipQt(QWidget):
             # expect '#RRGGBBAA' form
             if len(colour) != 9 or colour[0] != '#':
                 # assume it's a colour *name*
-                c = QColor(colour)      # TODO catch bad colour names
+                # we should do more checking of the name here, though it looks
+                # like PyQt5 defaults to a colour if the name isn't recognized
+                c = QColor(colour) 
                 result = (c.red(), c.blue(), c.green(), c.alpha())
             else:
                 # we try for a colour like '#RRGGBBAA'
@@ -1992,9 +2083,10 @@ class PySlipQt(QWidget):
         ll     lower-left corner point of selection box (geo or view)
         ur     upper-right corner point of selection box (geo or view)
 
-        Return a tuple (selection, data) where 'selection' is a list of
-        selected point positions (xgeo,ygeo) and 'data' is a list of userdata
-        objects associated withe selected points.
+        Return a tuple (selection, data, relsel) where 'selection' is a list of
+        selected point positions (xgeo,ygeo), 'data' is a list of userdata
+        objects associated with the selected points and 'relsel' is always None
+        as this is meaningless for box selects.
 
         If nothing is selected return None.
         """
@@ -2110,11 +2202,11 @@ class PySlipQt(QWidget):
                 (li, ri, ti, bi) = e    # image extents (view coords)
                 if (vboxlx <= li and ri <= vboxrx
                         and vboxty <= ti and bi <= vboxby):
-                    selection.append((x, y, bmp, {'placement': place,
-                                                  'radius': radius,
-                                                  'colour': colour,
-                                                  'offset_x': x_off,
-                                                  'offset_y': y_off}))
+                    selection.append((x, y, {'placement': place,
+                                             'radius': radius,
+                                             'colour': colour,
+                                             'offset_x': x_off,
+                                             'offset_y': y_off}))
                     data.append(udata)
 
         if not selection:
@@ -2146,7 +2238,6 @@ class PySlipQt(QWidget):
             pex = self.pex_point
             clickpt = geo_point
         (xclick, yclick) = clickpt
-
         (view_x, view_y) = view_point
 
         # select text in map/view layer
@@ -2185,12 +2276,13 @@ class PySlipQt(QWidget):
         the layer.map_rel value.
 
         Returns (selection, data, None) where 'selection' is a list of text
-        positions (geo or view, depending on layer.map_rel) and 'data' is a list
-        of userdata objects associated with the selected text objects.
+        positions (geo or view, depending on layer.map_rel) plus attributes
+        and 'data' is a list of userdata objects associated with the selected
+        text objects.
 
         Returns None if no selection.
 
-        ONLY SELECTS ON POINT, NOT EXTENT.
+        Selects on text extent and point.
         """
 
         selection = []
@@ -2212,14 +2304,14 @@ class PySlipQt(QWidget):
             if vp:
                 (px, py) = vp
                 if lx <= px <= rx and ty <= py <= by:
-                    sel = (x, y, text, {'placement': place,
-                                        'radius': radius,
-                                        'colour': colour,
-                                        'textcolour': tcolour,
-                                        'fontname': fname,
-                                        'fontsize': fsize,
-                                        'offset_x': x_off,
-                                        'offset_y': y_off})
+                    sel = (x, y, {'placement': place,
+                                  'radius': radius,
+                                  'colour': colour,
+                                  'textcolour': tcolour,
+                                  'fontname': fname,
+                                  'fontsize': fsize,
+                                  'offset_x': x_off,
+                                  'offset_y': y_off})
                     selection.append(sel)
                     data.append(udata)
 
@@ -2323,7 +2415,7 @@ class PySlipQt(QWidget):
             pip = self.point_near_polyline_geo
             point = map_pt
 
-        # check polyons in layer, choose first where view_pt is close enough
+        # check polylines in layer, choose first where view_pt is close enough
         for (polyline, place, width, colour, x_off, y_off, udata) in layer.data:
             seg = pip(point, polyline, place, x_off, y_off, delta=delta)
             if seg:
@@ -2344,8 +2436,8 @@ class PySlipQt(QWidget):
         p2     top-right corner point of selection box (geo or view)
 
         Return a tuple (selection, data, None) where 'selection' is a list of
-        iterables of vertex positions and 'data' is a list of data objects
-        associated with each polyline selected.
+        iterables of vertex positions plus attributes and 'data' is a list of
+        data objects associated with each polyline selected.
         """
 
         selection = []
@@ -2373,7 +2465,7 @@ class PySlipQt(QWidget):
 
         if not selection:
             return None
-        return (selection, None)
+        return (selection, None, None)
 
 ######
 # Polygon/polyline utility routines
@@ -2565,26 +2657,6 @@ class PySlipQt(QWidget):
 
         return dx**2 + dy**2
 
-    def get_i18n_kw(self, kwargs, kws, default):
-        """Get alternate international keyword value.
-
-        kwargs   dictionary to look for keyword value
-        kws      iterable of keyword spelling strings
-        default  default value if no keyword found
-
-        Returns the keyword value.
-        """
-
-        result = None
-        for kw_str in kws[:-1]:
-            result = kwargs.get(kw_str, None)
-            if result:
-                break
-        else:
-            result = kwargs.get(kws[-1], default)
-
-        return result
-
     def info(self, msg):
         """Display an information message, log and graphically."""
 
@@ -2596,7 +2668,7 @@ class PySlipQt(QWidget):
         log(log_msg)
         log(banner)
 
-        wx.MessageBox(msg, 'Warning', wx.OK | wx.ICON_INFORMATION)
+        QMessageBox.information(self, 'Information', msg)
 
     def warn(self, msg):
         """Display a warning message, log and graphically."""
@@ -2609,57 +2681,7 @@ class PySlipQt(QWidget):
         log(log_msg)
         log(banner)
 
-        wx.MessageBox(msg, 'Warning', wx.OK | wx.ICON_ERROR)
-
-    def sel_box_canonical(self):
-        """'Canonicalize' a selection box limits.
-
-        Uses instance variables (all in view coordinates):
-            self.sbox_1_x    X position of box select start
-            self.sbox_1_y    Y position of box select start
-            self.sbox_w      width of selection box (start to finish)
-            self.sbox_h      height of selection box (start to finish)
-
-        Four ways to draw the selection box (starting in each of the four
-        corners), so four cases.
-
-        The sign of the width/height values are decided with respect to the
-        origin at view top-left corner.  That is, a negative width means
-        the box was started at the right and swept to the left.  A negative
-        height means the selection started low and swept high in the view.
-
-        Returns a tuple (llx, llr, urx, ury) where llx is lower left X, ury is
-        upper right corner Y, etc.  All returned values in view coordinates.
-        """
-
-        if self.sbox_h >= 0:
-            if self.sbox_w >= 0:
-                # 2
-                ll_corner_vx = self.sbox_1_x
-                ll_corner_vy = self.sbox_1_y + self.sbox_h
-                tr_corner_vx = self.sbox_1_x + self.sbox_w
-                tr_corner_vy = self.sbox_1_y
-            else:
-                # 1
-                ll_corner_vx = self.sbox_1_x + self.sbox_w
-                ll_corner_vy = self.sbox_1_y + self.sbox_h
-                tr_corner_vx = self.sbox_1_x
-                tr_corner_vy = self.sbox_1_y
-        else:
-            if self.sbox_w >= 0:
-                # 3
-                ll_corner_vx = self.sbox_1_x
-                ll_corner_vy = self.sbox_1_y
-                tr_corner_vx = self.sbox_1_x + self.sbox_w
-                tr_corner_vy = self.sbox_1_y + self.sbox_h
-            else:
-                # 4
-                ll_corner_vx = self.sbox_1_x + self.sbox_w
-                ll_corner_vy = self.sbox_1_y
-                tr_corner_vx = self.sbox_1_x
-                tr_corner_vy = self.sbox_1_y + self.sbox_h
-
-        return (ll_corner_vx, ll_corner_vy, tr_corner_vx, tr_corner_vy)
+        QMessageBox.warning(self, 'Information', msg)
 
 ################################################################################
 # Below are the "external" API methods.
@@ -2698,8 +2720,6 @@ class PySlipQt(QWidget):
                          'offset_y'   Y offset
                          'data'       point user data object
         """
-
-        print(f'AddPointLayer: points={points}, map_rel={map_rel}')
 
         # merge global and layer defaults
         if map_rel:
@@ -2744,6 +2764,8 @@ class PySlipQt(QWidget):
             udata = attributes.get('data', default_data)
 
             # check values that can be wrong
+            if not placement:
+                placement = default_placement
             placement = placement.lower()
             if placement not in self.valid_placements:
                 msg = ("Point placement value is invalid, got '%s'"
@@ -2756,8 +2778,6 @@ class PySlipQt(QWidget):
             # append another point to draw data list
             draw_data.append((float(x), float(y), placement,
                               radius, colour, offset_x, offset_y, udata))
-
-        print(f'AddPointLayer: draw_data={draw_data}')
 
         return self.add_layer(self.draw_point_layer, draw_data, map_rel,
                               visible=visible, show_levels=show_levels,
@@ -2794,8 +2814,6 @@ class PySlipQt(QWidget):
         The hotspot is placed at (lon, lat) or (x, y).  'placement' controls
         where the image is displayed relative to the hotspot.
         """
-
-        print(f'AddImageLayer: data={data}, map_rel={map_rel}')
 
         # merge global and layer defaults
         if map_rel:
@@ -2853,6 +2871,8 @@ class PySlipQt(QWidget):
                 w = w_cache = size.width()
 
             # check values that can be wrong
+            if not placement:
+                placement = default_placement
             placement = placement.lower()
             if placement not in self.valid_placements:
                 msg = ("Image placement value is invalid, got '%s'"
@@ -2886,8 +2906,6 @@ class PySlipQt(QWidget):
                      these supply any data missing in 'data'
         """
 
-        print(f'AddTextLayer: text={text}, map_rel={map_rel}')
-
         # merge global and layer defaults
         if map_rel:
             default_placement = kwargs.get('placement', self.DefaultTextPlacement)
@@ -2915,8 +2933,6 @@ class PySlipQt(QWidget):
             default_offset_x = kwargs.get('offset_x', self.DefaultTextViewOffsetX)
             default_offset_y = kwargs.get('offset_y', self.DefaultTextViewOffsetY)
             default_data = kwargs.get('data', self.DefaultTextData)
-
-        print(f"After merge, default_placement='{default_placement}'")
 
         # create data iterable ready for drawing
         draw_data = []
@@ -2946,9 +2962,9 @@ class PySlipQt(QWidget):
             offset_y = attributes.get('offset_y', default_offset_y)
             udata = attributes.get('data', default_data)
 
-            print(f"After checking placement, placement='{placement}'")
-
             # check values that can be wrong
+            if not placement:
+                placement = default_placement
             placement = placement.lower()
             if placement not in self.valid_placements:
                 msg = ("Text placement value is invalid, got '%s'"
@@ -3069,6 +3085,8 @@ class PySlipQt(QWidget):
                 p.append(p[0])
 
             # check values that can be wrong
+            if not placement:
+                placement = default_placement
             placement = placement.lower()
             if placement not in self.valid_placements:
                 msg = ("Polygon placement value is invalid, got '%s'"
@@ -3161,6 +3179,8 @@ class PySlipQt(QWidget):
             udata = attributes.get('data', default_data)
 
             # check values that can be wrong
+            if not placement:
+                placement = default_placement
             placement = placement.lower()
             if placement not in self.valid_placements:
                 msg = ("Polyline placement value is invalid, got '%s'"
@@ -3279,31 +3299,6 @@ class PySlipQt(QWidget):
     # Zoom and pan
     ######
 
-#    def GotoLevel(self, level):
-#        """Use a new tile level.
-#
-#        level  the new tile level to use.
-#
-#        Returns True if all went well.
-#        """
-#
-#        if not self.tile_src.UseLevel(level):
-#            return False        # couldn't change level
-#
-#        self.level = level
-#        self.map_width = self.tile_src.num_tiles_x * self.tile_width
-#        self.map_height = self.tile_src.num_tiles_y * self.tile_height
-#        (self.map_llon, self.map_rlon,
-#             self.map_blat, self.map_tlat) = self.tile_src.extent
-#
-#        # to set some state variables
-#        self.resizeEvent()
-#
-#        # raise level change event
-#        self.raise_event(PySlipQt.EVT_PYSLIPQT_LEVEL, level=level)
-#
-#        return True
-
     def GotoLevel(self, level):
         """Use a new tile level.
 
@@ -3341,37 +3336,37 @@ class PySlipQt(QWidget):
         # get fractional tile coords of required centre of view
         (xtile, ytile) = self.tile_src.Geo2Tile(geo)
 
-        # calculate pixels from view edges to centre tile edges
-        half_width = self.view_width / 2
-        half_height = self.view_height / 2
+        # get view size in half widths and height
+        w2 = self.view_width / 2
+        h2 = self.view_height / 2
 
-        int_xtile = int(xtile)
-        int_ytile = int(ytile)
+        # get tile coords of view left and top edges
+        view_tile_x = xtile - (w2 / self.tile_width)
+        view_tile_y = ytile - (h2 / self.tile_height)
 
-        frac_xtile = xtile - int_xtile
-        frac_ytile = ytile - int_ytile
+        # calculate the key tile coords and offsets
+        keytile_x = int(view_tile_x)
+        keytile_y = int(view_tile_y)
 
-        pix_xtile = frac_xtile * self.tile_width
-        piy_ytile = frac_ytile * self.tile_height
+        keyoffset_x = - int((view_tile_x - keytile_x) * self.tile_width)
+        keyoffset_y = - int((view_tile_y - keytile_y) * self.tile_height)
 
-        tile_xoff = half_width - pix_xtile
-        tile_yoff = half_height - piy_ytile
+        # update the key tile info
+        self.key_tile_left = keytile_x
+        self.key_tile_top = keytile_y
+        self.key_tile_xoffset = keyoffset_x
+        self.key_tile_yoffset = keyoffset_y
 
+        # centre map in view if map < view
+        if self.key_tile_left < 0 or self.key_tile_xoffset > 0:
+            self.key_tile_left = 0
+            self.key_tile_xoffset = (self.view_width - self.map_width) // 2
 
+        if self.key_tile_top < 0 or self.key_tile_yoffset > 0:
+            self.key_tile_top = 0
+            self.key_tile_yoffset = (self.view_height - self.map_height) // 2
 
-
-        # now calculate view offsets, top, left, bottom and right
-        half_width = self.view_width / 2
-        centre_pixels_from_map_left = int(xtile * self.tile_width)
-        self.view_offset_x = centre_pixels_from_map_left - half_width
-
-        half_height = self.view_height / 2
-        centre_pixels_from_map_top = int(ytile * self.tile_height)
-        self.view_offset_y = centre_pixels_from_map_top - half_height
-
-        # reset the key tile info
-
-
+        # redraw the display
         self.update()
 
     def GotoLevelAndPosition(self, level, geo):
@@ -3390,7 +3385,7 @@ class PySlipQt(QWidget):
         """Set view to level and position to view an area.
 
         geo   a tuple (xgeo,ygeo) to centre view on
-        size  a tuple (width,height) of area in degrees
+        size  a tuple (width,height) of area in geo coordinates
 
         Centre an area and zoom to view such that the area will fill
         approximately 50% of width or height, whichever is greater.
@@ -3398,7 +3393,7 @@ class PySlipQt(QWidget):
         Use the ppd_x and ppd_y values in the level 'tiles' file.
         """
 
-        # unpack area width/height (degrees)
+        # unpack area width/height (geo coords)
         (awidth, aheight) = size
 
         # step through levels (smallest first) and check view size (degrees)
@@ -3423,15 +3418,18 @@ class PySlipQt(QWidget):
 
         tile_src  the new tileset object to use
 
-        Returns the old tileset object, None if none.
+        Returns the previous tileset object, None if none.
 
         Refreshes the display and tries to maintain the same position
         and zoom level.  May change the zoom level if the current level doesn't
         exist in the new tileset.
         """
 
+        log('ChangeTileset: tile_src=%s' % str(tile_src))
+
         # get level and geo position of view centre
         (level, geo) = self.get_level_and_position()
+        log('level=%s, geo=%s' % (str(level), str(geo)))
 
         # remember old tileset
         old_tileset = self.tile_src
@@ -3463,7 +3461,7 @@ class PySlipQt(QWidget):
         self.tiles_min_level = min(tile_src.levels)
 
         # set callback from Tile source object when tile(s) available
-        self.tile_src.setCallback(self.OnTileAvailable)
+        self.tile_src.setCallback(self.on_tile_available)
 
         # set the new zoom level to the old
         if not tile_src.UseLevel(self.level):

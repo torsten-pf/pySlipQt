@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- coding= utf-8 -*-
-
 """
 Program to test polygon map-relative and view-relative placement.
 Select what to show and experiment with placement parameters.
@@ -8,20 +5,23 @@ Select what to show and experiment with placement parameters.
 Usage: test_poly_placement.py [-h|--help] [-d] [(-t|--tiles) (GMT|OSM)]
 """
 
-
 import sys
-import os
+import getopt
+import traceback
 
-sys.path.append('..')
-import tkinter_error
-try:
-    import wx
-except ImportError:
-    msg = 'Sorry, you must install wxPython'
-    tkinter_error.tkinter_error(msg)
+from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtGui import QColor
+from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget,
+                             QComboBox, QPushButton, QCheckBox, QLabel,
+                             QGroupBox, QGridLayout, QHBoxLayout,
+                             QSizePolicy, QColorDialog)
 
-import pyslipqt
-import log
+# initialize the logging system
+import pySlipQt.log as log
+log = log.Log('pyslipqt.log')
+
+import pySlipQt.pySlipQt as pySlipQt
+from display_text import DisplayText
 
 
 ######
@@ -29,19 +29,22 @@ import log
 ######
 
 # demo name/version
-DemoName = 'Test polygon placement, pySlipQt %s' % pyslipqt.__version__
 DemoVersion = '1.0'
+DemoName = f'Test map-relative polygon placement {DemoVersion} (pySlipQt {pySlipQt.__version__})'
+
+DemoHeight = 800
+DemoWidth = 1000
 
 # initial values
-InitialViewLevel = 4
-InitialViewPosition = (145.0, -20.0)
+InitViewLevel = 4
+InitViewPosition = (145.0, -20.0)
 
 # tiles info
-TileDirectory = 'tiles'
+TileDirectory = 'test_polygon_placement_tiles'
 MinTileLevel = 0
 
 # the number of decimal places in a lon/lat display
-LonLatPrecision = 3
+LonLatPrecision = 2
 
 # startup size of the application
 DefaultAppSize = (1000, 700)
@@ -72,78 +75,88 @@ PolyPoints = [(140.0,-17.5), (144.0,-19.0), (142.5,-15.0), (147.5,-15.0),
               (146.0,-19.0), (150.0,-17.5), (150.0,-22.5), (146.0,-21.0),
               (147.5,-25.0), (142.5,-25.0), (144.0,-21.0), (140.0,-22.5)]
 
-PolyViewPoints = [(-100,-50), (-20,-20), (-50,-100), (50,-100),
-                  (20,-20), (100,-50), (100,50), (20,20),
-                  (50,100), (-50,100), (-20,20), (-100,50)]
-
-######
-# Various GUI layout constants
-######
-
-# sizes of various spacers
-HSpacerSize = (0,1)         # horizontal in application screen
-VSpacerSize = (1,1)         # vertical in control pane
-
-# border width when packing GUI elements
-PackBorder = 0
+#PolyViewPoints = [(-100,-50), (-20,-20), (-50,-100), (50,-100),
+#                  (20,-20), (100,-50), (100,50), (20,20),
+#                  (50,100), (-50,100), (-20,20), (-100,50)]
+PolyViewPoints = [(-40,-40), (-40,40), (40,40), (40,-40),]
 
 
-###############################################################################
-# Override the wx.TextCtrl class to add read-only style and background colour
-###############################################################################
-
-# background colour for the 'read-only' text field
-ControlReadonlyColour = '#ffffcc'
-
-class ROTextCtrl(wx.TextCtrl):
-    """Override the wx.TextCtrl widget to get read-only text control which
-    has a distinctive background colour."""
-
-    def __init__(self, parent, value, tooltip='', *args, **kwargs):
-        wx.TextCtrl.__init__(self, parent, wx.ID_ANY, value=value,
-                             style=wx.TE_READONLY, *args, **kwargs)
-        self.SetBackgroundColour(ControlReadonlyColour)
-        self.SetToolTip(wx.ToolTip(tooltip))
-
-###############################################################################
-# Override the wx.StaticBox class to show our style
-###############################################################################
-
-class AppStaticBox(wx.StaticBox):
-
-    def __init__(self, parent, label, *args, **kwargs):
-        if 'style' not in kwargs:
-            kwargs['style'] = wx.NO_BORDER
-        wx.StaticBox.__init__(self, parent, wx.ID_ANY, label, *args, **kwargs)
-
-###############################################################################
-# Class for a LayerControl widget.
+##################################
+# Custom LayerControl widget.
 #
-# This is used to control each type of layer, whether map- or view-relative.
-###############################################################################
+# Constructor:
+#
+#     ppc = LayerControl('test title')
+#
+# Events:
+#
+#     .change   the contents were changed
+#     .remove   the image should be removed
+#
+# The '.change' event has attached attributes holding the values from the
+# widget, all checked so they are 'sane'.
+##################################
 
-myEVT_DELETE = wx.NewEventType()
-myEVT_UPDATE = wx.NewEventType()
+class LayerControl(QWidget):
+    """
+    Custom LayerControl widget.
 
-EVT_DELETE = wx.PyEventBinder(myEVT_DELETE, 1)
-EVT_UPDATE = wx.PyEventBinder(myEVT_UPDATE, 1)
+    Constructor:
 
-class LayerControlEvent(wx.PyCommandEvent):
-    """Event sent when a LayerControl is changed."""
+        ipc = LayerControl('test title')
 
-    def __init__(self, eventType, id):
-        wx.PyCommandEvent.__init__(self, eventType, id)
+    Events:
 
-class LayerControl(wx.Panel):
+        .change   the contents were changed
+        .remove   the image should be removed
 
-    def __init__(self, parent, title,
+    The '.change' event has attached attributes holding the values from the
+    widget, all checked so they are 'sane'.
+    """
+
+    # various sizes
+    ButtonWidth = 40
+    ButtonHeight = 40
+    ComboboxWidth = 70
+
+    # signals raised by this widget
+    change = pyqtSignal(str, int, QColor, QColor, bool, bool, int, int)
+    remove = pyqtSignal()
+
+    # some stylesheets
+    LabelStyle = 'QLabel { background-color : #f0f0f0; border: 1px solid gray; border-radius: 3px; }'
+    GroupStyle = ('QGroupBox { background-color: rgb(230, 230, 230); }'
+                  'QGroupBox::title { subcontrol-origin: margin; '
+                                     'background-color: rgb(215, 215, 215); '
+                                     'border-radius: 3px; '
+                                     'padding: 2 2px; '
+                                     'color: black; }')
+    ButtonStyle = ('QPushButton {'
+                                 'margin: 1px;'
+                                 'border-color: #0c457e;'
+                                 'border-style: outset;'
+                                 'border-radius: 3px;'
+                                 'border-width: 1px;'
+                                 'color: black;'
+                                 'background-color: white;'
+                               '}')
+    ButtonColourStyle = ('QPushButton {'
+                                       'margin: 1px;'
+                                       'border-color: #0c457e;'
+                                       'border-style: outset;'
+                                       'border-radius: 3px;'
+                                       'border-width: 1px;'
+                                       'color: black;'
+                                       'background-color: %s;'
+                                     '}')
+
+    def __init__(self, title,
                  placement=DefaultPlacement, width=DefaultWidth,
                  closed=DefaultClosed, filled=DefaultFilled,
                  colour=DefaultColour, fillcolour=DefaultFillColour,
-                 offset_x=0, offset_y=0, **kwargs):
+                 offset_x=0, offset_y=0):
         """Initialise a LayerControl instance.
 
-        parent       reference to parent object
         title        text to show in static box outline around control
         placement    placement string for object
         width        width in pixels of the drawn polygon
@@ -153,8 +166,9 @@ class LayerControl(wx.Panel):
         fillcolour   the colour to fill the polygon with (if filled is True)
         offset_x     X offset of object
         offset_y     Y offset of object
-        **kwargs     keyword args for Panel
         """
+
+        super().__init__()
 
         # save parameters
         self.v_placement = placement
@@ -166,366 +180,240 @@ class LayerControl(wx.Panel):
         self.v_offset_x = offset_x
         self.v_offset_y = offset_y
 
-        # create and initialise the base panel
-        wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY, **kwargs)
-        self.SetBackgroundColour(wx.WHITE)
+        # create subwidgets used in this custom widget
+        self.placement = QComboBox()
+        for p in ['none', 'nw', 'cn', 'ne', 'ce', 'se', 'cs', 'sw', 'cw', 'cc']:
+            self.placement.addItem(p)
+        self.placement.setCurrentIndex(9)
 
-        # create the widget
-        box = AppStaticBox(self, title)
-        sbs = wx.StaticBoxSizer(box, orient=wx.VERTICAL)
-        gbs = wx.GridBagSizer(vgap=2, hgap=2)
+        self.line_width = QComboBox()
+        for p in range(21):
+            self.line_width.addItem(str(p))
+        self.line_width.setCurrentIndex(3)
+        self.line_width.setFixedWidth(LayerControl.ComboboxWidth)
 
-        # row 0
-        row = 0
-        label = wx.StaticText(self, wx.ID_ANY, 'placement: ')
-        gbs.Add(label, (row,0), border=0,
-                flag=(wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT))
-        choices = ['nw', 'cn', 'ne', 'ce', 'se', 'cs', 'sw', 'cw', 'cc', 'none']
-        style=wx.CB_DROPDOWN|wx.CB_READONLY
-        self.placement = wx.ComboBox(self, value=self.v_placement,
-                                     choices=choices, style=style)
-        gbs.Add(self.placement, (row,1), border=0,
-                flag=(wx.ALIGN_CENTER_VERTICAL|wx.EXPAND))
+        self.line_colour = QPushButton('')
+        self.line_colour.setFixedWidth(LayerControl.ButtonWidth)
+        self.line_colour.setToolTip('Click here to change the point colour')
+        self.line_colour.setStyleSheet(LayerControl.ButtonStyle)
 
-        label = wx.StaticText(self, wx.ID_ANY, 'width: ')
-        gbs.Add(label, (row,2), border=0,
-                flag=(wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT))
-        choices = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10']
-        style=wx.CB_DROPDOWN|wx.CB_READONLY
-        self.width = wx.ComboBox(self, value=self.v_width,
-                                 choices=choices, style=style)
-        gbs.Add(self.width, (row,3),
-                border=0, flag=(wx.ALIGN_CENTER_VERTICAL|wx.EXPAND))
+        self.fill_colour = QPushButton('')
+        self.fill_colour.setFixedWidth(LayerControl.ButtonWidth)
+        self.fill_colour.setToolTip('Click here to change the fill colour')
+        self.fill_colour.setStyleSheet(LayerControl.ButtonStyle)
 
-        # row 1
+        self.cb_closed = QCheckBox('closed: ',self)
+        self.cb_filled = QCheckBox('filled: ',self)
+
+        self.x_offset = QComboBox()
+        for p in range(0, 121, 10):
+            self.x_offset.addItem(str(p - 60))
+        self.x_offset.setCurrentIndex(6)
+        self.x_offset.setFixedWidth(LayerControl.ComboboxWidth)
+
+        self.y_offset = QComboBox()
+        for p in range(0, 121, 10):
+            self.y_offset.addItem(str(p - 60))
+        self.y_offset.setCurrentIndex(6)
+        self.y_offset.setFixedWidth(LayerControl.ComboboxWidth)
+
+        btn_remove = QPushButton('Remove')
+        btn_remove.resize(btn_remove.sizeHint())
+
+        btn_update = QPushButton('Update')
+        btn_update.resize(btn_update.sizeHint())
+
+        # start the layout
+        option_box = QGroupBox(title)
+        option_box.setStyleSheet(LayerControl.GroupStyle)
+
+        box_layout = QGridLayout()
+        box_layout.setContentsMargins(2, 2, 2, 2)
+        box_layout.setHorizontalSpacing(1)
+        box_layout.setColumnStretch(0, 1)
+
+        # start layout
+        row = 1
+        label = QLabel('placement: ')
+        label.setAlignment(Qt.AlignRight)
+        box_layout.addWidget(label, row, 0)
+        box_layout.addWidget(self.placement, row, 1)
+        label = QLabel('width: ')
+        label.setAlignment(Qt.AlignRight)
+        box_layout.addWidget(label, row, 2)
+        box_layout.addWidget(self.line_width, row, 3)
+
         row += 1
-        label = wx.StaticText(self, wx.ID_ANY, 'colour: ')
-        gbs.Add(label, (row,0), border=0,
-                flag=(wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT))
-        self.polycolour = wx.Button(self, label='')
-        self.polycolour.SetBackgroundColour(self.v_colour)
-        gbs.Add(self.polycolour, (row,1), border=0, flag=wx.EXPAND)
+        label = QLabel('colour: ')
+        label.setAlignment(Qt.AlignRight)
+        box_layout.addWidget(label, row, 0)
+        box_layout.addWidget(self.line_colour, row, 1)
+        label = QLabel('fill colour: ')
+        label.setAlignment(Qt.AlignRight)
+        box_layout.addWidget(label, row, 2)
+        box_layout.addWidget(self.fill_colour, row, 3)
 
-        label = wx.StaticText(self, wx.ID_ANY, 'fillcolour: ')
-        gbs.Add(label, (row,2), border=0,
-                flag=(wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT))
-        self.fillcolour = wx.Button(self, label='')
-        self.fillcolour.SetBackgroundColour(self.v_fillcolour)
-        gbs.Add(self.fillcolour, (row,3), border=0, flag=wx.EXPAND)
-
-        # row 2
         row += 1
-        label = wx.StaticText(self, wx.ID_ANY, 'closed: ')
-        gbs.Add(label, (row,0), border=0,
-                flag=(wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT))
-        self.closed = wx.CheckBox(self, label='')
-        self.closed.SetValue(self.v_closed)
-        gbs.Add(self.closed, (row,1), border=0)
+        label = QLabel('filled: ')
+        label.setAlignment(Qt.AlignRight)
+        box_layout.addWidget(label, row, 2)
+        box_layout.addWidget(self.cb_filled, row, 3)
 
-        label = wx.StaticText(self, wx.ID_ANY, 'filled: ')
-        gbs.Add(label, (row,2), border=0,
-                flag=(wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT))
-        self.filled = wx.CheckBox(self, label='')
-        self.filled.SetValue(self.v_filled)
-        gbs.Add(self.filled, (row,3), border=0)
-
-        # row 3
         row += 1
-        label = wx.StaticText(self, wx.ID_ANY, 'offset_x: ')
-        gbs.Add(label, (row,0), border=0,
-                flag=(wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT))
-        self.offset_x = wx.TextCtrl(self, value=str(self.v_offset_x))
-        gbs.Add(self.offset_x, (row,1), border=0, flag=wx.EXPAND)
+        label = QLabel('offset X: ')
+        label.setAlignment(Qt.AlignRight)
+        box_layout.addWidget(label, row, 0)
+        box_layout.addWidget(self.x_offset, row, 1)
+        label = QLabel('Y: ')
+        label.setAlignment(Qt.AlignRight)
+        box_layout.addWidget(label, row, 2)
+        box_layout.addWidget(self.y_offset, row, 3)
 
-        label = wx.StaticText(self, wx.ID_ANY, '  offset_y: ')
-        gbs.Add(label, (row,2), border=0,
-                flag=(wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT))
-        self.offset_y = wx.TextCtrl(self, value=str(self.v_offset_y))
-        gbs.Add(self.offset_y, (row,3), border=0, flag=wx.EXPAND)
-
-        # row 4
         row += 1
-        delete_button = wx.Button(self, label='Remove')
-        gbs.Add(delete_button, (row,1), border=10, flag=wx.EXPAND)
-        update_button = wx.Button(self, label='Update')
-        gbs.Add(update_button, (row,3), border=10, flag=wx.EXPAND)
+        box_layout.addWidget(btn_remove, row, 1)
+        box_layout.addWidget(btn_update, row, 3)
 
-        sbs.Add(gbs)
-        self.SetSizer(sbs)
-        sbs.Fit(self)
+        option_box.setLayout(box_layout)
 
-        self.polycolour.Bind(wx.EVT_BUTTON, self.onPolyColour)
-        self.fillcolour.Bind(wx.EVT_BUTTON, self.onFillColour)
-        delete_button.Bind(wx.EVT_BUTTON, self.onDelete)
-        update_button.Bind(wx.EVT_BUTTON, self.onUpdate)
+        layout = QHBoxLayout()
+        layout.setContentsMargins(1, 1, 1, 1)
+        layout.addWidget(option_box)
 
-    def onPolyColour(self, event):
-        """Change polygon colour."""
+        self.setLayout(layout)
 
-        colour = self.polycolour.GetBackgroundColour()
-        wxcolour = wx.ColourData()
-        wxcolour.SetColour(colour)
+        # set size hints
+        self.setMinimumSize(300, 200)
+        size_policy = QSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setSizePolicy(size_policy)
 
-        dialog = wx.ColourDialog(self, data=wxcolour)
-        dialog.GetColourData().SetChooseFull(True)
-        new_colour = None
-        if dialog.ShowModal() == wx.ID_OK:
-            new_colour = dialog.GetColourData().Colour
-        dialog.Destroy()
+        # connect internal widget events to handlers
+        self.line_colour.clicked.connect(self.changeLineColour)
+        self.fill_colour.clicked.connect(self.changeFillColour)
+        btn_remove.clicked.connect(self.removeImage)
+        btn_update.clicked.connect(self.updateData)
 
-        if new_colour:
-            self.polycolour.SetBackgroundColour(new_colour)
+    def changeLineColour(self, event):
+        color = QColorDialog.getColor()
+        if color.isValid():
+            colour = color.name()
+            # set colour button background
+            self.line_colour.setStyleSheet(LayerControl.ButtonColourStyle % colour);
+ 
+    def changeFillColour(self, event):
+        color = QColorDialog.getColor()
+        if color.isValid():
+            colour = color.name()
+            # set colour button background
+            self.fill_colour.setStyleSheet(LayerControl.ButtonColourStyle % colour);
+ 
+    def removeImage(self, event):
+        self.remove.emit()
 
-    def onFillColour(self, event):
-        """Change polygon fill colour."""
+    def updateData(self, event):
+        # get data from the widgets
+        placement = str(self.placement.currentText())
+        if placement == 'none':
+            placement = None
+        line_width = int(self.line_width.currentText())
+        line_colour = self.line_colour.palette().color(1)
+        fill_colour = self.fill_colour.palette().color(1)
+        closed = self.cb_closed.checkState()
+        filled = self.cb_filled.checkState()
+        x_offset = int(self.x_offset.currentText())
+        y_offset = int(self.y_offset.currentText())
 
-        colour = self.fillcolour.GetBackgroundColour()
-        wxcolour = wx.ColourData()
-        wxcolour.SetColour(colour)
-
-        dialog = wx.ColourDialog(self, data=wxcolour)
-        dialog.GetColourData().SetChooseFull(True)
-        new_colour = None
-        if dialog.ShowModal() == wx.ID_OK:
-            new_colour = dialog.GetColourData().Colour
-        dialog.Destroy()
-
-        if new_colour:
-            self.fillcolour.SetBackgroundColour(new_colour)
-
-    def onDelete(self, event):
-        """Remove object from map."""
-
-        event = LayerControlEvent(myEVT_DELETE, self.GetId())
-        self.GetEventHandler().ProcessEvent(event)
-
-    def onUpdate(self, event):
-        """Update object on map."""
-
-        event = LayerControlEvent(myEVT_UPDATE, self.GetId())
-
-        event.placement = self.placement.GetValue()
-        event.width = int(self.width.GetValue())
-        event.colour = self.polycolour.GetBackgroundColour()
-        event.fillcolour = self.fillcolour.GetBackgroundColour()
-        event.closed = self.closed.GetValue()
-        event.filled = self.filled.GetValue()
-        event.offset_x = self.offset_x.GetValue()
-        event.offset_y = self.offset_y.GetValue()
-
-        self.GetEventHandler().ProcessEvent(event)
+        print(f'updateData: placement={placement}, line_width={line_width}, closed={closed}, filled={filled}, x_offset={x_offset}, y_offset={y_offset}')
+        
+        self.change.emit(placement, line_width, line_colour, fill_colour,
+                         closed, filled, x_offset, y_offset)
 
 ################################################################################
 # The main application frame
 ################################################################################
 
-class AppFrame(wx.Frame):
-    def __init__(self):
-        wx.Frame.__init__(self, None, size=DefaultAppSize,
-                          title='%s, test version %s' % (DemoName, DemoVersion))
-        self.SetMinSize(DefaultAppSize)
-        self.panel = wx.Panel(self, wx.ID_ANY)
-        self.panel.SetBackgroundColour(wx.WHITE)
-        self.panel.ClearBackground()
+class TestPolyPlacement(QMainWindow):
 
+    def __init__(self, tile_dir=TileDirectory):
+        super().__init__()
+
+        self.tile_directory = tile_dir
         self.tile_source = Tiles.Tiles()
 
-        # build the GUI
-        self.make_gui(self.panel)
-
-        # set initial view position
-        self.map_level.SetLabel('%d' % InitialViewLevel)
-        wx.CallAfter(self.final_setup, InitialViewLevel, InitialViewPosition)
-
-        # force pyslipqt initialisation
-        self.pyslipqt.OnSize()
-
-        # finally, set up application window position
-        self.Centre()
-
-        # initialise state variables
-        self.poly_layer = None
+        # variables for layer IDs
+        self.poly_map_layer = None
         self.poly_view_layer = None
 
-        # finally, bind pySlipQt events to handlers
-        self.pyslipqt.Bind(pyslipqt.EVT_PYSLIPQT_POSITION, self.handle_position_event)
-        self.pyslipqt.Bind(pyslipqt.EVT_PYSLIPQT_LEVEL, self.handle_level_change)
+        # build the GUI
+        grid = QGridLayout()
+        grid.setColumnStretch(0, 1)
+        grid.setContentsMargins(2, 2, 2, 2)
+
+        qwidget = QWidget(self)
+        qwidget.setLayout(grid)
+        self.setCentralWidget(qwidget)
+
+        # build the 'controls' part of GUI
+        num_rows = self.make_gui(grid)
+
+        self.pyslipqt = pySlipQt.PySlipQt(self, tile_src=self.tile_source,
+                                          start_level=MinTileLevel)
+        grid.addWidget(self.pyslipqt, 0, 0, num_rows + 1, 1)
+        grid.setRowStretch(num_rows, 1)
+
+        # set the size of the demo window, etc
+        self.setGeometry(100, 100, DemoWidth, DemoHeight)
+        self.setWindowTitle(DemoName)
+
+        # tie events from controls to handlers
+        self.map_poly.remove.connect(self.remove_poly_map)
+        self.map_poly.change.connect(self.change_poly_map)
+
+        self.view_poly.remove.connect(self.remove_poly_view)
+        self.view_poly.change.connect(self.change_poly_view)
+
+        self.pyslipqt.events.EVT_PYSLIPQT_LEVEL.connect(self.handle_level_change)
+        self.pyslipqt.events.EVT_PYSLIPQT_POSITION.connect(self.handle_position_event)
+
+        self.map_level.set_text('0')
+
+        self.show()
+
+        # set initial view position
+        self.map_level.set_text('%d' % InitViewLevel)
+        self.pyslipqt.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
 
 #####
 # Build the GUI
 #####
 
-    def make_gui(self, parent):
+    def make_gui(self, grid):
         """Create application GUI."""
 
-        # start application layout
-        all_display = wx.BoxSizer(wx.HORIZONTAL)
-        parent.SetSizer(all_display)
+        """Build the controls in the right side of the grid."""
 
-        # put map view in left of horizontal box
-        sl_box = self.make_gui_view(parent)
-        all_display.Add(sl_box, proportion=1, border=0, flag=wx.EXPAND)
+        # the 'grid_row' variable is row to add into
+        grid_row = 0
 
-        # small spacer here - separate view and controls
-        all_display.AddSpacer(HSpacerSize)
+        # put level and position into grid at top right
+        self.map_level = DisplayText(title='', label='Level:',
+                                     tooltip=None)
+        grid.addWidget(self.map_level, grid_row, 1, 1, 1)
+        self.mouse_position = DisplayText(title='',
+                                          label='Lon/Lat:', text_width=100,
+                                          tooltip='Shows the mouse longitude and latitude on the map',)
+        grid.addWidget(self.mouse_position, grid_row, 2, 1, 1)
+        grid_row += 1
 
-        # add controls to right of spacer
-        controls = self.make_gui_controls(parent)
-        all_display.Add(controls, proportion=0, border=0)
+        # now add the two point control widgets to right part of grid
+        self.map_poly = LayerControl('Map-relative Polygon')
+        grid.addWidget(self.map_poly, grid_row, 1, 1, 2)
+        grid_row += 1
 
-        parent.SetSizerAndFit(all_display)
+        self.view_poly = LayerControl('View-relative Polygon')
+        grid.addWidget(self.view_poly, grid_row, 1, 1, 2)
+        grid_row += 1
 
-    def make_gui_view(self, parent):
-        """Build the map view widget
-
-        parent  reference to the widget parent
-
-        Returns the static box sizer.
-        """
-
-        # create gui objects
-        sb = AppStaticBox(parent, '')
-        self.pyslipqt = pyslipqt.PySlip(parent, tile_src=self.tile_source)
-
-        # lay out objects
-        box = wx.StaticBoxSizer(sb, orient=wx.HORIZONTAL)
-        box.Add(self.pyslipqt, proportion=1, border=0, flag=wx.EXPAND)
-
-        return box
-
-    def make_gui_controls(self, parent):
-        """Build the 'controls' part of the GUI
-
-        parent  reference to parent
-
-        Returns reference to containing sizer object.
-        """
-
-        # all controls in vertical box sizer
-        controls = wx.BoxSizer(wx.VERTICAL)
-
-        # add the map level in use widget
-        level = self.make_gui_level(parent)
-        controls.Add(level, proportion=0, flag=wx.EXPAND|wx.ALL)
-
-        # vertical spacer
-        controls.AddSpacer(VSpacerSize)
-
-        # add the mouse position feedback stuff
-        mouse = self.make_gui_mouse(parent)
-        controls.Add(mouse, proportion=0, flag=wx.EXPAND|wx.ALL)
-
-        # vertical spacer
-        controls.AddSpacer(VSpacerSize)
-
-        # controls for map-relative object layer
-        self.poly = self.make_gui_poly(parent)
-        controls.Add(self.poly, proportion=0, flag=wx.EXPAND|wx.ALL)
-        self.poly.Bind(EVT_DELETE, self.polyDelete)
-        self.poly.Bind(EVT_UPDATE, self.polyUpdate)
-
-        # vertical spacer
-        controls.AddSpacer(VSpacerSize)
-
-        # controls for view-relative text layer
-        self.poly_view = self.make_gui_poly_view(parent)
-        controls.Add(self.poly_view, proportion=0, flag=wx.EXPAND|wx.ALL)
-        self.poly_view.Bind(EVT_DELETE, self.polyViewDelete)
-        self.poly_view.Bind(EVT_UPDATE, self.polyViewUpdate)
-
-        # vertical spacer
-        controls.AddSpacer(VSpacerSize)
-
-        return controls
-
-    def make_gui_level(self, parent):
-        """Build the control that shows the level.
-
-        parent  reference to parent
-
-        Returns reference to containing sizer object.
-        """
-
-        # create objects
-        txt = wx.StaticText(parent, wx.ID_ANY, 'Level: ')
-        self.map_level = wx.StaticText(parent, wx.ID_ANY, ' ')
-
-        # lay out the controls
-        sb = AppStaticBox(parent, 'Map level')
-        box = wx.StaticBoxSizer(sb, orient=wx.HORIZONTAL)
-        box.Add(txt, border=PackBorder, flag=(wx.ALIGN_CENTER_VERTICAL
-                                     |wx.ALIGN_RIGHT|wx.LEFT))
-        box.Add(self.map_level, proportion=0, border=PackBorder,
-                flag=wx.RIGHT|wx.TOP)
-
-        return box
-
-    def make_gui_mouse(self, parent):
-        """Build the mouse part of the controls part of GUI.
-
-        parent  reference to parent
-
-        Returns reference to containing sizer object.
-        """
-
-        # create objects
-        txt = wx.StaticText(parent, wx.ID_ANY, 'Lon/Lat: ')
-        self.mouse_position = ROTextCtrl(parent, '', size=(150,-1),
-                                         tooltip=('Shows the mouse '
-                                                  'longitude and latitude '
-                                                  'on the map'))
-
-        # lay out the controls
-        sb = AppStaticBox(parent, 'Mouse position')
-        box = wx.StaticBoxSizer(sb, orient=wx.HORIZONTAL)
-        box.Add(txt, border=PackBorder, flag=(wx.ALIGN_CENTER_VERTICAL
-                                     |wx.ALIGN_RIGHT|wx.LEFT))
-        box.Add(self.mouse_position, proportion=1, border=PackBorder,
-                flag=wx.RIGHT|wx.TOP|wx.BOTTOM)
-
-        return box
-
-    def make_gui_poly(self, parent):
-        """Build the polygon map-relative part of the controls part of GUI.
-
-        parent  reference to parent
-
-        Returns reference to containing sizer object.
-        """
-
-        # create widgets
-        poly_obj = LayerControl(parent, 'Polygon, map-relative',
-                                placement=DefaultPlacement,
-                                width=str(DefaultWidth),
-                                colour=DefaultColour,
-                                closed=DefaultClosed,
-                                filled=DefaultFilled,
-                                fillcolour=DefaultFillColour,
-                                offset_x=DefaultOffsetX,
-                                offset_y=DefaultOffsetY)
-
-        return poly_obj
-
-    def make_gui_poly_view(self, parent):
-        """Build the view-relative polygon part of the controls part of GUI.
-
-        parent  reference to parent
-
-        Returns reference to containing sizer object.
-        """
-
-        # create widgets
-        poly_obj = LayerControl(parent, 'Polygon, view-relative',
-                                 placement=DefaultPlacement,
-                                 width=str(DefaultWidth),
-                                 colour=DefaultColour,
-                                 closed=DefaultClosed,
-                                 filled=DefaultFilled,
-                                 fillcolour=DefaultFillColour,
-                                 offset_x=DefaultViewOffsetX,
-                                 offset_y=DefaultViewOffsetY)
-
-        return poly_obj
+        return grid_row
 
     ######
     # event handlers
@@ -533,102 +421,58 @@ class AppFrame(wx.Frame):
 
 ##### map-relative polygon layer
 
-    def polyUpdate(self, event):
+    def change_poly_map(self, placement, line_width, line_colour, fill_colour,
+                              closed, filled, x_off, y_off):
         """Display updated polygon."""
 
-        if self.poly_layer:
-            self.pyslipqt.DeleteLayer(self.poly_layer)
+        print(f'change_poly_map: placement={placement}, line_width={line_width}, line_colour={line_colour}, fill_colour={fill_colour}, closed={closed}, filled={filled}, x_off={x_off}, y_off={y_off}')
 
-        # convert values to sanity for layer attributes
-        placement = event.placement
-        if placement == 'none':
-            placement= ''
-
-        width = event.width
-        colour = event.colour
-        closed = event.closed
-        filled = event.filled
-        fillcolour = event.fillcolour
-
-        off_x = event.offset_x
-        if not off_x:
-            off_x = 0
-        try:
-            off_x = int(off_x)
-        except ValueError:
-            off_x = 0
-
-        off_y = event.offset_y
-        if not off_y:
-            off_y = 0
-        try:
-            off_y = int(off_y)
-        except ValueError:
-            off_y = 0
+        if self.poly_map_layer:
+            self.pyslipqt.DeleteLayer(self.poly_map_layer)
 
         poly_data = [(PolyPoints, {'placement': placement,
-                                   'width': width,
-                                   'colour': colour,
+                                   'width': line_width,
+                                   'colour': line_colour,
                                    'closed': closed,
                                    'filled': filled,
-                                   'fillcolour': fillcolour,
-                                   'offset_x': off_x,
-                                   'offset_y': off_y})]
-        self.poly_layer = self.pyslipqt.AddPolygonLayer(poly_data, map_rel=True,
-                                                      visible=True,
-                                                      name='<poly_layer>')
+                                   'fillcolour': fill_colour,
+                                   'offset_x': x_off,
+                                   'offset_y': y_off})]
+        self.poly_map_layer = self.pyslipqt.AddPolygonLayer(poly_data, map_rel=True,
+                                                            visible=True,
+                                                            name='<poly_map_layer>')
 
-    def polyDelete(self, event):
+    def remove_poly_map(self):
         """Delete the polygon map-relative layer."""
 
-        if self.poly_layer:
-            self.pyslipqt.DeleteLayer(self.poly_layer)
-        self.poly_layer = None
+        if self.poly_map_layer:
+            self.pyslipqt.DeleteLayer(self.poly_map_layer)
+        self.poly_map_layer = None
 
 ##### view-relative polygon layer
 
-    def polyViewUpdate(self, event):
-        """Display updated polygon layer."""
+    def change_poly_view(self, placement, line_width, line_colour, fill_colour,
+                               closed, filled, x_off, y_off):
+        """Display updated view-relative polygon layer."""
 
         if self.poly_view_layer:
             self.pyslipqt.DeleteLayer(self.poly_view_layer)
 
-        # convert values to sanity for layer attributes
-        placement = event.placement
-        if placement == 'none':
-            placement= ''
-
-        width = event.width
-        colour = event.colour
-        closed = event.closed
-        filled = event.filled
-        fillcolour = event.fillcolour
-
-        off_x = event.offset_x
-        if not off_x:
-            off_x = 0
-        off_x = int(off_x)
-
-        off_y = event.offset_y
-        if not off_y:
-            off_y = 0
-        off_y = int(off_y)
-
         # create a new polygon layer
         poly_data = [(PolyViewPoints, {'placement': placement,
-                                       'width': width,
-                                       'colour': colour,
+                                       'width': line_width,
+                                       'colour': line_colour,
                                        'closed': closed,
                                        'filled': filled,
-                                       'fillcolour': fillcolour,
-                                       'offset_x': off_x,
-                                       'offset_y': off_y})]
+                                       'fillcolour': fill_colour,
+                                       'offset_x': x_off,
+                                       'offset_y': y_off})]
         self.poly_view_layer = self.pyslipqt.AddPolygonLayer(poly_data,
-                                                           map_rel=False,
-                                                           visible=True,
-                                                           name='<poly_layer>')
+                                                             map_rel=False,
+                                                             visible=True,
+                                                             name='<poly_view_layer>')
 
-    def polyViewDelete(self, event):
+    def remove_poly_view(self):
         """Delete the polygon view-relative layer."""
 
         if self.poly_view_layer:
@@ -657,88 +501,67 @@ class AppFrame(wx.Frame):
             posn_str = ('%.*f / %.*f' % (LonLatPrecision, lon,
                                          LonLatPrecision, lat))
 
-        self.mouse_position.SetValue(posn_str)
+        self.mouse_position.set_text(posn_str)
 
     def handle_level_change(self, event):
         """Handle a pySlipQt LEVEL event."""
 
-        self.map_level.SetLabel('%d' % event.level)
+        self.map_level.set_text('%d' % event.level)
 
 ###############################################################################
 
-if __name__ == '__main__':
-    import sys
-    import getopt
-    import traceback
+# our own handler for uncaught exceptions
+def excepthook(type, value, tb):
+    msg = '\n' + '=' * 80
+    msg += '\nUncaught exception:\n'
+    msg += ''.join(traceback.format_exception(type, value, tb))
+    msg += '=' * 80 + '\n'
+    print(msg)
+    log(msg)
+    sys.exit(1)
 
-#vvvvvvvvvvvvvvvvvvvvv test code - can go away once __init__.py works
-#    DefaultTilesets = 'tilesets'
-#    CurrentPath = os.path.dirname(os.path.abspath(__file__))
-#
-#    sys.path.append(os.path.join(CurrentPath, DefaultTilesets))
-#
-#    log(str(sys.path))
-#^^^^^^^^^^^^^^^^^^^^^ test code - can go away once __init__.py works
+# plug our handler into the python system
+sys.excepthook = excepthook
 
-    # our own handler for uncaught exceptions
-    def excepthook(type, value, tb):
-        msg = '\n' + '=' * 80
-        msg += '\nUncaught exception:\n'
-        msg += ''.join(traceback.format_exception(type, value, tb))
-        msg += '=' * 80 + '\n'
-        print(msg)
-        log(msg)
-        tkinter_error.tkinter_error(msg)
-        sys.exit(1)
+def usage(msg=None):
+    if msg:
+        print(('*'*80 + '\n%s\n' + '*'*80) % msg)
+    print(__doc__)
 
-    def usage(msg=None):
-        if msg:
-            print(('*'*80 + '\n%s\n' + '*'*80) % msg)
-        print(__doc__)
+# decide which tiles to use, default is GMT
+argv = sys.argv[1:]
 
+try:
+    (opts, args) = getopt.getopt(argv, 'dht:', ['debug', 'help', 'tiles='])
+except getopt.error:
+    usage()
+    sys.exit(1)
 
-    # plug our handler into the python system
-    sys.excepthook = excepthook
-
-    # decide which tiles to use, default is GMT
-    argv = sys.argv[1:]
-
-    try:
-        (opts, args) = getopt.getopt(argv, 'dht:', ['debug', 'help', 'tiles='])
-    except getopt.error:
+tile_source = 'GMT'
+debug = False
+for (opt, param) in opts:
+    if opt in ['-h', '--help']:
         usage()
-        sys.exit(1)
+        sys.exit(0)
+    elif opt in ['-d', '--debug']:
+        debug = True
+    elif opt in ('-t', '--tiles'):
+        tile_source = param
+tile_source = tile_source.lower()
 
-    tile_source = 'GMT'
-    debug = False
-    for (opt, param) in opts:
-        if opt in ['-h', '--help']:
-            usage()
-            sys.exit(0)
-        elif opt in ['-d', '--debug']:
-            debug = True
-        elif opt in ('-t', '--tiles'):
-            tile_source = param
-    tile_source = tile_source.lower()
+# set up the appropriate tile source
+if tile_source == 'gmt':
+    import pySlipQt.gmt_local as Tiles
+elif tile_source == 'osm':
+    import pySlipQt.open_street_map as Tiles
+else:
+    usage('Bad tile source: %s' % tile_source)
+    sys.exit(3)
 
-    # set up the appropriate tile source
-    if tile_source == 'gmt':
-        import pyslipqt.gmt_local_tiles as Tiles
-    elif tile_source == 'osm':
-        import pyslipqt.osm_tiles as Tiles
-    else:
-        usage('Bad tile source: %s' % tile_source)
-        sys.exit(3)
-
-    # start wxPython app
-    app = wx.App()
-
-    app_frame = AppFrame()
-    app_frame.Show()
-
-    if debug:
-        import wx.lib.inspection
-        wx.lib.inspection.InspectionTool().Show()
-
-    app.MainLoop()
+# start the PyQt5 app
+log(DemoName)
+tile_dir = 'test_polygon_placement'
+app = QApplication(args)
+ex = TestPolyPlacement(tile_dir)
+sys.exit(app.exec_())
 
