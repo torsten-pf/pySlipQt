@@ -1,7 +1,7 @@
 """
 A PyQt5 custom widget used by pySlipQt.
 
-Used to display text.  The grid and components:
+Used to display text.  The layout and components:
 
     +-----------------------------------------+
     |  <title>                                |
@@ -34,24 +34,29 @@ from PyQt5.QtCore import Qt
 class DisplayText(QWidget):
 
     # some subwidget sizes
-    LabelWidth = 20
+    LabelWidth = 30
 
     # styles strings
-    TextStyle = ('QLabel { background-color: white; '
-                          'border:1px solid rgb(128, 128, 128); '
-                          'border-radius: 3px; }')
-    LabelStyle = ('QLabel { background-color: white; '
-                           'border:1px solid rgb(128, 128, 128); '
-                           'border-radius: 3px; }')
-#    GroupStyle = 'QGroupBox { background-color: rgb(230, 230, 230); border-radius: 3px; }'
-
-#    LabelStyle = 'QLabel { background-color : #f0f0f0; border: 1px solid gray; border-radius: 3px; }'
-    GroupStyle = ('QGroupBox { background-color: rgb(230, 230, 230); }'
+    TextStyle = ('QLabel {'
+                    'background-color: white; '
+                    'border:1px solid rgb(128, 128, 128); '
+                    'border-radius: 3px;'
+                 '}'
+                )
+    LabelStyle = ('QLabel {'
+                    'background-color: white; '
+                    'border:1px solid rgb(128, 128, 128); '
+                    'border-radius: 3px;'
+                  '}'
+                 )
+    GroupStyle = (#'QGroupBox { background-color: rgb(230, 230, 230); };'
                   'QGroupBox::title { subcontrol-origin: margin; '
-                                 '    background-color: rgb(215, 215, 215); '
+#                                 '    background-color: rgb(215, 215, 215); '
                                  '    border-radius: 3px; '
-                                 '    padding: 2 2px; '
-                                 '    color: black; }')
+                                 '    padding: 5px; '
+                                 '    color: black; '
+                  '};'
+                 )
 
     def __init__(self, title, label, tooltip=None, text_width=None):
         super().__init__()

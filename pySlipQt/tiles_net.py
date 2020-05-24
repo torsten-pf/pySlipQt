@@ -13,36 +13,27 @@ import urllib
 from urllib import request
 import queue
 from PyQt5.QtGui import QPixmap
-from PyQt5.QtCore import QThread, QTimer
+from PyQt5.QtCore import QThread
 import pySlipQt.tiles as tiles
 import pySlipQt.sys_tile_data as std
+import pySlipQt.log as log
 
-
-# if we don't have log.py, don't crash
 try:
-#    from . import log
-    import log
     log = log.Log('pyslipqt.log')
 except AttributeError:
     # means log already set up
     pass
-except ImportError as e:
-    # if we don't have log.py, don't crash
-    # fake all log(), log.debug(), ... calls
-    def logit(*args, **kwargs):
-        pass
-    log = logit
-    log.debug = logit
-    log.info = logit
-    log.warn = logit
-    log.error = logit
-    log.critical = logit
 
 # set how old disk-cache tiles can be before we re-request them from the
 # server.  this is the number of days old a tile is before we re-request.
 # if 'None', never re-request tiles after first satisfied request.
 RefreshTilesAfterDays = 60
 
+# define the error messages for various failures
+StatusError = {401: 'Looks like you need to be authorised for this server.',
+               404: 'You might need to check the tile addressing for this server.',
+               429: 'You are asking for too many tiles.',
+              }
 
 ################################################################################
 # Worker class for server tile retrieval
@@ -86,17 +77,14 @@ class TileWorker(QThread):
         while True:
             # get zoom level and tile coordinates to retrieve
             (level, x, y) = self.requests.get()
-            log('run: getting tile (%d,%d,%d)' % (level, x, y))
 
             # try to retrieve the image
             error = False
             pixmap = self.error_image
             try:
                 tile_url = self.server + self.tilepath.format(Z=level, X=x, Y=y)
-                log('tile_url=%s' % tile_url)
                 response = request.urlopen(tile_url)
-                headers = response.info()
-                content_type = headers.get_content_type()
+                content_type = response.info().get_content_type()
                 if content_type == self.content_type:
                     data = response.read()
                     pixmap = QPixmap()
@@ -104,7 +92,6 @@ class TileWorker(QThread):
                 else:
                     # show error, don't cache returned error tile
                     error = True
-                    pixmap = self.error_image
             except Exception as e:
                 error = True
                 log('%s exception getting tile (%d,%d,%d)'
@@ -122,7 +109,7 @@ class TileWorker(QThread):
 ###############################################################################
 
 class Tiles(tiles.BaseTiles):
-    """A tile object to source server tiles for pySlipQt."""
+    """A tile object to source server tiles for the widget."""
 
     # maximum number of outstanding requests per server
     MaxServerRequests = 2
@@ -165,8 +152,7 @@ class Tiles(tiles.BaseTiles):
                 os.makedirs(level_dir)
 
         # perform the base class initialization
-        super(Tiles, self).__init__(levels, tile_width, tile_height,
-                                    tiles_dir, max_lru)
+        super().__init__(levels, tile_width, tile_height, tiles_dir, max_lru)
 
         # save params not saved in super()
         self.servers = servers
@@ -220,27 +206,27 @@ class Tiles(tiles.BaseTiles):
         try:
             request.urlopen(test_url)
         except urllib.error.HTTPError as e:
+            # if it's fatal, log it and die, otherwise try a proxy
             status_code = e.code
             log('Error: test_url=%s, status_code=%s'
                     % (test_url, str(status_code)))
-            if status_code == 404:
-                msg = ['',
-                       'You got a 404 error from: %s' % test_url,
-                       'You might need to check the tile addressing for this server.'
-                      ]
-                msg = '\n'.join(msg)
+            error_msg = StatusError.get(status_code, None)
+            if status_code:
+                msg = '\n'.join(['You got a %d error from: %s' % (status_code, test_url),
+                                 error_msg])
                 log(msg)
                 raise RuntimeError(msg) from None
+
             log('%s exception doing simple connection to: %s'
                     % (type(e).__name__, test_url))
             log(''.join(traceback.format_exc()))
 
             if http_proxy:
-                proxy = urllib2.ProxyHandler({'http': http_proxy})
-                opener = urllib2.build_opener(proxy)
-                urllib2.install_opener(opener)
+                proxy = request.ProxyHandler({'http': http_proxy})
+                opener = request.build_opener(proxy)
+                request.install_opener(opener)
                 try:
-                    urllib2.urlopen(test_url)
+                    request.urlopen(test_url)
                 except:
                     msg = ("Using HTTP proxy %s, "
                            "but still can't get through a firewall!")

@@ -1,32 +1,9 @@
 """
 A tile source that serves OpenStreetMap tiles from the internet.
-
-Uses pyCacheBack to provide in-memory and on-disk caching.
 """
 
 import math
-
-import pySlipQt.tiles_net as tiles
-
-
-# if we don't have log.py, don't crash
-try:
-    from pySlipQt import log
-    log = log.Log('pyslip.log')
-except AttributeError:
-    # means log already set up
-    pass
-except ImportError as e:
-    # if we don't have log.py, don't crash
-    # fake all log(), log.debug(), ... calls
-    def logit(*args, **kwargs):
-        pass
-    log = logit
-    log.debug = logit
-    log.info = logit
-    log.warn = logit
-    log.error = logit
-    log.critical = logit
+import pySlipQt.tiles_net as tiles_net
 
 
 ###############################################################################
@@ -65,10 +42,10 @@ TileHeight = 256
 TilesDir = 'modest_maps_tiles'
 
 ################################################################################
-# Class for these tiles.   Builds on tiles.BaseTiles.
+# Class for these tiles.   Builds on tiles_net.Tiles.
 ################################################################################
 
-class Tiles(tiles.Tiles):
+class Tiles(tiles_net.Tiles):
     """An object to source internet tiles for pySlip."""
 
     def __init__(self, tiles_dir=TilesDir, http_proxy=None):
@@ -78,18 +55,12 @@ class Tiles(tiles.Tiles):
         and provide the Geo2Tile() and Tile2Geo() methods.
         """
 
-#        super(Tiles, self).__init__(TileLevels, TileWidth, TileHeight,
-#                                    servers=TileServers, url_path=TileURLPath,
-#                                    max_server_requests=MaxServerRequests,
-#                                    max_lru=MaxLRU, tiles_dir=tiles_dir,
-#                                    http_proxy=http_proxy)
-        super(Tiles, self).__init__(levels=TileLevels,
-                                    tile_width=TileWidth, tile_height=TileHeight,
-                                    tiles_dir=tiles_dir, max_lru=MaxLRU,
-                                    servers=TileServers, url_path=TileURLPath,
-                                    max_server_requests=MaxServerRequests,
-                                    http_proxy=http_proxy)
-
+        super().__init__(levels=TileLevels,
+                         tile_width=TileWidth, tile_height=TileHeight,
+                         tiles_dir=tiles_dir, max_lru=MaxLRU,
+                         servers=TileServers, url_path=TileURLPath,
+                         max_server_requests=MaxServerRequests,
+                         http_proxy=http_proxy)
 
     def Geo2Tile(self, geo):
         """Convert geo to tile fractional coordinates for level in use.

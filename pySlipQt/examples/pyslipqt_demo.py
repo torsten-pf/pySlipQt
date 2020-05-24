@@ -21,37 +21,36 @@ where <options> is zero or more of:
 import os
 import sys
 import copy
-import importlib
 import getopt
 import traceback
 from functools import partial
-from tkinter_error import tkinter_error
 
 try:
-    from PyQt5.QtCore import QTimer
     from PyQt5.QtGui import QPixmap
     from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget,
                                  QAction, QGridLayout, QErrorMessage)
 except ImportError:
     msg = '*'*60 + '\nSorry, you must install PyQt5\n' + '*'*60
     print(msg)
-    tkinter_error(msg)
     sys.exit(1)
 
 try:
     import pySlipQt.pySlipQt as pySlipQt
+    import pySlipQt.gmt_local as tiles
     import pySlipQt.log as log
 except ImportError:
     msg = '*'*60 + '\nSorry, you must install pySlipQt\n' + '*'*60
     print(msg)
-    tkinter_error(msg)
     sys.exit(1)
 
 # initialize the logging system
-log = log.Log("pyslipqt.log")
+try:
+    log = log.Log('pyslip.log')
+except AttributeError:
+    # already have a log file, ignore
+    pass
 
-import pySlipQt.gmt_local as tiles
-
+# get the bits of the demo program we need
 from display_text import DisplayText
 from layer_control import LayerControl
 
@@ -62,19 +61,18 @@ from layer_control import LayerControl
 
 # demo name/version
 DemoName = 'pySlipQt %s - Demonstration' % pySlipQt.__version__
-DemoVersion = '1.0'
+DemoVersion = '1.1'
 
-DemoWidth = 800
-DemoHeight = 600
+DemoWidth = 1000
+DemoHeight = 800
 
 # initial view level and position
-#InitViewLevel = 3
-InitViewLevel = 0
+InitViewLevel = 4
 
 # this will eventually be selectable within the app
 # a selection of cities, position from WikiPedia, etc
+InitViewPosition = (0.0, 0.0)                # "Null" Island
 #InitViewPosition = (0.0, 51.48)             # Greenwich, England
-InitViewPosition = (0.0, 0.0)                #"Null" Island
 #InitViewPosition = (5.33, 60.389444)        # Bergen, Norway
 #InitViewPosition = (153.033333, -27.466667) # Brisbane, Australia
 #InitViewPosition = (98.3786761, 7.8627326)  # Phuket (ภูเก็ต), Thailand
@@ -97,9 +95,6 @@ MRPolylineShowLevels = [3, 4]
 
 # the number of decimal places in a lon/lat display
 LonLatPrecision = 3
-
-# startup size of the application
-DefaultAppSize = (1100, 770)
 
 # default deltas for various layer types
 DefaultPointMapDelta = 40
@@ -138,7 +133,9 @@ LogSym2Num = {'CRITICAL': 50,
               'DEBUG': 10,
               'NOTSET': 0}
 
-# associate the display name and module filename for each tileset used
+# list of modules containing tile sources
+# list of (<long_name>, <module_name>)
+# the <long_name>s go into the Tileselect menu
 Tilesets = [
             ('BlueMarble tiles', 'blue_marble'),
             ('GMT tiles', 'gmt_local'),
@@ -150,8 +147,9 @@ Tilesets = [
             ('Stamen Watercolor tiles', 'stamen_watercolor'),
            ]
 
-# index into Tilesets above to set default tileset
+# index into Tilesets above to set default tileset: GMT tiles
 DefaultTilesetIndex = 1
+
 
 ###############################################################################
 # A small class to manage tileset sources.
@@ -172,21 +170,21 @@ class TilesetManager:
         
         mod_list  list of module filenames to manage
 
-        The list is something like: ['osm_tiles.py', 'gmt_local.py']
+        The list is something like: ['open_street_map.py', 'gmt_local.py']
 
         We can access tilesets using the index of the module in the 'mod_list'.
         """
-        
+
         self.modules = []
         for fname in mod_list:
             self.modules.append([fname, os.path.splitext(fname)[0], None])
-    
+
     def get_tile_source(self, mod_index):
         """Get an open tileset source for given name.
 
         mod_index  index into self.modules of tileset to use
         """
-        
+
         tileset_data = self.modules[mod_index]
         (filename, modulename, tile_obj) = tileset_data
         if not tile_obj:
@@ -221,9 +219,9 @@ class PySlipQtDemo(QMainWindow):
         # build the 'controls' part of GUI
         num_rows = self.make_gui_controls(grid)
 
-        self.pyslipqt = pySlipQt.PySlipQt(self, tile_src=self.tile_source,
-                                          start_level=InitViewLevel)
-        grid.addWidget(self.pyslipqt, 0, 0, num_rows+1, 1)
+        self.pyslip = pySlipQt.PySlipQt(self, tile_src=self.tile_source,
+                                        start_level=InitViewLevel)
+        grid.addWidget(self.pyslip, 0, 0, num_rows+1, 1)
         grid.setRowStretch(num_rows, 1)
 
         # add the menus
@@ -242,10 +240,10 @@ class PySlipQtDemo(QMainWindow):
         self.sel_text_highlight = None
 
         # bind events to handlers
-        self.pyslipqt.events.EVT_PYSLIPQT_LEVEL.connect(self.level_change_event)
-        self.pyslipqt.events.EVT_PYSLIPQT_POSITION.connect(self.mouse_posn_event)
-        self.pyslipqt.events.EVT_PYSLIPQT_SELECT.connect(self.select_event)
-        self.pyslipqt.events.EVT_PYSLIPQT_BOXSELECT.connect(self.select_event)
+        self.pyslip.events.EVT_PYSLIPQT_LEVEL.connect(self.level_change_event)
+        self.pyslip.events.EVT_PYSLIPQT_POSITION.connect(self.mouse_posn_event)
+        self.pyslip.events.EVT_PYSLIPQT_SELECT.connect(self.select_event)
+        self.pyslip.events.EVT_PYSLIPQT_BOXSELECT.connect(self.select_event)
 
         # set the size of the demo window, etc
         self.setGeometry(300, 300, DemoWidth, DemoHeight)
@@ -253,7 +251,11 @@ class PySlipQtDemo(QMainWindow):
         self.show()
 
         # set initial view position
-        self.pyslipqt.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
+        self.pyslip.GotoLevelAndPosition(InitViewLevel, InitViewPosition)
+
+#####
+# Build the GUI
+#####
 
     def make_gui_controls(self, grid):
         """Build the 'controls' part of the GUI
@@ -371,6 +373,7 @@ class PySlipQtDemo(QMainWindow):
     def initMenu(self):
         """Add the 'Tilesets' menu to the app."""
 
+        # create tileset menuitems
         menubar = self.menuBar()
         tilesets = menubar.addMenu('Tilesets')
 
@@ -395,7 +398,7 @@ class PySlipQtDemo(QMainWindow):
 
     def init_tiles(self):
         """Initialize the tileset manager.
-        
+
         Return a reference to the manager object.
         """
 
@@ -411,6 +414,9 @@ class PySlipQtDemo(QMainWindow):
         menu_id  the index in self.id2tiledata of the required tileset
         """
 
+        log('change_tileset: menu_id=%s' % str(menu_id))
+        log('id2tiledata[]=%s' % str(self.id2tiledata))
+
         # ensure only one tileset is checked in the menu, the required one
         for (key, tiledata) in self.id2tiledata.items():
             (name, module_name, action, tile_obj) = tiledata
@@ -424,16 +430,26 @@ class PySlipQtDemo(QMainWindow):
             raise RuntimeError('self.id2tiledata is badly formed:\n%s'
                                % str(self.id2tiledata))
 
+        log('name=%s, module_name=%s, new_tile_obj=%s'
+                % (str(name), str(module_name), str(new_tile_obj)))
+
         if new_tile_obj is None:
+            # haven't seen this tileset before, import and instantiate
+            log("importing '%s' from pySlipQt" % str(module_name))
             obj = __import__('pySlipQt', globals(), locals(), [module_name])
+            log('imported module=%s' % str(obj))
+            log('imported module=%s' % str(dir(obj)))
             tileset = getattr(obj, module_name)
+            log('tileset=%s' % str(tileset))
             tile_name = tileset.TilesetName
+            log('tile_name=%s' % str(tile_name))
             new_tile_obj = tileset.Tiles()
 
             # update the self.id2tiledata element
             self.id2tiledata[menu_id] = (name, module_name, action, new_tile_obj)
 
-        self.pyslipqt.ChangeTileset(new_tile_obj)
+        log('Before .ChangeTileset, new_tile_obj=%s' % str(new_tile_obj))
+        self.pyslip.ChangeTileset(new_tile_obj)
 
     def onClose(self):
         """Application is closing."""
@@ -442,8 +458,253 @@ class PySlipQtDemo(QMainWindow):
 
         #self.Close(True)
 
+    def make_gui_level(self, parent):
+        """Build the control that shows the level.
+
+        parent  reference to parent
+
+        Returns reference to containing sizer object.
+        """
+
+        # create objects
+        txt = wx.StaticText(parent, wx.ID_ANY, 'Level: ')
+        self.map_level = ROTextCtrl(parent, '', size=(30,-1),
+                                    tooltip='Shows map zoom level')
+
+        # lay out the controls
+        sb = AppStaticBox(parent, 'Map level')
+        box = wx.StaticBoxSizer(sb, orient=wx.HORIZONTAL)
+        box.Add(txt, border=PackBorder, flag=(wx.ALIGN_CENTER_VERTICAL
+                                              |wx.ALIGN_RIGHT|wx.LEFT))
+        box.Add(self.map_level, proportion=0, border=PackBorder,
+                flag=wx.LEFT|wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
+
+        return box
+
+    def make_gui_mouse(self, parent):
+        """Build the mouse part of the controls part of GUI.
+
+        parent  reference to parent
+
+        Returns reference to containing sizer object.
+        """
+
+        # create objects
+        txt = wx.StaticText(parent, wx.ID_ANY, 'Lon/Lat: ')
+        self.mouse_position = ROTextCtrl(parent, '', size=(120,-1),
+                                         tooltip=('Shows the mouse '
+                                                  'longitude and latitude '
+                                                  'on the map'))
+
+        # lay out the controls
+        sb = AppStaticBox(parent, 'Mouse position')
+        box = wx.StaticBoxSizer(sb, orient=wx.HORIZONTAL)
+        box.Add(txt, border=PackBorder, flag=(wx.ALIGN_CENTER_VERTICAL
+                                     |wx.ALIGN_RIGHT|wx.LEFT))
+        box.Add(self.mouse_position, proportion=0, border=PackBorder,
+                flag=wx.RIGHT|wx.TOP|wx.BOTTOM)
+
+        return box
+
+    def make_gui_point(self, parent):
+        """Build the points part of the controls part of GUI.
+
+        parent  reference to parent
+
+        Returns reference to containing sizer object.
+        """
+
+        # create widgets
+        point_obj = LayerControl(parent, 'Points, map relative %s'
+                                         % str(MRPointShowLevels),
+                                 selectable=True)
+
+        # tie to event handler(s)
+        point_obj.Bind(EVT_ONOFF, self.pointOnOff)
+        point_obj.Bind(EVT_SHOWONOFF, self.pointShowOnOff)
+        point_obj.Bind(EVT_SELECTONOFF, self.pointSelectOnOff)
+
+        return point_obj
+
+    def make_gui_point_view(self, parent):
+        """Build the view-relative points part of the GUI.
+
+        parent  reference to parent
+
+        Returns reference to containing sizer object.
+        """
+
+        # create widgets
+        point_obj = LayerControl(parent, 'Points, view relative',
+                                 selectable=True)
+
+        # tie to event handler(s)
+        point_obj.Bind(EVT_ONOFF, self.pointViewOnOff)
+        point_obj.Bind(EVT_SHOWONOFF, self.pointViewShowOnOff)
+        point_obj.Bind(EVT_SELECTONOFF, self.pointViewSelectOnOff)
+
+        return point_obj
+
+    def make_gui_image(self, parent):
+        """Build the image part of the controls part of GUI.
+
+        parent  reference to parent
+
+        Returns reference to containing sizer object.
+        """
+
+        # create widgets
+        image_obj = LayerControl(parent, 'Images, map relative %s'
+                                         % str(MRImageShowLevels),
+                                 selectable=True)
+
+        # tie to event handler(s)
+        image_obj.Bind(EVT_ONOFF, self.imageOnOff)
+        image_obj.Bind(EVT_SHOWONOFF, self.imageShowOnOff)
+        image_obj.Bind(EVT_SELECTONOFF, self.imageSelectOnOff)
+
+        return image_obj
+
+    def make_gui_image_view(self, parent):
+        """Build the view-relative image part of the controls part of GUI.
+
+        parent  reference to parent
+
+        Returns reference to containing sizer object.
+        """
+
+        # create widgets
+        image_obj = LayerControl(parent, 'Images, view relative',
+                                 selectable=True)
+
+        # tie to event handler(s)
+        image_obj.Bind(EVT_ONOFF, self.imageViewOnOff)
+        image_obj.Bind(EVT_SHOWONOFF, self.imageViewShowOnOff)
+        image_obj.Bind(EVT_SELECTONOFF, self.imageViewSelectOnOff)
+
+        return image_obj
+
+    def make_gui_text(self, parent):
+        """Build the map-relative text part of the controls part of GUI.
+
+        parent  reference to parent
+
+        Returns reference to containing sizer object.
+        """
+
+        # create widgets
+        text_obj = LayerControl(parent,
+                                'Text, map relative %s' % str(MRTextShowLevels),
+                                selectable=True, editable=False)
+
+        # tie to event handler(s)
+        text_obj.Bind(EVT_ONOFF, self.textOnOff)
+        text_obj.Bind(EVT_SHOWONOFF, self.textShowOnOff)
+        text_obj.Bind(EVT_SELECTONOFF, self.textSelectOnOff)
+
+        return text_obj
+
+    def make_gui_text_view(self, parent):
+        """Build the view-relative text part of the controls part of GUI.
+
+        parent  reference to parent
+
+        Returns reference to containing sizer object.
+        """
+
+        # create widgets
+        text_view_obj = LayerControl(parent, 'Text, view relative',
+                                     selectable=True)
+
+        # tie to event handler(s)
+        text_view_obj.Bind(EVT_ONOFF, self.textViewOnOff)
+        text_view_obj.Bind(EVT_SHOWONOFF, self.textViewShowOnOff)
+        text_view_obj.Bind(EVT_SELECTONOFF, self.textViewSelectOnOff)
+
+        return text_view_obj
+
+    def make_gui_poly(self, parent):
+        """Build the map-relative polygon part of the controls part of GUI.
+
+        parent  reference to parent
+
+        Returns reference to containing sizer object.
+        """
+
+        # create widgets
+        poly_obj = LayerControl(parent,
+                                'Polygon, map relative %s'
+                                     % str(MRPolyShowLevels),
+                                selectable=True)
+
+        # tie to event handler(s)
+        poly_obj.Bind(EVT_ONOFF, self.polyOnOff)
+        poly_obj.Bind(EVT_SHOWONOFF, self.polyShowOnOff)
+        poly_obj.Bind(EVT_SELECTONOFF, self.polySelectOnOff)
+
+        return poly_obj
+
+    def make_gui_poly_view(self, parent):
+        """Build the view-relative polygon part of the controls part of GUI.
+
+        parent  reference to parent
+
+        Returns reference to containing sizer object.
+        """
+
+        # create widgets
+        poly_view_obj = LayerControl(parent, 'Polygon, view relative',
+                                     selectable=True)
+
+        # tie to event handler(s)
+        poly_view_obj.Bind(EVT_ONOFF, self.polyViewOnOff)
+        poly_view_obj.Bind(EVT_SHOWONOFF, self.polyViewShowOnOff)
+        poly_view_obj.Bind(EVT_SELECTONOFF, self.polyViewSelectOnOff)
+
+        return poly_view_obj
+
+    def make_gui_polyline(self, parent):
+        """Build the map-relative polyline part of the controls part of GUI.
+
+        parent  reference to parent
+
+        Returns reference to containing sizer object.
+        """
+
+        # create widgets
+        poly_obj = LayerControl(parent,
+                                'Polyline, map relative %s'
+                                     % str(MRPolyShowLevels),
+                                selectable=True)
+
+        # tie to event handler(s)
+        poly_obj.Bind(EVT_ONOFF, self.polylineOnOff)
+        poly_obj.Bind(EVT_SHOWONOFF, self.polylineShowOnOff)
+        poly_obj.Bind(EVT_SELECTONOFF, self.polylineSelectOnOff)
+
+        return poly_obj
+
+    def make_gui_polyline_view(self, parent):
+        """Build the view-relative polyline part of the controls part of GUI.
+
+        parent  reference to parent
+
+        Returns reference to containing sizer object.
+        """
+
+        # create widgets
+        poly_view_obj = LayerControl(parent, 'Polyline, view relative',
+                                     selectable=True)
+
+        # tie to event handler(s)
+        poly_view_obj.Bind(EVT_ONOFF, self.polylineViewOnOff)
+        poly_view_obj.Bind(EVT_SHOWONOFF, self.polylineViewShowOnOff)
+        poly_view_obj.Bind(EVT_SELECTONOFF, self.polylineViewSelectOnOff)
+
+        return poly_view_obj
+
     ######
-    # pySlipQt demo control event handlers
+    # demo control event handlers
     ######
 
 ##### map-relative point layer
@@ -454,24 +715,24 @@ class PySlipQtDemo(QMainWindow):
         if event:
             # event is True, so we are adding the maprel point layer
             self.point_layer = \
-                self.pyslipqt.AddPointLayer(PointData, map_rel=True,
-                                            colour=PointDataColour, radius=3,
-                                            # offset points to exercise placement
-                                            offset_x=0, offset_y=0, visible=True,
-                                            show_levels=MRPointShowLevels,
-                                            delta=DefaultPointMapDelta,
-                                            placement='nw',   # check placement
-                                            name='<pt_layer>')
+                self.pyslip.AddPointLayer(PointData, map_rel=True,
+                                          colour=PointDataColour, radius=3,
+                                          # offset points to exercise placement
+                                          offset_x=0, offset_y=0, visible=True,
+                                          show_levels=MRPointShowLevels,
+                                          delta=DefaultPointMapDelta,
+                                          placement='nw',   # check placement
+                                          name='<pt_layer>')
         else:
             # event is False, so we are removing the maprel point layer
             self.lc_point.set_show(True)       # set control state to 'normal'
             self.lc_point.set_select(False)
 
-            self.pyslipqt.DeleteLayer(self.point_layer)
+            self.pyslip.DeleteLayer(self.point_layer)
             self.point_layer = None
 
             if self.sel_point_layer:
-                self.pyslipqt.DeleteLayer(self.sel_point_layer)
+                self.pyslip.DeleteLayer(self.sel_point_layer)
                 self.sel_point_layer = None
                 self.sel_point = None
 
@@ -479,31 +740,27 @@ class PySlipQtDemo(QMainWindow):
         """Handle ShowOnOff event for point layer control."""
 
         if event:
-            # if True, user selected "Show"
-            self.pyslipqt.ShowLayer(self.point_layer)
+            self.pyslip.ShowLayer(self.point_layer)
             if self.sel_point_layer:
-                self.pyslipqt.ShowLayer(self.sel_point_layer)
+                self.pyslip.ShowLayer(self.sel_point_layer)
         else:
-            # if False, user unselected "SHow"
-            self.pyslipqt.HideLayer(self.point_layer)
+            self.pyslip.HideLayer(self.point_layer)
             if self.sel_point_layer:
-                self.pyslipqt.HideLayer(self.sel_point_layer)
+                self.pyslip.HideLayer(self.sel_point_layer)
 
     def pointSelectOnOff(self, event):
         """Handle SelectOnOff event for point layer control."""
 
         layer = self.point_layer
         if event:
-            # if True, user selected "Selectable"
             self.add_select_handler(layer, self.pointSelect)
-            self.pyslipqt.SetLayerSelectable(layer, True)
+            self.pyslip.SetLayerSelectable(layer, True)
         else:
-            # if True, user unselected "Selectable"
             self.del_select_handler(layer)
-            self.pyslipqt.SetLayerSelectable(layer, False)
+            self.pyslip.SetLayerSelectable(layer, False)
 
     def pointSelect(self, event):
-        """Handle map-relative point select exception from pySlipQt.
+        """Handle map-relative point select exception from the widget.
 
         event.type       the layer type the select occurred on
         event.layer_id   ID of the layer the select occurred on
@@ -515,27 +772,25 @@ class PySlipQtDemo(QMainWindow):
 
         The selection could be a single or box select.
 
-        The select is designed to be select point(s) for on, then select
+        The point select is designed to be select point(s) for on, then select
         point(s) again for off.  Clicking away from the already selected point
         doesn't remove previously selected point(s) if nothing is selected.  We
         do this to show the selection/deselection of point(s) is up to the user,
-        not pySlipQt.
+        not the widget.
 
         This code also shows how to combine handling of EventSelect and
         EventBoxSelect events.
         """
 
-        self.dump_event('pointSelect:', event)
-
         if event.selection == self.sel_point:
             # same point(s) selected again, turn point(s) off
-            self.pyslipqt.DeleteLayer(self.sel_point_layer)
+            self.pyslip.DeleteLayer(self.sel_point_layer)
             self.sel_point_layer = None
             self.sel_point = None
         elif event.selection:
             # some other point(s) selected, delete previous selection, if any
             if self.sel_point_layer:
-                self.pyslipqt.DeleteLayer(self.sel_point_layer)
+                self.pyslip.DeleteLayer(self.sel_point_layer)
 
             # remember selection (need copy as highlight modifies attributes)
             self.sel_point = copy.deepcopy(event.selection)
@@ -555,15 +810,15 @@ class PySlipQtDemo(QMainWindow):
 
             # layer with highlight of selected poijnts
             self.sel_point_layer = \
-                self.pyslipqt.AddPointLayer(highlight, map_rel=True,
-                                            colour=selcolour,
-                                            radius=5, visible=True,
-                                            show_levels=MRPointShowLevels,
-                                            name='<sel_pt_layer>')
+                self.pyslip.AddPointLayer(highlight, map_rel=True,
+                                          colour=selcolour,
+                                          radius=5, visible=True,
+                                          show_levels=MRPointShowLevels,
+                                          name='<sel_pt_layer>')
 
             # make sure highlight layer is BELOW selected layer
-            self.pyslipqt.PlaceLayerBelowLayer(self.sel_point_layer,
-                                               self.point_layer)
+            self.pyslip.PlaceLayerBelowLayer(self.sel_point_layer,
+                                             self.point_layer)
         # else: we ignore an empty selection
 
         return True
@@ -575,20 +830,20 @@ class PySlipQtDemo(QMainWindow):
 
         if event:
             self.point_view_layer = \
-                self.pyslipqt.AddPointLayer(PointViewData, map_rel=False,
-                                            placement=PointViewDataPlacement,
-                                            colour=PointViewDataColour, radius=1,
-                                            delta=DefaultPointViewDelta,
-                                            visible=True,
-                                            name='<point_view_layer>')
+                self.pyslip.AddPointLayer(PointViewData, map_rel=False,
+                                          placement=PointViewDataPlacement,
+                                          colour=PointViewDataColour, radius=1,
+                                          delta=DefaultPointViewDelta,
+                                          visible=True,
+                                          name='<point_view_layer>')
         else:
             self.lc_point_v.set_show(True)       # set control state to 'normal'
             self.lc_point_v.set_select(False)
 
-            self.pyslipqt.DeleteLayer(self.point_view_layer)
+            self.pyslip.DeleteLayer(self.point_view_layer)
             self.point_view_layer = None
             if self.sel_point_view_layer:
-                self.pyslipqt.DeleteLayer(self.sel_point_view_layer)
+                self.pyslip.DeleteLayer(self.sel_point_view_layer)
                 self.sel_point_view_layer = None
                 self.sel_point_view = None
 
@@ -596,13 +851,13 @@ class PySlipQtDemo(QMainWindow):
         """Handle ShowOnOff event for point view layer control."""
 
         if event:
-            self.pyslipqt.ShowLayer(self.point_view_layer)
+            self.pyslip.ShowLayer(self.point_view_layer)
             if self.sel_point_view_layer:
-                self.pyslipqt.ShowLayer(self.sel_point_view_layer)
+                self.pyslip.ShowLayer(self.sel_point_view_layer)
         else:
-            self.pyslipqt.HideLayer(self.point_view_layer)
+            self.pyslip.HideLayer(self.point_view_layer)
             if self.sel_point_view_layer:
-                self.pyslipqt.HideLayer(self.sel_point_view_layer)
+                self.pyslip.HideLayer(self.sel_point_view_layer)
 
     def pointViewSelectOnOff(self, event):
         """Handle SelectOnOff event for point view layer control."""
@@ -610,13 +865,13 @@ class PySlipQtDemo(QMainWindow):
         layer = self.point_view_layer
         if event:
             self.add_select_handler(layer, self.pointViewSelect)
-            self.pyslipqt.SetLayerSelectable(layer, True)
+            self.pyslip.SetLayerSelectable(layer, True)
         else:
             self.del_select_handler(layer)
-            self.pyslipqt.SetLayerSelectable(layer, False)
+            self.pyslip.SetLayerSelectable(layer, False)
 
     def pointViewSelect(self, event):
-        """Handle view-relative point select exception from pySlipQt.
+        """Handle view-relative point select exception from the widget.
 
         event.type       the event type
         event.layer_id   the ID of the layer that was selected
@@ -633,12 +888,10 @@ class PySlipQtDemo(QMainWindow):
 
         # if there is a previous selection, remove it
         if self.sel_point_view_layer:
-            self.pyslipqt.DeleteLayer(self.sel_point_view_layer)
+            self.pyslip.DeleteLayer(self.sel_point_view_layer)
             self.sel_point_view_layer = None
 
         if event.selection and event.selection != self.sel_point_view:
-#            (points, _) = event.selection
-
             # it's a box selection
             self.sel_point_view = event.selection
 
@@ -651,11 +904,11 @@ class PySlipQtDemo(QMainWindow):
 
             # assume a box selection
             self.sel_point_view_layer = \
-                self.pyslipqt.AddPointLayer(highlight, map_rel=False,
-                                            placement='se',
-                                            colour='#0000ff',
-                                            radius=3, visible=True,
-                                            name='<sel_pt_view_layer>')
+                self.pyslip.AddPointLayer(highlight, map_rel=False,
+                                          placement='se',
+                                          colour='#0000ff',
+                                          radius=3, visible=True,
+                                          name='<sel_pt_view_layer>')
         else:
             self.sel_point_view = None
 
@@ -668,19 +921,19 @@ class PySlipQtDemo(QMainWindow):
 
         if event:
             self.image_layer = \
-                self.pyslipqt.AddImageLayer(ImageData, map_rel=True,
-                                            visible=True,
-                                            delta=DefaultImageMapDelta,
-                                            show_levels=MRImageShowLevels,
-                                            name='<image_layer>')
+                self.pyslip.AddImageLayer(ImageData, map_rel=True,
+                                          visible=True,
+                                          delta=DefaultImageMapDelta,
+                                          show_levels=MRImageShowLevels,
+                                          name='<image_layer>')
         else:
             self.lc_image.set_show(True)       # set control state to 'normal'
             self.lc_image.set_select(False)
 
-            self.pyslipqt.DeleteLayer(self.image_layer)
+            self.pyslip.DeleteLayer(self.image_layer)
             self.image_layer = None
             if self.sel_image_layer:
-                self.pyslipqt.DeleteLayer(self.sel_image_layer)
+                self.pyslip.DeleteLayer(self.sel_image_layer)
                 self.sel_image_layer = None
                 self.sel_image = None
 
@@ -688,13 +941,13 @@ class PySlipQtDemo(QMainWindow):
         """Handle ShowOnOff event for image layer control."""
 
         if event:
-            self.pyslipqt.ShowLayer(self.image_layer)
+            self.pyslip.ShowLayer(self.image_layer)
             if self.sel_image_layer:
-                self.pyslipqt.ShowLayer(self.sel_image_layer)
+                self.pyslip.ShowLayer(self.sel_image_layer)
         else:
-            self.pyslipqt.HideLayer(self.image_layer)
+            self.pyslip.HideLayer(self.image_layer)
             if self.sel_image_layer:
-                self.pyslipqt.HideLayer(self.sel_image_layer)
+                self.pyslip.HideLayer(self.sel_image_layer)
 
     def imageSelectOnOff(self, event):
         """Handle SelectOnOff event for image layer control."""
@@ -702,13 +955,13 @@ class PySlipQtDemo(QMainWindow):
         layer = self.image_layer
         if event:
             self.add_select_handler(layer, self.imageSelect)
-            self.pyslipqt.SetLayerSelectable(layer, True)
+            self.pyslip.SetLayerSelectable(layer, True)
         else:
             self.del_select_handler(layer)
-            self.pyslipqt.SetLayerSelectable(layer, False)
+            self.pyslip.SetLayerSelectable(layer, False)
 
     def imageSelect(self, event):
-        """Select event from pySlipQt.
+        """Select event from the widget.
 
         event.type       the type of point selection: single or box
         event.selection  tuple (selection, data, relsel)
@@ -718,23 +971,20 @@ class PySlipQtDemo(QMainWindow):
         The selection could be a single or box select.
         """
 
-        selection = event.selection
         #relsel = event.relsel
 
         # select again, turn selection off
         if event.selection == self.sel_image:
-            self.pyslipqt.DeleteLayer(self.sel_image_layer)
+            self.pyslip.DeleteLayer(self.sel_image_layer)
             self.sel_image_layer = self.sel_image = None
         elif event.selection:
-#            (sel_points, _) = event.selection
             # new image selected, show highlight
             if self.sel_image_layer:
-                self.pyslipqt.DeleteLayer(self.sel_image_layer)
+                self.pyslip.DeleteLayer(self.sel_image_layer)
             self.sel_image = event.selection
 
             # get selected points into form for display layer
             new_points = []
-            #for (x, y, im, d) in sel_points:
             for p in event.selection:
                 (x, y, d) = p
                 del d['colour']
@@ -742,22 +992,22 @@ class PySlipQtDemo(QMainWindow):
                 new_points.append((x, y, d))
 
             self.sel_image_layer = \
-                self.pyslipqt.AddPointLayer(new_points, map_rel=True,
-                                            colour='#0000ff',
-                                            radius=5, visible=True,
-                                            show_levels=[3,4],
-                                            name='<sel_pt_layer>')
-            self.pyslipqt.PlaceLayerBelowLayer(self.sel_image_layer,
-                                               self.image_layer)
+                self.pyslip.AddPointLayer(new_points, map_rel=True,
+                                          colour='#0000ff',
+                                          radius=5, visible=True,
+                                          show_levels=[3,4],
+                                          name='<sel_pt_layer>')
+            self.pyslip.PlaceLayerBelowLayer(self.sel_image_layer,
+                                             self.image_layer)
 
         return True
 
     def imageBSelect(self, id, selection=None):
-        """Select event from pySlipQt."""
+        """Select event from the widget."""
 
         # remove any previous selection
         if self.sel_image_layer:
-            self.pyslipqt.DeleteLayer(self.sel_image_layer)
+            self.pyslip.DeleteLayer(self.sel_image_layer)
             self.sel_image_layer = None
 
         if selection:
@@ -769,58 +1019,58 @@ class PySlipQtDemo(QMainWindow):
                 points.append((x, y, d))
 
             self.sel_image_layer = \
-                self.pyslipqt.AddPointLayer(points, map_rel=True,
-                                            colour='#e0e0e0',
-                                            radius=13, visible=True,
-                                            show_levels=[3,4],
-                                            name='<boxsel_img_layer>')
-            self.pyslipqt.PlaceLayerBelowLayer(self.sel_image_layer,
-                                               self.image_layer)
+                self.pyslip.AddPointLayer(points, map_rel=True,
+                                          colour='#e0e0e0',
+                                          radius=13, visible=True,
+                                          show_levels=[3,4],
+                                          name='<boxsel_img_layer>')
+            self.pyslip.PlaceLayerBelowLayer(self.sel_image_layer,
+                                             self.image_layer)
 
         return True
 
 ##### view-relative image layer
 
-    def imageViewOnOff(self, add):
+    def imageViewOnOff(self, event):
         """Handle OnOff event for view-relative image layer control.
         
-        add  the state of the leyer control master checkbox
+        event  the state of the leyer control master checkbox
         """
 
-        if add:
+        if event:
             self.image_view_layer = \
-                self.pyslipqt.AddImageLayer(ImageViewData, map_rel=False,
-                                            delta=DefaultImageViewDelta,
-                                            visible=True,
-                                            name='<image_view_layer>')
+                self.pyslip.AddImageLayer(ImageViewData, map_rel=False,
+                                          delta=DefaultImageViewDelta,
+                                          visible=True,
+                                          name='<image_view_layer>')
         else:
             self.lc_image_v.set_show(True)       # set control state to 'normal'
             self.lc_image_v.set_select(False)
 
-            self.pyslipqt.DeleteLayer(self.image_view_layer)
+            self.pyslip.DeleteLayer(self.image_view_layer)
             self.image_view_layer = None
             if self.sel_image_view_layer:
-                self.pyslipqt.DeleteLayer(self.sel_image_view_layer)
+                self.pyslip.DeleteLayer(self.sel_image_view_layer)
                 self.sel_image_view_layer = None
             if self.sel_imagepoint_view_layer:
-                self.pyslipqt.DeleteLayer(self.sel_imagepoint_view_layer)
+                self.pyslip.DeleteLayer(self.sel_imagepoint_view_layer)
                 self.sel_imagepoint_view_layer = None
 
     def imageViewShowOnOff(self, event):
         """Handle ShowOnOff event for image layer control."""
 
         if event:
-            self.pyslipqt.ShowLayer(self.image_view_layer)
+            self.pyslip.ShowLayer(self.image_view_layer)
             if self.sel_image_view_layer:
-                self.pyslipqt.ShowLayer(self.sel_image_view_layer)
+                self.pyslip.ShowLayer(self.sel_image_view_layer)
             if self.sel_imagepoint_view_layer:
-                self.pyslipqt.ShowLayer(self.sel_imagepoint_view_layer)
+                self.pyslip.ShowLayer(self.sel_imagepoint_view_layer)
         else:
-            self.pyslipqt.HideLayer(self.image_view_layer)
+            self.pyslip.HideLayer(self.image_view_layer)
             if self.sel_image_view_layer:
-                self.pyslipqt.HideLayer(self.sel_image_view_layer)
+                self.pyslip.HideLayer(self.sel_image_view_layer)
             if self.sel_imagepoint_view_layer:
-                self.pyslipqt.HideLayer(self.sel_imagepoint_view_layer)
+                self.pyslip.HideLayer(self.sel_imagepoint_view_layer)
 
     def imageViewSelectOnOff(self, event):
         """Handle SelectOnOff event for image layer control."""
@@ -828,13 +1078,13 @@ class PySlipQtDemo(QMainWindow):
         layer = self.image_view_layer
         if event:
             self.add_select_handler(layer, self.imageViewSelect)
-            self.pyslipqt.SetLayerSelectable(layer, True)
+            self.pyslip.SetLayerSelectable(layer, True)
         else:
             self.del_select_handler(layer)
-            self.pyslipqt.SetLayerSelectable(layer, False)
+            self.pyslip.SetLayerSelectable(layer, False)
 
     def imageViewSelect(self, event):
-        """View-relative image select event from pySlipQt.
+        """View-relative image select event from the widget.
 
         event  the event that contains these attributes:
                    selection  [list of] tuple (xgeo,ygeo) of selected point
@@ -853,16 +1103,15 @@ class PySlipQtDemo(QMainWindow):
         with debugging, as we can move the compass rose anywhere we like.
         """
 
-        point = event.vposn
         selection = event.selection
-        relsel = event.relsel
+        relsel = event.relsel       # None if box select
 
         # only one image selectable, remove old selections (if any)
         if self.sel_image_view_layer:
-            self.pyslipqt.DeleteLayer(self.sel_image_view_layer)
+            self.pyslip.DeleteLayer(self.sel_image_view_layer)
             self.sel_image_view_layer = None
         if self.sel_imagepoint_view_layer:
-            self.pyslipqt.DeleteLayer(self.sel_imagepoint_view_layer)
+            self.pyslip.DeleteLayer(self.sel_imagepoint_view_layer)
             self.sel_imagepoint_view_layer = None
 
         if selection:
@@ -894,16 +1143,16 @@ class PySlipQtDemo(QMainWindow):
 
                 point = eval(point_place_coords[img_placement])
                 self.sel_imagepoint_view_layer = \
-                    self.pyslipqt.AddPointLayer((point,), map_rel=False,
-                                                colour='green',
-                                                radius=5, visible=True,
-                                                placement=img_placement,
-                                                name='<sel_image_view_point>')
+                    self.pyslip.AddPointLayer((point,), map_rel=False,
+                                              colour='green',
+                                              radius=5, visible=True,
+                                              placement=img_placement,
+                                              name='<sel_image_view_point>')
 
             # add polygon outline around image
             p_dict = {'placement': img_placement, 'width': 3, 'colour': 'green', 'closed': True}
             poly_place_coords = {'ne': '(((-CR_Width,0),(0,0),(0,CR_Height),(-CR_Width,CR_Height)),p_dict)',
-                                'ce': '(((-CR_Width,-CR_Height/2.0),(0,-CR_Height/2.0),(0,CR_Height/2.0),(-CR_Width,CR_Height/2.0)),p_dict)',
+                                 'ce': '(((-CR_Width,-CR_Height/2.0),(0,-CR_Height/2.0),(0,CR_Height/2.0),(-CR_Width,CR_Height/2.0)),p_dict)',
                                  'se': '(((-CR_Width,-CR_Height),(0,-CR_Height),(0,0),(-CR_Width,0)),p_dict)',
                                  'cs': '(((-CR_Width/2.0,-CR_Height),(CR_Width/2.0,-CR_Height),(CR_Width/2.0,0),(-CR_Width/2.0,0)),p_dict)',
                                  'sw': '(((0,-CR_Height),(CR_Width,-CR_Height),(CR_Width,0),(0,0)),p_dict)',
@@ -916,9 +1165,9 @@ class PySlipQtDemo(QMainWindow):
                                 }
             pdata = eval(poly_place_coords[img_placement])
             self.sel_image_view_layer = \
-                self.pyslipqt.AddPolygonLayer((pdata,), map_rel=False,
-                                              name='<sel_image_view_outline>',
-                                             )
+                self.pyslip.AddPolygonLayer((pdata,), map_rel=False,
+                                            name='<sel_image_view_outline>',
+                                           )
 
         return True
 
@@ -929,18 +1178,17 @@ class PySlipQtDemo(QMainWindow):
 
         if event:
             self.text_layer = \
-                self.pyslipqt.AddTextLayer(TextData, map_rel=True,
-                                           name='<text_layer>', visible=True,
-                                           delta=DefaultTextMapDelta,
-                                           show_levels=MRTextShowLevels,
-                                           placement='ne')
+                self.pyslip.AddTextLayer(TextData, map_rel=True,
+                                         name='<text_layer>', visible=True,
+                                         delta=DefaultTextMapDelta,
+                                         show_levels=MRTextShowLevels,
+                                         placement='ne')
         else:
             self.lc_text.set_show(True)       # set control state to 'normal'
             self.lc_text.set_select(False)
-
-            self.pyslipqt.DeleteLayer(self.text_layer)
+            self.pyslip.DeleteLayer(self.text_layer)
             if self.sel_text_layer:
-                self.pyslipqt.DeleteLayer(self.sel_text_layer)
+                self.pyslip.DeleteLayer(self.sel_text_layer)
                 self.sel_text_layer = None
                 self.sel_text_highlight = None
 
@@ -949,14 +1197,14 @@ class PySlipQtDemo(QMainWindow):
 
         if event:
             if self.text_layer:
-                self.pyslipqt.ShowLayer(self.text_layer)
+                self.pyslip.ShowLayer(self.text_layer)
             if self.sel_text_layer:
-                self.pyslipqt.ShowLayer(self.sel_text_layer)
+                self.pyslip.ShowLayer(self.sel_text_layer)
         else:
             if self.text_layer:
-                self.pyslipqt.HideLayer(self.text_layer)
+                self.pyslip.HideLayer(self.text_layer)
             if self.sel_text_layer:
-                self.pyslipqt.HideLayer(self.sel_text_layer)
+                self.pyslip.HideLayer(self.sel_text_layer)
 
     def textSelectOnOff(self, event):
         """Handle SelectOnOff event for text layer control."""
@@ -964,14 +1212,14 @@ class PySlipQtDemo(QMainWindow):
         layer = self.text_layer
         if event:
             self.add_select_handler(layer, self.textSelect)
-            self.pyslipqt.SetLayerSelectable(layer, True)
+            self.pyslip.SetLayerSelectable(layer, True)
         else:
             self.del_select_handler(layer)
-            self.pyslipqt.SetLayerSelectable(layer, False)
+            self.pyslip.SetLayerSelectable(layer, False)
 
 
     def textSelect(self, event):
-        """Map-relative text select event from pySlipQt.
+        """Map-relative text select event from the widget.
 
         event.type       the type of point selection: single or box
         event.selection  [list of] tuple (xgeo,ygeo) of selected point
@@ -986,7 +1234,8 @@ class PySlipQtDemo(QMainWindow):
         selection = event.selection
 
         if self.sel_text_layer:
-            self.pyslipqt.DeleteLayer(self.sel_text_layer)
+            # turn previously selected point(s) off
+            self.pyslip.DeleteLayer(self.sel_text_layer)
             self.sel_text_layer = None
 
         if selection:
@@ -1000,13 +1249,13 @@ class PySlipQtDemo(QMainWindow):
                 points.append((x, y, d))
 
             self.sel_text_layer = \
-                self.pyslipqt.AddPointLayer(points, map_rel=True,
-                                            colour='#0000ff',
-                                            radius=5, visible=True,
-                                            show_levels=MRTextShowLevels,
-                                            name='<sel_text_layer>')
-            self.pyslipqt.PlaceLayerBelowLayer(self.sel_text_layer,
-                                               self.text_layer)
+                self.pyslip.AddPointLayer(points, map_rel=True,
+                                          colour='#0000ff',
+                                          radius=5, visible=True,
+                                          show_levels=MRTextShowLevels,
+                                          name='<sel_text_layer>')
+            self.pyslip.PlaceLayerBelowLayer(self.sel_text_layer,
+                                             self.text_layer)
 
         return True
 
@@ -1017,35 +1266,35 @@ class PySlipQtDemo(QMainWindow):
 
         if event:
             self.text_view_layer = \
-                self.pyslipqt.AddTextLayer(TextViewData, map_rel=False,
-                                           name='<text_view_layer>',
-                                           delta=DefaultTextViewDelta,
-                                           placement=TextViewDataPlace,
-                                           visible=True,
-                                           fontsize=24, textcolour='#0000ff',
-                                           offset_x=TextViewDataOffX,
-                                           offset_y=TextViewDataOffY)
+                self.pyslip.AddTextLayer(TextViewData, map_rel=False,
+                                         name='<text_view_layer>',
+                                         delta=DefaultTextViewDelta,
+                                         placement=TextViewDataPlace,
+                                         visible=True,
+                                         fontsize=24, textcolour='#0000ff',
+                                         offset_x=TextViewDataOffX,
+                                         offset_y=TextViewDataOffY)
         else:
             self.lc_text_v.set_show(True)       # set control state to 'normal'
             self.lc_text_v.set_select(False)
 
-            self.pyslipqt.DeleteLayer(self.text_view_layer)
+            self.pyslip.DeleteLayer(self.text_view_layer)
             self.text_view_layer = None
             if self.sel_text_view_layer:
-                self.pyslipqt.DeleteLayer(self.sel_text_view_layer)
+                self.pyslip.DeleteLayer(self.sel_text_view_layer)
                 self.sel_text_view_layer = None
 
     def textViewShowOnOff(self, event):
         """Handle ShowOnOff event for view text layer control."""
 
         if event:
-            self.pyslipqt.ShowLayer(self.text_view_layer)
+            self.pyslip.ShowLayer(self.text_view_layer)
             if self.sel_text_view_layer:
-                self.pyslipqt.ShowLayer(self.sel_text_view_layer)
+                self.pyslip.ShowLayer(self.sel_text_view_layer)
         else:
-            self.pyslipqt.HideLayer(self.text_view_layer)
+            self.pyslip.HideLayer(self.text_view_layer)
             if self.sel_text_view_layer:
-                self.pyslipqt.HideLayer(self.sel_text_view_layer)
+                self.pyslip.HideLayer(self.sel_text_view_layer)
 
     def textViewSelectOnOff(self, event):
         """Handle SelectOnOff event for view text layer control."""
@@ -1053,13 +1302,13 @@ class PySlipQtDemo(QMainWindow):
         layer = self.text_view_layer
         if event:
             self.add_select_handler(layer, self.textViewSelect)
-            self.pyslipqt.SetLayerSelectable(layer, True)
+            self.pyslip.SetLayerSelectable(layer, True)
         else:
             self.del_select_handler(layer)
-            self.pyslipqt.SetLayerSelectable(layer, False)
+            self.pyslip.SetLayerSelectable(layer, False)
 
     def textViewSelect(self, event):
-        """View-relative text select event from pySlipQt.
+        """View-relative text select event from the widget.
 
         event  the event that contains these attributes:
                    type       the type of point selection: single or box
@@ -1076,7 +1325,7 @@ class PySlipQtDemo(QMainWindow):
 
         # turn off any existing selection
         if self.sel_text_view_layer:
-            self.pyslipqt.DeleteLayer(self.sel_text_view_layer)
+            self.pyslip.DeleteLayer(self.sel_text_view_layer)
             self.sel_text_view_layer = None
 
         if selection:
@@ -1088,13 +1337,13 @@ class PySlipQtDemo(QMainWindow):
                 points.append((x, y, d))
 
             self.sel_text_view_layer = \
-                self.pyslipqt.AddPointLayer(points, map_rel=False,
-                                            colour='black',
-                                            radius=5, visible=True,
-                                            show_levels=MRTextShowLevels,
-                                            name='<sel_text_view_layer>')
-            self.pyslipqt.PlaceLayerBelowLayer(self.sel_text_view_layer,
-                                               self.text_view_layer)
+                self.pyslip.AddPointLayer(points, map_rel=False,
+                                          colour='black',
+                                          radius=5, visible=True,
+                                          show_levels=MRTextShowLevels,
+                                          name='<sel_text_view_layer>')
+            self.pyslip.PlaceLayerBelowLayer(self.sel_text_view_layer,
+                                             self.text_view_layer)
 
         return True
 
@@ -1105,20 +1354,20 @@ class PySlipQtDemo(QMainWindow):
 
         if event:
             self.poly_layer = \
-                self.pyslipqt.AddPolygonLayer(PolyData, map_rel=True,
-                                              visible=True,
-                                              delta=DefaultPolygonMapDelta,
-                                              show_levels=MRPolyShowLevels,
-                                              name='<poly_layer>')
+                self.pyslip.AddPolygonLayer(PolyData, map_rel=True,
+                                            visible=True,
+                                            delta=DefaultPolygonMapDelta,
+                                            show_levels=MRPolyShowLevels,
+                                            name='<poly_layer>')
         else:
             self.lc_poly.set_show(True)       # set control state to 'normal'
             self.lc_poly.set_select(False)
 
-            self.pyslipqt.DeleteLayer(self.poly_layer)
+            self.pyslip.DeleteLayer(self.poly_layer)
             self.poly_layer = None
 
             if self.sel_poly_layer:
-                self.pyslipqt.DeleteLayer(self.sel_poly_layer)
+                self.pyslip.DeleteLayer(self.sel_poly_layer)
                 self.sel_poly_layer = None
                 self.sel_poly_point = None
 
@@ -1126,13 +1375,13 @@ class PySlipQtDemo(QMainWindow):
         """Handle ShowOnOff event for polygon layer control."""
 
         if event:
-            self.pyslipqt.ShowLayer(self.poly_layer)
+            self.pyslip.ShowLayer(self.poly_layer)
             if self.sel_poly_layer:
-                self.pyslipqt.ShowLayer(self.sel_poly_layer)
+                self.pyslip.ShowLayer(self.sel_poly_layer)
         else:
-            self.pyslipqt.HideLayer(self.poly_layer)
+            self.pyslip.HideLayer(self.poly_layer)
             if self.sel_poly_layer:
-                self.pyslipqt.HideLayer(self.sel_poly_layer)
+                self.pyslip.HideLayer(self.sel_poly_layer)
 
     def polySelectOnOff(self, event):
         """Handle SelectOnOff event for polygon layer control."""
@@ -1140,13 +1389,13 @@ class PySlipQtDemo(QMainWindow):
         layer = self.poly_layer
         if event:
             self.add_select_handler(layer, self.polySelect)
-            self.pyslipqt.SetLayerSelectable(layer, True)
+            self.pyslip.SetLayerSelectable(layer, True)
         else:
             self.del_select_handler(layer)
-            self.pyslipqt.SetLayerSelectable(layer, False)
+            self.pyslip.SetLayerSelectable(layer, False)
 
     def polySelect(self, event):
-        """Map- and view-relative polygon select event from pySlipQt.
+        """Map- and view-relative polygon select event from the widget.
 
         event  the event that contains these attributes:
                    type       the type of point selection: single or box
@@ -1164,7 +1413,7 @@ class PySlipQtDemo(QMainWindow):
 
         # turn any previous selection off
         if self.sel_poly_layer:
-            self.pyslipqt.DeleteLayer(self.sel_poly_layer)
+            self.pyslip.DeleteLayer(self.sel_poly_layer)
             self.sel_poly_layer = None
 
         # box OR single selection
@@ -1184,11 +1433,11 @@ class PySlipQtDemo(QMainWindow):
                     points.append((x, y, d))
 
             self.sel_poly_layer = \
-                self.pyslipqt.AddPointLayer(points, map_rel=True,
-                                            colour='#ff00ff',
-                                            radius=5, visible=True,
-                                            show_levels=[3,4],
-                                            name='<sel_poly>')
+                self.pyslip.AddPointLayer(points, map_rel=True,
+                                          colour='#ff00ff',
+                                          radius=5, visible=True,
+                                          show_levels=[3,4],
+                                          name='<sel_poly>')
 
         return True
 
@@ -1199,20 +1448,20 @@ class PySlipQtDemo(QMainWindow):
 
         if event:
             self.poly_view_layer = \
-                self.pyslipqt.AddPolygonLayer(PolyViewData, map_rel=False,
-                                              delta=DefaultPolygonViewDelta,
-                                              name='<poly_view_layer>',
-                                              placement='cn', visible=True,
-                                              fontsize=24, colour='#0000ff')
+                self.pyslip.AddPolygonLayer(PolyViewData, map_rel=False,
+                                            delta=DefaultPolygonViewDelta,
+                                            name='<poly_view_layer>',
+                                            placement='cn', visible=True,
+                                            fontsize=24, colour='#0000ff')
         else:
             self.lc_poly_v.set_show(True)       # set control state to 'normal'
             self.lc_poly_v.set_select(False)
 
-            self.pyslipqt.DeleteLayer(self.poly_view_layer)
+            self.pyslip.DeleteLayer(self.poly_view_layer)
             self.poly_view_layer = None
 
             if self.sel_poly_view_layer:
-                self.pyslipqt.DeleteLayer(self.sel_poly_view_layer)
+                self.pyslip.DeleteLayer(self.sel_poly_view_layer)
                 self.sel_poly_view_layer = None
                 self.sel_poly_view_point = None
 
@@ -1220,13 +1469,13 @@ class PySlipQtDemo(QMainWindow):
         """Handle ShowOnOff event for polygon layer control."""
 
         if event:
-            self.pyslipqt.ShowLayer(self.poly_view_layer)
+            self.pyslip.ShowLayer(self.poly_view_layer)
             if self.sel_poly_view_layer:
-                self.pyslipqt.ShowLayer(self.sel_poly_view_layer)
+                self.pyslip.ShowLayer(self.sel_poly_view_layer)
         else:
-            self.pyslipqt.HideLayer(self.poly_view_layer)
+            self.pyslip.HideLayer(self.poly_view_layer)
             if self.sel_poly_view_layer:
-                self.pyslipqt.HideLayer(self.sel_poly_view_layer)
+                self.pyslip.HideLayer(self.sel_poly_view_layer)
 
     def polyViewSelectOnOff(self, event):
         """Handle SelectOnOff event for polygon layer control."""
@@ -1234,13 +1483,13 @@ class PySlipQtDemo(QMainWindow):
         layer = self.poly_view_layer
         if event:
             self.add_select_handler(layer, self.polyViewSelect)
-            self.pyslipqt.SetLayerSelectable(layer, True)
+            self.pyslip.SetLayerSelectable(layer, True)
         else:
             self.del_select_handler(layer)
-            self.pyslipqt.SetLayerSelectable(layer, False)
+            self.pyslip.SetLayerSelectable(layer, False)
 
     def polyViewSelect(self, event):
-        """View-relative polygon select event from pySlipQt.
+        """View-relative polygon select event from the widget.
 
         event  the event that contains these attributes:
                    type       the type of point selection: single or box
@@ -1254,7 +1503,7 @@ class PySlipQtDemo(QMainWindow):
 
         # point select, turn any previous selection off
         if self.sel_poly_view_layer:
-            self.pyslipqt.DeleteLayer(self.sel_poly_view_layer)
+            self.pyslip.DeleteLayer(self.sel_poly_view_layer)
             self.sel_poly_view_layer = None
 
         # for box OR single selection
@@ -1274,11 +1523,11 @@ class PySlipQtDemo(QMainWindow):
                     points.append((x, y, d))
 
             self.sel_poly_view_layer = \
-                self.pyslipqt.AddPointLayer(points, map_rel=False,
-                                            colour='#ff00ff',
-                                            radius=5, visible=True,
-                                            show_levels=[3,4],
-                                            name='<sel_view_poly>')
+                self.pyslip.AddPointLayer(points, map_rel=False,
+                                          colour='#ff00ff',
+                                          radius=5, visible=True,
+                                          show_levels=[3,4],
+                                          name='<sel_view_poly>')
 
         return True
 
@@ -1289,41 +1538,41 @@ class PySlipQtDemo(QMainWindow):
 
         if event:
             self.polyline_layer = \
-                self.pyslipqt.AddPolylineLayer(PolylineData, map_rel=True,
-                                               visible=True,
-                                               delta=DefaultPolylineMapDelta,
-                                               show_levels=MRPolyShowLevels,
-                                               name='<polyline_layer>')
+                self.pyslip.AddPolylineLayer(PolylineData, map_rel=True,
+                                             visible=True,
+                                             delta=DefaultPolylineMapDelta,
+                                             show_levels=MRPolyShowLevels,
+                                             name='<polyline_layer>')
         else:
             self.lc_poll.set_show(True)       # set control state to 'normal'
             self.lc_poll.set_select(False)
 
-            self.pyslipqt.DeleteLayer(self.polyline_layer)
+            self.pyslip.DeleteLayer(self.polyline_layer)
             self.polyline_layer = None
 
             if self.sel_polyline_layer:
-                self.pyslipqt.DeleteLayer(self.sel_polyline_layer)
+                self.pyslip.DeleteLayer(self.sel_polyline_layer)
                 self.sel_polyline_layer = None
                 self.sel_polyline_point = None
             if self.sel_polyline_layer2:
-                self.pyslipqt.DeleteLayer(self.sel_polyline_layer2)
+                self.pyslip.DeleteLayer(self.sel_polyline_layer2)
                 self.sel_polyline_layer2 = None
 
     def polylineShowOnOff(self, event):
         """Handle ShowOnOff event for polycwlinegon layer control."""
 
         if event:
-            self.pyslipqt.ShowLayer(self.polyline_layer)
+            self.pyslip.ShowLayer(self.polyline_layer)
             if self.sel_polyline_layer:
-                self.pyslipqt.ShowLayer(self.sel_polyline_layer)
+                self.pyslip.ShowLayer(self.sel_polyline_layer)
             if self.sel_polyline_layer2:
-                self.pyslipqt.ShowLayer(self.sel_polyline_layer2)
+                self.pyslip.ShowLayer(self.sel_polyline_layer2)
         else:
-            self.pyslipqt.HideLayer(self.polyline_layer)
+            self.pyslip.HideLayer(self.polyline_layer)
             if self.sel_polyline_layer:
-                self.pyslipqt.HideLayer(self.sel_polyline_layer)
+                self.pyslip.HideLayer(self.sel_polyline_layer)
             if self.sel_polyline_layer2:
-                self.pyslipqt.HideLayer(self.sel_polyline_layer2)
+                self.pyslip.HideLayer(self.sel_polyline_layer2)
 
     def polylineSelectOnOff(self, event):
         """Handle SelectOnOff event for polyline layer control."""
@@ -1331,13 +1580,13 @@ class PySlipQtDemo(QMainWindow):
         layer = self.polyline_layer
         if event:
             self.add_select_handler(layer, self.polylineSelect)
-            self.pyslipqt.SetLayerSelectable(layer, True)
+            self.pyslip.SetLayerSelectable(layer, True)
         else:
             self.del_select_handler(layer)
-            self.pyslipqt.SetLayerSelectable(layer, False)
+            self.pyslip.SetLayerSelectable(layer, False)
 
     def polylineSelect(self, event):
-        """Map- and view-relative polyline select event from pySlipQt.
+        """Map- and view-relative polyline select event from the widget.
 
         event  the event that contains these attributes:
                    type       the type of point selection: single or box
@@ -1357,10 +1606,10 @@ class PySlipQtDemo(QMainWindow):
 
         # turn any previous selection off
         if self.sel_polyline_layer:
-            self.pyslipqt.DeleteLayer(self.sel_polyline_layer)
+            self.pyslip.DeleteLayer(self.sel_polyline_layer)
             self.sel_polyline_layer = None
         if self.sel_polyline_layer2:
-            self.pyslipqt.DeleteLayer(self.sel_polyline_layer2)
+            self.pyslip.DeleteLayer(self.sel_polyline_layer2)
             self.sel_polyline_layer2 = None
 
         # box OR single selection
@@ -1368,11 +1617,11 @@ class PySlipQtDemo(QMainWindow):
             # show segment selected first, if any
             if relsel:
                 self.sel_polyline_layer2 = \
-                    self.pyslipqt.AddPointLayer(relsel, map_rel=True,
-                                                colour='#40ff40',
-                                                radius=5, visible=True,
-                                                show_levels=[3,4],
-                                                name='<sel_polyline2>')
+                    self.pyslip.AddPointLayer(relsel, map_rel=True,
+                                              colour='#40ff40',
+                                              radius=5, visible=True,
+                                              show_levels=[3,4],
+                                              name='<sel_polyline2>')
 
             # get selected polygon points into form for point display layer
             points = []
@@ -1389,11 +1638,11 @@ class PySlipQtDemo(QMainWindow):
                     points.append((x, y, d))
 
             self.sel_polyline_layer = \
-                self.pyslipqt.AddPointLayer(points, map_rel=True,
-                                            colour='#ff00ff',
-                                            radius=3, visible=True,
-                                            show_levels=[3,4],
-                                            name='<sel_polyline>')
+                self.pyslip.AddPointLayer(points, map_rel=True,
+                                          colour='#ff00ff',
+                                          radius=3, visible=True,
+                                          show_levels=[3,4],
+                                          name='<sel_polyline>')
         return True
 
 ##### view-relative polyline layer
@@ -1403,42 +1652,42 @@ class PySlipQtDemo(QMainWindow):
 
         if event:
             self.polyline_view_layer = \
-                self.pyslipqt.AddPolylineLayer(PolylineViewData, map_rel=False,
-                                               delta=DefaultPolylineViewDelta,
-                                               name='<polyline_view_layer>',
-                                               placement='cn', visible=True,
-                                               fontsize=24, colour='#0000ff')
+                self.pyslip.AddPolylineLayer(PolylineViewData, map_rel=False,
+                                             delta=DefaultPolylineViewDelta,
+                                             name='<polyline_view_layer>',
+                                             placement='cn', visible=True,
+                                             fontsize=24, colour='#0000ff')
         else:
             self.lc_poll_v.set_show(True)       # set control state to 'normal'
             self.lc_poll_v.set_select(False)
 
-            self.pyslipqt.DeleteLayer(self.polyline_view_layer)
+            self.pyslip.DeleteLayer(self.polyline_view_layer)
             self.polyline_view_layer = None
 
             if self.sel_polyline_view_layer:
-                self.pyslipqt.DeleteLayer(self.sel_polyline_view_layer)
+                self.pyslip.DeleteLayer(self.sel_polyline_view_layer)
                 self.sel_polyline_view_layer = None
                 self.sel_polyline_view_point = None
 
             if self.sel_polyline_view_layer2:
-                self.pyslipqt.DeleteLayer(self.sel_polyline_view_layer2)
+                self.pyslip.DeleteLayer(self.sel_polyline_view_layer2)
                 self.sel_polyline_view_layer2 = None
 
     def polylineViewShowOnOff(self, event):
         """Handle ShowOnOff event for polyline layer control."""
 
         if event:
-            self.pyslipqt.ShowLayer(self.polyline_view_layer)
+            self.pyslip.ShowLayer(self.polyline_view_layer)
             if self.sel_polyline_view_layer:
-                self.pyslipqt.ShowLayer(self.sel_polyline_view_layer)
+                self.pyslip.ShowLayer(self.sel_polyline_view_layer)
             if self.sel_polyline_view_layer2:
-                self.pyslipqt.ShowLayer(self.sel_polyline_view_layer2)
+                self.pyslip.ShowLayer(self.sel_polyline_view_layer2)
         else:
-            self.pyslipqt.HideLayer(self.polyline_view_layer)
+            self.pyslip.HideLayer(self.polyline_view_layer)
             if self.sel_polyline_view_layer:
-                self.pyslipqt.HideLayer(self.sel_polyline_view_layer)
+                self.pyslip.HideLayer(self.sel_polyline_view_layer)
             if self.sel_polyline_view_layer2:
-                self.pyslipqt.HideLayer(self.sel_polyline_view_layer2)
+                self.pyslip.HideLayer(self.sel_polyline_view_layer2)
 
     def polylineViewSelectOnOff(self, event):
         """Handle SelectOnOff event for polyline layer control."""
@@ -1446,13 +1695,13 @@ class PySlipQtDemo(QMainWindow):
         layer = self.polyline_view_layer
         if event:
             self.add_select_handler(layer, self.polylineViewSelect)
-            self.pyslipqt.SetLayerSelectable(layer, True)
+            self.pyslip.SetLayerSelectable(layer, True)
         else:
             self.del_select_handler(layer)
-            self.pyslipqt.SetLayerSelectable(layer, False)
+            self.pyslip.SetLayerSelectable(layer, False)
 
     def polylineViewSelect(self, event):
-        """View-relative polyline select event from pySlipQt.
+        """View-relative polyline select event from the widget.
 
         event  the event that contains these attributes:
                    type       the type of point selection: single or box
@@ -1467,10 +1716,10 @@ class PySlipQtDemo(QMainWindow):
 
         # point select, turn any previous selection off
         if self.sel_polyline_view_layer:
-            self.pyslipqt.DeleteLayer(self.sel_polyline_view_layer)
+            self.pyslip.DeleteLayer(self.sel_polyline_view_layer)
             self.sel_polyline_view_layer = None
         if self.sel_polyline_view_layer2:
-            self.pyslipqt.DeleteLayer(self.sel_polyline_view_layer2)
+            self.pyslip.DeleteLayer(self.sel_polyline_view_layer2)
             self.sel_polyline_view_layer2 = None
 
         # for box OR single selection
@@ -1484,14 +1733,14 @@ class PySlipQtDemo(QMainWindow):
                 offset_y = attributes.get('offset_y', 0)
 
                 self.sel_polyline_view_layer2 = \
-                    self.pyslipqt.AddPointLayer(relsel, map_rel=False,
-                                                placement=place,
-                                                offset_x=offset_x,
-                                                offset_y=offset_y,
-                                                colour='#4040ff',
-                                                radius=5, visible=True,
-                                                show_levels=[3,4],
-                                                name='<sel_view_polyline2>')
+                    self.pyslip.AddPointLayer(relsel, map_rel=False,
+                                              placement=place,
+                                              offset_x=offset_x,
+                                              offset_y=offset_y,
+                                              colour='#4040ff',
+                                              radius=5, visible=True,
+                                              show_levels=[3,4],
+                                              name='<sel_view_polyline2>')
 
             # get selected polyline points into form for point display layer
             points = []
@@ -1508,14 +1757,13 @@ class PySlipQtDemo(QMainWindow):
                     points.append((x, y, d))
 
             self.sel_polyline_view_layer = \
-                self.pyslipqt.AddPointLayer(points, map_rel=False,
-                                            colour='#ff00ff',
-                                            radius=3, visible=True,
-                                            show_levels=[3,4],
-                                            name='<sel_view_polyline>')
+                self.pyslip.AddPointLayer(points, map_rel=False,
+                                          colour='#ff00ff',
+                                          radius=3, visible=True,
+                                          show_levels=[3,4],
+                                          name='<sel_view_polyline>')
 
         return True
-
 
     def level_change_event(self, event):
         """Handle a "level change" event from the pySlipQt widget.
@@ -1573,7 +1821,7 @@ class PySlipQtDemo(QMainWindow):
     def unimplemented(self, msg):
         """Issue an "Sorry, ..." message."""
 
-        self.pyslipqt.warn('Sorry, %s is not implemented at the moment.' % msg)
+        self.pyslip.warn('Sorry, %s is not implemented at the moment.' % msg)
 
     def dump_event(self, msg, event):
         """Dump an event to the log.
@@ -1611,7 +1859,6 @@ class PySlipQtDemo(QMainWindow):
         PointDataColour = '#ff000080'	# semi-transparent
 
         # create PointViewData - a point-rendition of 'PYSLIP'
-# TODO: add the suffix 'Qt'
         PointViewData = [(-66,-14),(-66,-13),(-66,-12),(-66,-11),(-66,-10),
                          (-66,-9),(-66,-8),(-66,-7),(-66,-6),(-66,-5),(-66,-4),
                          (-66,-3),(-65,-7),(-64,-7),(-63,-7),(-62,-7),(-61,-8),
@@ -1829,22 +2076,7 @@ class PySlipQtDemo(QMainWindow):
         """Routine to handle unexpected events."""
 
         print('ERROR: null_handler!?')
-
-    def handle_position_event(self, event):
-        """Handle a pySlipQt POSITION event."""
-
-        posn_str = ''
-        if event.mposn:
-            (lon, lat) = event.mposn
-            posn_str = ('%.*f / %.*f'
-                        % (LonLatPrecision, lon, LonLatPrecision, lat))
-
-        self.mouse_position.SetValue(posn_str)
-
-    def handle_level_change(self, event):
-        """Handle a pySlipQt LEVEL event."""
-
-        self.map_level.SetValue('%d' % event.level)
+        log('ERROR: null_handler!?')
 
     ######
     # Handle adding/removing select handler functions.
@@ -1863,6 +2095,7 @@ class PySlipQtDemo(QMainWindow):
     ######
     # Warning and information dialogs
     ######
+
     def info(self, msg):
         """Display an information message, log and graphically."""
 
@@ -1892,7 +2125,7 @@ class PySlipQtDemo(QMainWindow):
         warn_dialog.showMessage(msg)
 
 ###############################################################################
-# Main code below
+# Main code
 ###############################################################################
 
 def usage(msg=None):
@@ -1908,7 +2141,6 @@ def excepthook(type, value, tback):
     msg += '=' * 80 + '\n'
     log(msg)
     print(msg)
-#        tkinter_error(msg)     # doesn't work while PyQt5 is running
     sys.exit(1)
 
 # plug our handler into the python system

@@ -1,32 +1,9 @@
 """
 A tile source that serves OpenStreetMap tiles from server(s).
-
-Uses pyCacheBack to provide in-memory and on-disk caching.
 """
 
 import math
-
-import pySlipQt.tiles_net as tiles
-
-
-# if we don't have log.py, don't crash
-try:
-    from pySlipQt import log
-    log = log.Log('pyslip.log')
-except AttributeError:
-    # means log already set up
-    pass
-except ImportError as e:
-    # if we don't have log.py, don't crash
-    # fake all log(), log.debug(), ... calls
-    def logit(*args, **kwargs):
-        pass
-    log = logit
-    log.debug = logit
-    log.info = logit
-    log.warn = logit
-    log.error = logit
-    log.critical = logit
+import pySlipQt.tiles_net as tiles_net
 
 
 ###############################################################################
@@ -41,11 +18,6 @@ TilesetVersion = '1.0'
 
 # the pool of tile servers used
 TileServers = [
-# using 'https://' we get "SSL: CERTIFICATE_VERIFY_FAILED" errors
-# try to modify get code to use https and no SSL
-#               'https://a.tile.openstreetmap.org',
-#               'https://b.tile.openstreetmap.org',
-#               'https://c.tile.openstreetmap.org',
                'http://a.tile.openstreetmap.org',
                'http://b.tile.openstreetmap.org',
                'http://c.tile.openstreetmap.org',
@@ -70,10 +42,10 @@ TilesDir = 'open_street_map_tiles'
 
 
 ################################################################################
-# Class for these tiles.   Builds on tiles.BaseTiles.
+# Class for these tiles.   Builds on tiles_net.Tiles.
 ################################################################################
 
-class Tiles(tiles.Tiles):
+class Tiles(tiles_net.Tiles):
     """An object to source server tiles for pySlipQt."""
 
     # size of tiles
@@ -87,12 +59,12 @@ class Tiles(tiles.Tiles):
         and provide the Geo2Tile() and Tile2Geo() methods.
         """
 
-        super(Tiles, self).__init__(TileLevels,
-                                    Tiles.TileWidth, Tiles.TileHeight,
-                                    tiles_dir=tiles_dir,
-                                    servers=TileServers, url_path=TileURLPath,
-                                    max_server_requests=MaxServerRequests,
-                                    max_lru=MaxLRU, http_proxy=http_proxy)
+        super().__init__(TileLevels,
+                         Tiles.TileWidth, Tiles.TileHeight,
+                         tiles_dir=tiles_dir,
+                         servers=TileServers, url_path=TileURLPath,
+                         max_server_requests=MaxServerRequests,
+                         max_lru=MaxLRU, http_proxy=http_proxy)
 # TODO: implement map wrap-around
 #        self.wrap_x = True
 #        self.wrap_y = False
@@ -100,7 +72,7 @@ class Tiles(tiles.Tiles):
         # get tile information into instance
         self.level = min(TileLevels)
         (self.num_tiles_x, self.num_tiles_y,
-         self.ppd_x, self.ppd_y) = self.GetInfo(self.level)
+                         self.ppd_x, self.ppd_y) = self.GetInfo(self.level)
 
     def Geo2Tile(self, geo):
         """Convert geo to tile fractional coordinates for level in use.

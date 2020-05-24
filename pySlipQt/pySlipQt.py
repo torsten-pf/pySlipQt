@@ -1,6 +1,24 @@
 """
 A "slip map" widget for PyQt5.
 
+So why is this widget called 'pySlip'?
+
+Well, in the OpenStreetMap world[1], a 'slippy map' is a browser map view
+served by a tile server that can be panned and zoomed in the same way as
+popularised by Google maps.  Such a map feels 'slippery', I guess.
+
+Rather than 'slippy' I went for the slightly more formal 'pySlip' since the
+thing is written in Python and therefore must have the obligatory 'py' prefix.
+
+Even though this was originally written for a geographical application, the
+*underlying* system only assumes a cartesian 2D coordinate system.  The tile
+source must translate between the underlying coordinates and whatever coordinate
+system the tiles use.  So pySlip could be used to present a game map, 2D CAD
+view, etc, as well as Mercator tiles provided either locally from the filesystem
+or from the internet (OpenStreetMap, for example).
+
+[1] http://wiki.openstreetmap.org/index.php/Slippy_Map
+
 Some semantics:
     map   the whole map
     view  is the view of the map through the widget
@@ -9,13 +27,11 @@ Some semantics:
 
 
 import sys
-
 from PyQt5.QtCore import Qt, QTimer, QPoint, QPointF, QObject, pyqtSignal
 from PyQt5.QtWidgets import QLabel, QSizePolicy, QWidget, QMessageBox
 from PyQt5.QtGui import (QPainter, QColor, QPixmap, QPen, QFont, QFontMetrics,
                          QPolygon, QBrush, QCursor)
 
-# if we don't have log.py, don't crash
 try:
     import pySlipQt.log as log
     log = log.Log('pyslipqt.log')
@@ -83,7 +99,7 @@ class _Layer(object):
         self.id = id                    # ID of this layer
 
     def __str__(self):
-        return ('<pyslip Layer: id=%d, name=%s, map_rel=%s, visible=%s>'
+        return ('<pySlipQt Layer: id=%d, name=%s, map_rel=%s, visible=%s>'
                 % (self.id, self.name, str(self.map_rel), str(self.visible)))
 
 
@@ -393,7 +409,6 @@ class PySlipQt(QWidget):
         """
 
         event = PySlipQt.PySlipQtEvent(etype, **kwargs)
-#        self.dump_event('raise_event', event)
         self.pyslipqt_event_dict[etype](event)
 
     ######
@@ -3410,8 +3425,11 @@ class PySlipQt(QWidget):
         exist in the new tileset.
         """
 
+        log('ChangeTileset: tile_src=%s' % str(tile_src))
+
         # get level and geo position of view centre
         (level, geo) = self.get_level_and_position()
+        log('level=%s, geo=%s' % (str(level), str(geo)))
 
         # remember old tileset
         old_tileset = self.tile_src
