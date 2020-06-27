@@ -7,7 +7,9 @@ and other layers.  The map tiles can come from a local source of pre-generated
 tiles or from a tile server.  The tiles may have any desired coordinate system
 as tile coordinates are translated to pySlipQt internal coordinates.
 
-pySlipQt works on Linux, Mac and Windows.  Requirements are python 3 and PyQt5.
+pySlipQt works on Linux and Mac.  It only works with PyQt5 and Python 3.6+.
+
+pySlipQt used to work on Windows, but I no longer run Windows and I can't test it.
 
 For more information visit the
 `GitHub repository <https://github.com/rzzzwilson/pySlipQt/>`_ or view the API
@@ -16,6 +18,10 @@ documentation in
 
 Release Notes
 -------------
+
+Release 0.5.2 of pySlipQt contains improved error reporting in the case you
+try to run *pyslipqt_demo.py* without installing the GMT tiles in your
+home directory.
 
 Release 0.5 of pySlipQt is early-release and is considered BETA software.
 It is being released so anyone interested in pySlipQt can run the
