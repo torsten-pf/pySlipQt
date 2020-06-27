@@ -1893,22 +1893,6 @@ class PySlipQt(QWidget):
             self.key_tile_top = 0
             self.key_tile_yoffset = (self.view_height - self.map_height) // 2
 
-    def on_tile_available(self, level, x, y, img, bmp):
-        """Callback routine: tile level/x/y is available.
-
-        level  the map zoom level the image is for
-        x, y   tile coordinates of new tile
-        img    tile image
-        bmp    tile bitmap
-
-        We don't use any of the above - just redraw the entire canvas.
-        This is because the new tile is already in the in-memory cache.
-
-        On a slow display we could redraw just the new tile.
-        """
-
-        self.update()
-
 ######
 #
 ######
