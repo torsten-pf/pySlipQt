@@ -59,7 +59,7 @@ if platform.python_version_tuple()[0] != '3':
     sys.exit(1)
 
 # version number of the widget
-__version__ = '0.4'
+__version__ = '0.5'
 
 
 ######
