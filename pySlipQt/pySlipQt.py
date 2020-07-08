@@ -1667,7 +1667,7 @@ class PySlipQt(QWidget):
 
         level  map level to zoom to
         view   view coords of cursor
-               (if not given, ssume view centre)
+               (if not given, assume view centre)
 
         Change the map zoom level to that given. Returns True if the zoom
         succeeded, else False. If False is returned the method call has no effect.
