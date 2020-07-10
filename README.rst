@@ -17,8 +17,10 @@ It's a poor thing, but solves my problem.  I'm placing it here in the hope that
 someone else may find it useful.  If you find it useful, or make improvements
 to it, drop me a line.
 
-pySlipQt works on Linux, Mac and Windows.  It only works with PyQt5 and
-Python 3.6+.
+pySlipQt works on Linux and Mac.  It only works with PyQt5 and Python 3.6+.
+
+pySlipQt used to work on Windows, but I no longer run Windows and I can't test it.
+
 
 The widget API is documented in
 `the wiki <https://github.com/rzzzwilson/pySlipQt/wiki/The-pySlipQt-API>`_.

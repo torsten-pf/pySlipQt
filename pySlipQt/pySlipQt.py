@@ -59,7 +59,7 @@ if platform.python_version_tuple()[0] != '3':
     sys.exit(1)
 
 # version number of the widget
-__version__ = '0.4'
+__version__ = '0.5'
 
 
 ######
@@ -1667,7 +1667,7 @@ class PySlipQt(QWidget):
 
         level  map level to zoom to
         view   view coords of cursor
-               (if not given, ssume view centre)
+               (if not given, assume view centre)
 
         Change the map zoom level to that given. Returns True if the zoom
         succeeded, else False. If False is returned the method call has no effect.
@@ -1892,22 +1892,6 @@ class PySlipQt(QWidget):
         if self.key_tile_top < 0:
             self.key_tile_top = 0
             self.key_tile_yoffset = (self.view_height - self.map_height) // 2
-
-    def on_tile_available(self, level, x, y, img, bmp):
-        """Callback routine: tile level/x/y is available.
-
-        level  the map zoom level the image is for
-        x, y   tile coordinates of new tile
-        img    tile image
-        bmp    tile bitmap
-
-        We don't use any of the above - just redraw the entire canvas.
-        This is because the new tile is already in the in-memory cache.
-
-        On a slow display we could redraw just the new tile.
-        """
-
-        self.update()
 
 ######
 #

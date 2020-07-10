@@ -5,7 +5,7 @@ A tile source that serves pre-generated GMT tiles from the local filesystem.
 import os
 import pickle
 import pySlipQt.tiles as tiles
-import pyslip.log as log
+import pySlipQt.log as log
 
 try:
     log = log.Log('pyslipqt.log')
@@ -44,7 +44,7 @@ MaxLRU = 10000
 # path to the INFO file for GMT tiles
 TileInfoFilename = "tile.info"
 
-# path to the tiles directory
+# default path to the tiles directory
 TilesDir = os.path.abspath(os.path.expanduser('~/gmt_local_tiles'))
 
 ################################################################################
@@ -69,6 +69,11 @@ class Tiles(tiles.BaseTiles):
                          Tiles.TileWidth, Tiles.TileHeight,
                          tiles_dir=tiles_dir, max_lru=MaxLRU)
 
+        if not os.path.isfile(os.path.join(tiles_dir, TileInfoFilename)):
+            msg = f"The GMT tiles directory '{tiles_dir}' doesn't appear to be setup?"
+            log.critical(msg)
+            raise RuntimeError(msg)
+            
 # TODO: implement map wrap-around
 #        # we *can* wrap tiles in X direction, but not Y
 #        self.wrap_x = False

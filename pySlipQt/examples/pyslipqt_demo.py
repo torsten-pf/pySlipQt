@@ -36,7 +36,6 @@ except ImportError:
 
 try:
     import pySlipQt.pySlipQt as pySlipQt
-    import pySlipQt.gmt_local as tiles
     import pySlipQt.log as log
 except ImportError:
     msg = '*'*60 + '\nSorry, you must install pySlipQt\n' + '*'*60
@@ -61,17 +60,20 @@ from layer_control import LayerControl
 
 # demo name/version
 DemoName = 'pySlipQt %s - Demonstration' % pySlipQt.__version__
-DemoVersion = '1.1'
+DemoVersion = '1.2'
 
 DemoWidth = 1000
 DemoHeight = 800
 
+# the default place for the GMT tiles
+DefaultTilesDir = os.path.abspath(os.path.expanduser('~/gmt_local_tiles'))
+
 # initial view level and position
-InitViewLevel = 4
+InitViewLevel = 3
 
 # this will eventually be selectable within the app
 # a selection of cities, position from WikiPedia, etc
-InitViewPosition = (0.0, 0.0)                # "Null" Island
+#InitViewPosition = (0.0, 0.0)                # "Null" Island
 #InitViewPosition = (0.0, 51.48)             # Greenwich, England
 #InitViewPosition = (5.33, 60.389444)        # Bergen, Norway
 #InitViewPosition = (153.033333, -27.466667) # Brisbane, Australia
@@ -84,7 +86,7 @@ InitViewPosition = (0.0, 0.0)                # "Null" Island
 #InitViewPosition = (-70.933333, -53.166667) # Punta Arenas, Chile
 #InitViewPosition = (168.3475, -46.413056)   # Invercargill, New Zealand
 #InitViewPosition = (-147.723056, 64.843611) # Fairbanks, AK, USA
-#InitViewPosition = (103.851959, 1.290270)   # Singapore
+InitViewPosition = (103.851959, 1.290270)   # Singapore
 
 # levels on which various layers show
 MRPointShowLevels = [3, 4]
@@ -1951,19 +1953,19 @@ class PySlipQtDemo(QMainWindow):
                     (121.050, 14.600, 'Manila', capital),
                     (271.74, +40.11, 'Champaign', text_placement),
                     (160.0, -30.0, 'Agnes Napier - 1855',
-                        {'placement': 'cw', 'offset_x': 20, 'colour': 'green'}),
+                        {'placement': 'cw', 'offset_x': 20, 'colour': 'red'}),
                     (145.0, -11.0, 'Venus - 1826',
-                        {'placement': 'sw', 'colour': 'green'}),
+                        {'placement': 'sw', 'colour': 'red'}),
                     (156.0, -23.0, 'Wolverine - 1879',
-                        {'placement': 'ce', 'colour': 'green'}),
+                        {'placement': 'ce', 'colour': 'red'}),
                     (150.0, -15.0, 'Thomas Day - 1884',
-                        {'colour': 'green'}),
+                        {'colour': 'red'}),
                     (165.0, -19.0, 'Sybil - 1902',
-                        {'placement': 'cw', 'colour': 'green'}),
+                        {'placement': 'cw', 'colour': 'red'}),
                     (158.55, -19.98, 'Prince of Denmark - 1863',
-                        {'placement': 'nw', 'offset_x': 20, 'colour': 'green'}),
+                        {'placement': 'nw', 'offset_x': 20, 'colour': 'red'}),
                     (146.867525, -19.152182, 'Moltke - 1911',
-                        {'placement': 'ce', 'offset_x': 20, 'colour': 'green'}),
+                        {'placement': 'ce', 'offset_x': 20, 'colour': 'red'}),
                    ]
         if sys.platform != 'win32':
             # TODO: check if this works under Windows
