@@ -27,10 +27,17 @@ Some semantics:
 
 
 import sys
-from PyQt5.QtCore import Qt, QTimer, QPoint, QPointF, QObject, pyqtSignal
-from PyQt5.QtWidgets import QLabel, QSizePolicy, QWidget, QMessageBox
-from PyQt5.QtGui import (QPainter, QColor, QPixmap, QPen, QFont, QFontMetrics,
-                         QPolygon, QBrush, QCursor)
+try:
+    from PySide2.QtCore import Signal as pyqtSignal
+    from PySide2.QtCore import Qt, QTimer, QPoint, QPointF, QObject
+    from PySide2.QtWidgets import QLabel, QSizePolicy, QWidget, QMessageBox
+    from PySide2.QtGui import (QPainter, QColor, QPixmap, QPen, QFont, QFontMetrics,
+                             QPolygon, QBrush, QCursor)
+except:
+    from PyQt5.QtCore import Qt, QTimer, QPoint, QPointF, QObject, pyqtSignal
+    from PyQt5.QtWidgets import QLabel, QSizePolicy, QWidget, QMessageBox
+    from PyQt5.QtGui import (QPainter, QColor, QPixmap, QPen, QFont, QFontMetrics,
+                             QPolygon, QBrush, QCursor)
 
 try:
     import pySlipQt.log as log
@@ -665,7 +672,7 @@ class PySlipQt(QWidget):
     def wheelEvent(self, event):
         """Handle a mouse wheel rotation."""
 
-        if event.angleDelta().y() < 0:
+        if event.angleDelta().y() > 0:
             new_level = self.level + 1
         else:
             new_level = self.level - 1

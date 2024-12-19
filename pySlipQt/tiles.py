@@ -8,7 +8,10 @@ For example, see gmt_local.py (local tiles) and osm_tiles.py
 
 import os
 import math
-from PyQt5.QtGui import QPixmap
+try:
+    from PySide2.QtGui import QPixmap
+except:
+    from PyQt5.QtGui import QPixmap
 import pySlipQt.pycacheback as pycacheback
 import pySlipQt.log as log
 

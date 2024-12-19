@@ -28,7 +28,7 @@ TileServers = [
 TileURLPath = '/{Z}/{X}/{Y}.png'
 
 # tile levels to be used
-TileLevels = range(17)
+TileLevels = range(21)
 
 # maximum pending requests for each tile server
 MaxServerRequests = 2
@@ -52,7 +52,7 @@ class Tiles(tiles_net.Tiles):
     TileWidth = 256
     TileHeight = 256
 
-    def __init__(self, tiles_dir=TilesDir, http_proxy=None):
+    def __init__(self, tiles_dir=TilesDir, user_agent=None, http_proxy=None):
         """Override the base class for these tiles.
 
         Basically, just fill in the BaseTiles class with values from above
@@ -64,7 +64,7 @@ class Tiles(tiles_net.Tiles):
                          tiles_dir=tiles_dir,
                          servers=TileServers, url_path=TileURLPath,
                          max_server_requests=MaxServerRequests,
-                         max_lru=MaxLRU, http_proxy=http_proxy)
+                         max_lru=MaxLRU, http_proxy=http_proxy, user_agent=user_agent)
 # TODO: implement map wrap-around
 #        self.wrap_x = True
 #        self.wrap_y = False

@@ -12,8 +12,12 @@ import traceback
 import urllib
 from urllib import request
 import queue
-from PyQt5.QtGui import QPixmap
-from PyQt5.QtCore import QThread
+try:
+    from PySide2.QtGui import QPixmap
+    from PySide2.QtCore import QThread
+except:
+    from PyQt5.QtGui import QPixmap
+    from PyQt5.QtCore import QThread
 import pySlipQt.tiles as tiles
 import pySlipQt.sys_tile_data as std
 import pySlipQt.log as log
@@ -43,7 +47,7 @@ class TileWorker(QThread):
     """Thread class that gets request from queue, loads tile, calls callback."""
 
     def __init__(self, id_num, server, tilepath, requests, callback,
-                 error_tile, content_type, rerequest_age, error_image):
+                 error_tile, content_type, rerequest_age, error_image, user_agent):
         """Prepare the tile worker.
 
         id_num         a unique numer identifying the worker instance
@@ -72,6 +76,7 @@ class TileWorker(QThread):
         self.rerequest_age = rerequest_age
         self.error_image = error_image
         self.daemon = True
+        self.user_agent = user_agent
 
     def run(self):
         while True:
@@ -83,7 +88,12 @@ class TileWorker(QThread):
             pixmap = self.error_image
             try:
                 tile_url = self.server + self.tilepath.format(Z=level, X=x, Y=y)
-                response = request.urlopen(tile_url)
+                headers = {}
+                if self.user_agent is not None:
+                    headers['User-Agent'] = self.user_agent
+                response = request.urlopen(request.Request(tile_url,
+                                                           headers=headers))
+                #response = request.urlopen(tile_url)
                 content_type = response.info().get_content_type()
                 if content_type == self.content_type:
                     data = response.read()
@@ -94,6 +104,7 @@ class TileWorker(QThread):
                     error = True
             except Exception as e:
                 error = True
+                traceback.print_exc()
                 log('%s exception getting tile (%d,%d,%d)'
                         % (type(e).__name__, level, x, y))
 
@@ -128,7 +139,7 @@ class Tiles(tiles.BaseTiles):
 
     def __init__(self, levels, tile_width, tile_height, tiles_dir, max_lru,
                  servers, url_path, max_server_requests, http_proxy,
-                 refetch_days=RefreshTilesAfterDays):
+                 refetch_days=RefreshTilesAfterDays, user_agent=None):
         """Initialise a Tiles instance.
 
         levels               a list of level numbers that are to be served
@@ -142,6 +153,8 @@ class Tiles(tiles.BaseTiles):
         http_proxy           proxy to use if required
         refetch_days         fetch new server tile if older than this in days
                              (0 means don't ever update tiles)
+        user_agent           User agent added to headers in requests.
+                             It may be required by some tile providers.
         """
 
         # prepare the tile cache directory, if required
@@ -204,7 +217,38 @@ class Tiles(tiles.BaseTiles):
         # test for firewall - use proxy (if supplied)
         test_url = self.servers[0] + self.url_path.format(Z=0, X=0, Y=0)
         try:
-            request.urlopen(test_url)
+            headers = {}
+            if user_agent is not None:
+                headers['User-Agent'] = user_agent
+            request.urlopen(request.Request(test_url, headers=headers))
+            #request.urlopen(test_url)
+        except urllib.error.URLError as e:
+            # proxy error
+            # if it's fatal, log it and die, otherwise try a proxy
+            log('Error: test_url=%s, error=%s'
+                % (test_url, str(e)))
+            log('%s exception doing simple connection to: %s'
+                % (type(e).__name__, test_url))
+            log(''.join(traceback.format_exc()))
+
+            if http_proxy:
+                proxy = request.ProxyHandler({'http': http_proxy})
+                opener = request.build_opener(proxy)
+                request.install_opener(opener)
+                try:
+                    headers = {}
+                    if user_agent is not None:
+                        headers['User-Agent'] = user_agent
+                    request.urlopen(request.Request(test_url, headers=headers))
+                    # request.urlopen(test_url)
+                except:
+                    msg = ("Using HTTP proxy %s, "
+                           "but still can't get through a firewall!")
+                    raise Exception(msg) from None
+            else:
+                msg = ("There is a firewall but you didn't "
+                       "give me an HTTP proxy to get through it?")
+                raise Exception(msg) from None
         except urllib.error.HTTPError as e:
             # if it's fatal, log it and die, otherwise try a proxy
             status_code = e.code
@@ -226,7 +270,11 @@ class Tiles(tiles.BaseTiles):
                 opener = request.build_opener(proxy)
                 request.install_opener(opener)
                 try:
-                    request.urlopen(test_url)
+                    headers = {}
+                    if user_agent is not None:
+                        headers['User-Agent'] = user_agent
+                    request.urlopen(request.Request(test_url, headers=headers))
+                    #request.urlopen(test_url)
                 except:
                     msg = ("Using HTTP proxy %s, "
                            "but still can't get through a firewall!")
@@ -244,7 +292,8 @@ class Tiles(tiles.BaseTiles):
                 worker = TileWorker(num_thread, server, self.url_path,
                                     self.request_queue, self.tile_is_available,
                                     self.error_tile, self.content_type,
-                                    self.rerequest_age, self.error_tile)
+                                    self.rerequest_age, self.error_tile,
+                                    user_agent)
                 self.workers.append(worker)
                 worker.start()
 
